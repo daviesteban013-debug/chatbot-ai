@@ -12,6 +12,7 @@
 }
 
 html {
+  scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
 }
 
@@ -25,4 +26,16 @@ body {
 
 * {
   box-sizing: border-box;
+}
+
+button,
+a,
+input,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: #facc15;
+  color: #18181b;
 }
