@@ -1,8 +1,11 @@
 import {
   LayoutDashboard,
+  MessageSquare,
+  ShoppingBag,
+  Package,
+  UserPlus,
+  CheckCircle,
   Bot,
-  CalendarDays,
-  CreditCard,
   type LucideIcon,
 } from "lucide-react";
 
@@ -12,9 +15,16 @@ export interface NavItem {
   icon: LucideIcon;
 }
 
+/**
+ * Rutas del panel de control. El sidebar (`components/dashboard/sidebar.tsx`)
+ * consume este arreglo y marca la ruta activa con `usePathname`.
+ */
 export const navItems: NavItem[] = [
-  { label: "Dashboard", href: "/", icon: LayoutDashboard },
-  { label: "Mi Asistente", href: "/assistant", icon: Bot },
-  { label: "CRM", href: "/crm", icon: CalendarDays },
-  { label: "Suscripción", href: "/subscription", icon: CreditCard },
+  { label: "Resumen", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Conversaciones", href: "/dashboard/conversations", icon: MessageSquare },
+  { label: "Pedidos", href: "/dashboard/orders", icon: ShoppingBag },
+  { label: "Catálogo", href: "/dashboard/catalog", icon: Package },
+  { label: "Handoffs", href: "/dashboard/handoffs", icon: UserPlus },
+  { label: "Aprobaciones", href: "/dashboard/approval", icon: CheckCircle },
+  { label: "Agente", href: "/dashboard/agent", icon: Bot },
 ];

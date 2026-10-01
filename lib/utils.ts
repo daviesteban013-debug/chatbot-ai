@@ -31,9 +31,60 @@ export function formatDate(iso: string): string {
 }
 
 /**
- * Formatea un número como moneda.
- * Ej. 29 -> "$29.00"
+ * Formatea un entero de pesos colombianos (COP) como moneda.
+ * En el esquema el dinero se guarda como integer sin decimales.
+ * Ej. 45000 -> "$ 45.000"
  */
-export function formatCurrency(n: number): string {
-  return `$${n.toFixed(2)}`;
+export function formatCOP(amount: number): string {
+  return new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    minimumFractionDigits: 0,
+  }).format(amount);
+}
+
+/**
+ * Formatea un datetime ISO como fecha corta + hora en español.
+ * Ej. "2026-10-01T14:32:00Z" -> "1 oct 2026, 9:32 a. m."
+ */
+export function formatDateTime(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toLocaleString("es-CO", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+/**
+ * Tiempo relativo compacto en español para listas de actividad.
+ * Ej. "Hace 5 min", "Hace 3 h", "Hace 2 días".
+ */
+export function timeAgo(iso: string, now: number = Date.now()): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  const seconds = Math.max(0, Math.floor((now - date.getTime()) / 1000));
+  if (seconds < 60) return "Hace unos segundos";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `Hace ${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `Hace ${hours} h`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `Hace ${days} ${days === 1 ? "día" : "días"}`;
+  return formatDate(iso);
+}
+
+/**
+ * Hora corta (hh:mm) para burbujas de chat.
+ */
+export function formatTime(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleTimeString("es-CO", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
