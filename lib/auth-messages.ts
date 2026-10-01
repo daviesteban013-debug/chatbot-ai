@@ -38,5 +38,11 @@ export function callbackErrorMessage(code: string): string {
   if (code === "auth_callback_error") {
     return "No pudimos verificar tu sesión. Intenta iniciar de nuevo.";
   }
+  if (code === "otp_expired") {
+    return "El enlace de confirmación expiró o ya fue usado. Inicia sesión con tu correo y contraseña, o vuelve a registrarte.";
+  }
+  if (code === "access_denied") {
+    return "No pudimos completar la verificación del correo. Intenta iniciar sesión de nuevo.";
+  }
   return authErrorMessage(code);
 }
