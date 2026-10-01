@@ -48,7 +48,7 @@ begin
 
   -- ---------- Agente ----------
   insert into agents (id, tenant_id, name, tone, system_prompt, business_rules, mode, model,
-                      auto_confirm_max_total, max_discount_pct, active)
+                      auto_confirm_max_total, max_discount_pct, active, onboarding_completed)
   values (
     v_agent,
     v_tenant,
@@ -113,6 +113,7 @@ $prompt$,
     'qwen-max',
     300000,
     10,
+    true,
     true
   );
 

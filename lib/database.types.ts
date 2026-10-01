@@ -99,6 +99,7 @@ export type Agent = {
   auto_confirm_max_total: number;
   max_discount_pct: number;
   active: boolean;
+  onboarding_completed: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -345,6 +346,7 @@ export type Database = {
           auto_confirm_max_total?: number;
           max_discount_pct?: number;
           active?: boolean;
+          onboarding_completed?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -360,6 +362,7 @@ export type Database = {
           auto_confirm_max_total?: number;
           max_discount_pct?: number;
           active?: boolean;
+          onboarding_completed?: boolean;
           created_at?: string;
           updated_at?: string;
         };
