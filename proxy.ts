@@ -120,6 +120,7 @@ export async function proxy(request: NextRequest) {
           path: "/",
           httpOnly: true,
           sameSite: "lax",
+          secure: true,
           maxAge: 60 * 60 * 24 * 365,
         });
       } else if (status === "pending") {

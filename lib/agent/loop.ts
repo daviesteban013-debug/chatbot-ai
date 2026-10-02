@@ -19,6 +19,8 @@ export type RunAgentParams = {
   customerId: string;
   customerPhone: string;
   triggerMessageId: string;
+  /** ID original del mensaje de WhatsApp (wamid.*), usado para markAsRead. */
+  waMessageId: string;
 };
 
 type AgentConfig = {
@@ -126,7 +128,7 @@ async function runAgentInner(
   params: RunAgentParams,
   startTime: number
 ): Promise<void> {
-  const { tenantId, conversationId, customerId, customerPhone, triggerMessageId } = params;
+  const { tenantId, conversationId, customerId, customerPhone, triggerMessageId, waMessageId } = params;
 
   // 1. Cargar configuración del agente
   const agent = await loadAgentConfig(supabase, tenantId);
@@ -135,10 +137,6 @@ async function runAgentInner(
     return;
   }
 
-  if (!agent.active) {
-    console.log(`[Agent] Agente "${agent.id}" está inactivo, omitiendo.`);
-    return;
-  }
 
   // 2. Resolver credenciales de envío de WhatsApp del tenant (multi-tenant).
   const sendOpts = await loadSendOptions(supabase, tenantId);
@@ -146,7 +144,7 @@ async function runAgentInner(
   // 3. Marcar mensaje como leído (feedback visual al cliente)
   if (sendOpts) {
     try {
-      await markAsRead(triggerMessageId, sendOpts);
+      await markAsRead(waMessageId, sendOpts);
     } catch (err) {
       console.error("[Agent] Error marcando como leído:", err);
     }
@@ -278,7 +276,7 @@ async function runAgentInner(
   //    - status: 'sent' if autonomous sent it, 'proposed' otherwise
   const runStatus = shouldAutoSend ? "sent" : "proposed";
 
-  const { error: runError } = await supabase.from("agent_runs").insert({
+  const { data: insertedRun, error: runError } = await supabase.from("agent_runs").insert({
     tenant_id: tenantId,
     conversation_id: conversationId,
     trigger_message_id: triggerMessageId,
@@ -292,7 +290,7 @@ async function runAgentInner(
     cost_usd: costUsd,
     latency_ms: latencyMs,
     status: runStatus as "sent" | "proposed",
-  });
+  }).select("id").single();
 
   if (runError) {
     console.error("[Agent] Error persistiendo agent_run:", runError.message);
@@ -304,18 +302,21 @@ async function runAgentInner(
       console.error(
         `[Agent] Sin credenciales de WhatsApp para tenant ${tenantId}: no se puede enviar la respuesta.`
       );
-      await supabase
-        .from("agent_runs")
-        .update({
-          status: "error",
-          error: "Sin credenciales de WhatsApp para el tenant",
-        })
-        .eq("tenant_id", tenantId)
-        .eq("conversation_id", conversationId)
-        .eq("status", "sent");
+      if (insertedRun) {
+        await supabase
+          .from("agent_runs")
+          .update({
+            status: "error",
+            error: "Sin credenciales de WhatsApp para el tenant",
+          })
+          .eq("id", insertedRun.id)
+          .eq("tenant_id", tenantId);
+      }
     } else {
       try {
-        await sendText(customerPhone, finalReply, sendOpts);
+        // Normalizar teléfono a formato E.164
+        const normalizedPhone = customerPhone.startsWith("+") ? customerPhone : `+${customerPhone}`;
+        await sendText(normalizedPhone, finalReply, sendOpts);
 
         // Persistir el mensaje outbound
         await supabase.from("messages").insert({
@@ -335,12 +336,13 @@ async function runAgentInner(
           .eq("id", conversationId);
       } catch (err) {
         console.error("[Agent] Error enviando mensaje:", err);
-        await supabase
-          .from("agent_runs")
-          .update({ status: "error", error: String(err) })
-          .eq("tenant_id", tenantId)
-          .eq("conversation_id", conversationId)
-          .eq("status", "sent");
+        if (insertedRun) {
+          await supabase
+            .from("agent_runs")
+            .update({ status: "error", error: String(err) })
+            .eq("id", insertedRun.id)
+            .eq("tenant_id", tenantId);
+        }
       }
     }
   }
@@ -364,6 +366,7 @@ function safeParseArgs(raw: string): Record<string, unknown> {
     const parsed = JSON.parse(raw);
     return parsed && typeof parsed === "object" ? parsed : {};
   } catch {
+    console.warn("[Agent] Error parseando argumentos de tool call:", raw.slice(0, 200));
     return {};
   }
 }
@@ -377,6 +380,7 @@ async function loadAgentConfig(
     .select("id, system_prompt, business_rules, mode, model, auto_confirm_max_total, max_discount_pct, active")
     .eq("tenant_id", tenantId)
     .eq("active", true)
+    .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 

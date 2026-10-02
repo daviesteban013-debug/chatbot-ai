@@ -35,6 +35,14 @@ export async function provisionTenant(input: {
     return { ok: false };
   }
 
+  // 1.5) Verificar que el usuario fue creado hace menos de 10 minutos
+  //      para evitar aprovisionamiento tardío por actores malintencionados.
+  const createdAt = new Date(found.user.created_at);
+  const ageMs = Date.now() - createdAt.getTime();
+  if (ageMs > 10 * 60 * 1000) {
+    return { ok: false };
+  }
+
   // 2) Idempotencia: si ya pertenece a un tenant, no crear otro.
   const { data: existing } = await admin
     .from("tenant_members")

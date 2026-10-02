@@ -409,7 +409,7 @@ function formatZodError(error: z.ZodError): string {
 
 /** Limpia un texto para usarlo dentro de un filtro `.or()` de PostgREST. */
 function sanitizeForFilter(text: string): string {
-  return text.replace(/[,()%_]/g, " ").replace(/\s+/g, " ").trim();
+  return text.replace(/[,()%_.]/g, " ").replace(/\s+/g, " ").trim();
 }
 
 /** Normaliza el resultado de un embed `products(...)` (objeto o arreglo). */
@@ -734,7 +734,9 @@ async function quoteOrder(
 
   const config = await loadAgentToolConfig(ctx);
   const rules = extractShippingRules(config?.businessRules ?? null);
-  const shippingCost = calculateShipping(subtotal, null, rules);
+  // Buscar borrador abierto para usar la ciudad de envío real en el cálculo.
+  const existingDraft = await findOpenDraftOrder(ctx);
+  const shippingCost = calculateShipping(subtotal, existingDraft?.shipping_city ?? null, rules);
   const total = subtotal + shippingCost;
 
   // Avisos (p. ej. mínimos mayoristas no alcanzados).
@@ -846,6 +848,15 @@ async function createDraftOrder(
   if (!parsed.success) return { ok: false, error: formatZodError(parsed.error) };
   const { items, order_type, payment_method } = parsed.data;
 
+  // Verificar que no exista ya un borrador abierto para esta conversación.
+  const priorDraft = await findOpenDraftOrder(ctx);
+  if (priorDraft) {
+    return {
+      ok: false,
+      error: `Ya existe un pedido borrador abierto (ID: ${priorDraft.id}). Confirma o cancela el pedido actual antes de crear uno nuevo.`,
+    };
+  }
+
   const skus = items.map((i) => i.variant_sku);
   const variantMap = await fetchVariantsBySkus(ctx, skus);
   const resolvedResult = resolveLines(items, variantMap, order_type);
@@ -853,7 +864,8 @@ async function createDraftOrder(
 
   const { lines, resolved } = resolvedResult;
 
-  // 1) Verificar stock de TODOS los ítems antes de reservar nada.
+  // 1) Pre-verificar stock (optimización — fast-fail). La garantía atómica real
+  //    la hace el RPC reserve_variant_stock con cláusula WHERE interna.
   for (let i = 0; i < items.length; i++) {
     const variant = resolved[i].variant;
     const available = variant.stock_qty - variant.reserved_qty;
@@ -869,10 +881,8 @@ async function createDraftOrder(
   const config = await loadAgentToolConfig(ctx);
   const rules = extractShippingRules(config?.businessRules ?? null);
 
-  // Destino conocido (si ya hay un borrador con ciudad) para calcular el envío.
-  const existingDraft = await findOpenDraftOrder(ctx);
-  const shippingCity = existingDraft?.shipping_city ?? null;
-  const shippingCost = calculateShipping(subtotal, shippingCity, rules);
+  // No hay borrador previo (verificamos arriba), así que la ciudad es desconocida.
+  const shippingCost = calculateShipping(subtotal, null, rules);
   const total = subtotal + shippingCost;
 
   // Modo shadow: no persistir, devolver lo que HABRÍA pasado.
@@ -947,7 +957,8 @@ async function createDraftOrder(
     return { ok: false, error: `Error creando pedido: ${orderError?.message}` };
   }
 
-  // 4) Insertar las líneas del pedido.
+  // 4) Insertar las líneas del pedido. Si alguna falla, liberar stock y eliminar pedido.
+  let orderItemsFailed = false;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const variant = resolved[i].variant;
@@ -961,7 +972,21 @@ async function createDraftOrder(
     });
     if (itemError) {
       console.error("[Agent] Error insertando order_item:", itemError.message);
+      orderItemsFailed = true;
+      break;
     }
+  }
+
+  if (orderItemsFailed) {
+    // Liberar stock reservado y eliminar el pedido incompleto.
+    for (const r of reservations) {
+      await ctx.supabase.rpc("release_variant_stock", {
+        p_variant: r.variantId,
+        p_qty: r.qty,
+      });
+    }
+    await ctx.supabase.from("orders").delete().eq("id", order.id).eq("tenant_id", ctx.tenantId);
+    return { ok: false, error: "Error interno guardando los ítems del pedido. Inténtalo de nuevo." };
   }
 
   return {

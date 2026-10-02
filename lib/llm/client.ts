@@ -57,7 +57,7 @@ export async function chatCompletion(
   const startTime = Date.now()
   let lastError: Error | null = null
 
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
       const response = await fetch(`${baseUrl}/chat/completions`, {
         method: 'POST',

@@ -53,6 +53,5 @@ export interface ChatOptions {
   temperature?: number
   /** default 2048 */
   maxTokens?: number
-  tools?: LLMTool[]
   toolChoice?: 'auto' | 'none' | { type: 'function'; function: { name: string } }
 }

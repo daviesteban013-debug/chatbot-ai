@@ -124,8 +124,10 @@ export async function handleWebhookPayload(
  * WhatsApp envía los números sin el prefijo "+".
  */
 export function normalizePhone(phone: string): string {
-  const trimmed = phone.trim();
-  return trimmed.startsWith("+") ? trimmed : `+${trimmed}`;
+  // Limpiar caracteres no numéricos excepto el prefijo "+"
+  const cleaned = phone.trim().replace(/[^\d+]/g, "");
+  if (cleaned.startsWith("+")) return cleaned;
+  return `+${cleaned}`;
 }
 
 /**
@@ -262,7 +264,22 @@ async function processIncomingMessage(
     }
   }
 
-  // 7. Disparar el agente vendedor. Un fallo del agente NUNCA debe afectar la
+  // 7. Verificar que la conversación no esté en handoff antes de disparar el agente.
+  const { data: convCheck } = await admin
+    .from("conversations")
+    .select("status")
+    .eq("id", conversationId)
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
+
+  if (convCheck?.status === "handoff") {
+    console.log(
+      `[webhook] Conversación ${conversationId} en handoff, omitiendo agente.`
+    );
+    return;
+  }
+
+  // 8. Disparar el agente vendedor. Un fallo del agente NUNCA debe afectar la
   //    persistencia del mensaje, por eso va en su propio try/catch.
   try {
     await runAgent({
@@ -271,6 +288,7 @@ async function processIncomingMessage(
       customerId,
       customerPhone: message.from,
       triggerMessageId: savedMessage.id,
+      waMessageId: message.id,
     });
   } catch (error) {
     console.error("[webhook] Error ejecutando el agente:", error);

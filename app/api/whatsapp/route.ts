@@ -8,7 +8,7 @@
  */
 
 import { NextRequest, NextResponse, after } from "next/server";
-import { verifyWebhookSignature } from "@/lib/whatsapp/verify";
+import { verifyWebhookSignature, verifyWebhookToken } from "@/lib/whatsapp/verify";
 import { handleWebhookPayload } from "@/lib/whatsapp/webhook-handler";
 import type { WhatsAppWebhookPayload } from "@/lib/whatsapp/types";
 
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     return new NextResponse("Server misconfigured", { status: 500 });
   }
 
-  if (mode === "subscribe" && token === verifyToken) {
+  if (verifyWebhookToken(mode ?? undefined, token ?? undefined, verifyToken) === null) {
     console.log("[webhook] Verificación del endpoint exitosa.");
     return new NextResponse(challenge, { status: 200 });
   }

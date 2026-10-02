@@ -10,6 +10,10 @@ import { createClient } from "@/lib/supabase/server";
  */
 export async function signOut() {
   const supabase = await createClient();
-  await supabase.auth.signOut();
+  try {
+    await supabase.auth.signOut();
+  } catch (error) {
+    console.error("[signOut] Error cerrando sesión:", error);
+  }
   redirect("/login");
 }
