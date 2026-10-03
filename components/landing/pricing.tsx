@@ -24,7 +24,8 @@ export function Pricing() {
       <p className="mt-6 text-xs leading-relaxed text-zinc-500">Tarifas ilustrativas en COP, no una oferta comercial vigente. Impuestos y cargos de Meta no incluidos; condiciones y límites por confirmar antes de contratar.</p>
       <div className="mt-8 grid gap-5 lg:grid-cols-3">{plans.map((plan) => {
         const monthly = annual ? plan.price * 0.8 : plan.price;
-        return <article key={plan.name} className={`relative flex flex-col rounded-3xl border p-6 sm:p-8 ${plan.featured ? "border-yellow-300/50 bg-[linear-gradient(160deg,#facc1510,#18181b_55%)] shadow-[0_0_60px_#facc1508]" : "border-white/10 bg-zinc-900/40"}`}>
+        return <article key={plan.name} className={`cyber-card relative flex flex-col overflow-hidden rounded-3xl border p-6 backdrop-blur-xl sm:p-8 ${plan.featured ? "border-yellow-300/60 bg-[linear-gradient(160deg,#facc1518,#18181b_60%)] shadow-[0_0_70px_rgba(250,204,21,0.16)] ring-1 ring-yellow-400/30" : "border-white/10 bg-zinc-900/40"}`}>
+          {plan.featured && <div className="scanner-line opacity-40" />}
           <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-lg font-medium">{plan.name}</h3>{plan.featured && <span className="rounded-full bg-yellow-300 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-wide text-zinc-950">Recomendado</span>}</div>
           <p className="mt-3 min-h-10 text-sm leading-relaxed text-zinc-400">{plan.description}</p>
           <div className="mt-8" aria-live="polite" aria-atomic="true"><p className="text-4xl font-medium tracking-[-0.05em] tabular-nums">{money(monthly)} <span className="text-xs font-normal tracking-normal text-zinc-500">COP / mes</span></p><p className="mt-3 min-h-10 text-xs leading-relaxed text-zinc-500">{annual ? `${money(monthly * 12)} COP al año, en un solo pago. Ahorras ${money(plan.price * 12 * 0.2)} COP.` : `${money(plan.price)} COP facturados cada mes.`}</p></div>

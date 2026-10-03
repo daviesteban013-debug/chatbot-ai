@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { FuturisticBackground3D } from "@/components/landing/futuristic-background-3d";
 import { JarvisHero } from "@/components/landing/jarvis-hero";
 import { LandingNavbar } from "@/components/landing/navbar";
 import { SocialProof } from "@/components/landing/social-proof";
@@ -28,10 +29,12 @@ export default async function HomePage({
   }
 
   return (
-    <div className="landing-root">
+    <div className="landing-root relative min-h-screen overflow-x-hidden">
+      {/* 3D Dynamic WebGL Futuristic Interactive Background */}
+      <FuturisticBackground3D />
       <a href="#contenido" className="sr-only z-[60] rounded-lg bg-yellow-300 p-3 text-zinc-950 focus:fixed focus:left-4 focus:top-4 focus:not-sr-only">Saltar al contenido</a>
       <LandingNavbar />
-      <main id="contenido">
+      <main id="contenido" className="relative z-10">
         <JarvisHero />
         <SocialProof />
         <ProblemSolution />

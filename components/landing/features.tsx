@@ -26,10 +26,26 @@ export function Features() {
     <section id="producto" className="landing-section border-t border-white/8" aria-labelledby="features-title">
       <div className="flex flex-wrap items-end justify-between gap-6"><div><p className="landing-eyebrow">Una conversación. Muchas posibilidades.</p><h2 id="features-title" className="landing-title">No es otro chatbot.<br />Es parte de tu equipo.</h2></div><Link href="/signup" className="landing-secondary">Conoce tu asistente <ArrowRight className="size-4" /></Link></div>
       <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {features.map(({ icon: Icon, title, copy, kind, label, wide }) => <article key={kind} className={`landing-feature rounded-3xl border border-white/10 bg-gradient-to-b from-zinc-900/80 to-zinc-900/30 p-6 transition duration-300 hover:-translate-y-1 hover:border-yellow-300/30 hover:shadow-[0_16px_50px_#0004] ${wide ? "md:col-span-2" : ""}`}>
-          <div className="flex items-center gap-3"><Icon className="size-5 text-yellow-300" /><span className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500">{label}</span></div>
-          <h3 className="mt-5 text-xl font-medium tracking-tight">{title}</h3><p className="mt-3 max-w-md text-sm leading-relaxed text-zinc-400">{copy}</p><Illustration kind={kind} />
-        </article>)}
+        {features.map(({ icon: Icon, title, copy, kind, label, wide }) => (
+          <article
+            key={kind}
+            className={`landing-feature cyber-card group relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-zinc-900/85 via-zinc-900/40 to-black/60 p-6 backdrop-blur-xl ${
+              wide ? "md:col-span-2" : ""
+            }`}
+          >
+            {/* Top subtle scanner laser line on hover */}
+            <div className="pointer-events-none absolute -left-full top-0 h-[2px] w-full bg-gradient-to-r from-transparent via-yellow-400 to-transparent opacity-0 transition-all duration-700 group-hover:left-full group-hover:opacity-100" />
+            <div className="flex items-center gap-3">
+              <span className="flex size-9 items-center justify-center rounded-xl bg-yellow-400/10 border border-yellow-400/20 text-yellow-300">
+                <Icon className="size-4" />
+              </span>
+              <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500">{label}</span>
+            </div>
+            <h3 className="mt-5 text-xl font-medium tracking-tight text-white">{title}</h3>
+            <p className="mt-3 max-w-md text-sm leading-relaxed text-zinc-400">{copy}</p>
+            <Illustration kind={kind} />
+          </article>
+        ))}
       </div>
       <p className="mt-4 text-[11px] text-zinc-500">Vistas ilustrativas. La disponibilidad depende de tu configuración y de las integraciones activas.</p>
     </section>

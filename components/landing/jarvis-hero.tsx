@@ -4,13 +4,15 @@ import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
-import { ArrowRight, ArrowUp, Check, MessageCircleMore, Play, Sparkles } from "lucide-react";
+import { ArrowRight, ArrowUp, Box, Check, MessageCircleMore, Play, Sparkles } from "lucide-react";
 import { WhatsAppDemo } from "./whatsapp-demo";
+import { JarvisHeroOrb3D } from "./jarvis-hero-orb-3d";
 
 export function JarvisHero() {
   const router = useRouter();
   const reduced = useReducedMotion();
   const [idea, setIdea] = useState("");
+  const [activeTab, setActiveTab] = useState<"demo" | "core3d">("demo");
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -20,8 +22,13 @@ export function JarvisHero() {
 
   return (
     <section aria-labelledby="hero-title" className="relative isolate overflow-hidden bg-zinc-950 text-white">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_85%_30%,rgba(250,204,21,0.08),transparent_45%)]" />
-      <div className="pointer-events-none absolute inset-0 opacity-20 [background-image:linear-gradient(rgba(255,255,255,.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.05)_1px,transparent_1px)] [background-size:64px_64px] [mask-image:linear-gradient(to_bottom,black,transparent_72%)]" />
+      {/* Dynamic Cybernetic Gradients & Ambient Lights */}
+      <div className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 h-[550px] w-[900px] rounded-full bg-[radial-gradient(ellipse_at_center,rgba(250,204,21,0.12),rgba(16,185,129,0.05)_50%,transparent_80%)] blur-3xl" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_85%_30%,rgba(250,204,21,0.09),transparent_48%)]" />
+      
+      {/* Cyber Grid with Scanline Beam */}
+      <div className="pointer-events-none absolute inset-0 opacity-25 cyber-grid-pattern [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_80%)]" />
+      <div className="scanner-line opacity-40" />
 
       <div className="relative mx-auto grid max-w-[76rem] items-center gap-14 px-5 pb-20 pt-32 sm:px-8 sm:pt-36 lg:min-h-[850px] lg:grid-cols-[1.12fr_1fr] lg:gap-12">
         <div className="min-w-0">
@@ -113,7 +120,61 @@ export function JarvisHero() {
           </div>
         </details>
         </div>
-        <WhatsAppDemo />
+
+        <div className="relative mx-auto w-full max-w-[480px]">
+          {/* Futuristic Switcher Tabs */}
+          <div className="mb-4 flex items-center justify-center">
+            <div className="inline-flex rounded-full border border-white/10 bg-zinc-900/90 p-1 shadow-2xl shadow-black/50 backdrop-blur-xl">
+              <button
+                type="button"
+                onClick={() => setActiveTab("demo")}
+                className={`flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-medium transition ${
+                  activeTab === "demo"
+                    ? "bg-yellow-400 text-zinc-950 shadow-md shadow-yellow-400/20 font-semibold"
+                    : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                <MessageCircleMore className="size-3.5" />
+                <span>Simulación WhatsApp</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("core3d")}
+                className={`flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-medium transition ${
+                  activeTab === "core3d"
+                    ? "bg-yellow-400 text-zinc-950 shadow-md shadow-yellow-400/20 font-semibold"
+                    : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                <Box className="size-3.5" />
+                <span>Núcleo IA 3D</span>
+                <span className="rounded-full bg-emerald-400/20 px-1.5 py-0.5 text-[9px] font-bold text-emerald-400">
+                  LIVE
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {activeTab === "demo" ? (
+            <motion.div
+              key="demo"
+              initial={reduced ? false : { opacity: 0, scale: 0.97 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3 }}
+            >
+              <WhatsAppDemo />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="core3d"
+              initial={reduced ? false : { opacity: 0, scale: 0.97 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3 }}
+            >
+              <JarvisHeroOrb3D />
+            </motion.div>
+          )}
+        </div>
       </div>
     </section>
   );

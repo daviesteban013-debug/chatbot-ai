@@ -116,6 +116,59 @@ textarea {
   to { transform: translateY(0); opacity: 1; }
 }
 
+@keyframes cyber-scanner {
+  0% { transform: translateY(-100%); opacity: 0; }
+  50% { opacity: 0.6; }
+  100% { transform: translateY(1000%); opacity: 0; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.05); }
+}
+
+@keyframes hologram-drift {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-8px) rotate(1deg); }
+}
+
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+.cyber-card {
+  position: relative;
+  transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.3s, box-shadow 0.3s;
+}
+
+.cyber-card:hover {
+  transform: translateY(-4px) scale(1.01);
+  border-color: rgba(250, 204, 21, 0.35);
+  box-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.8), 0 0 30px -5px rgba(250, 204, 21, 0.15);
+}
+
+.scanner-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(250, 204, 21, 0.7), transparent);
+  animation: cyber-scanner 6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.cyber-grid-pattern {
+  background-image: 
+    linear-gradient(rgba(250, 204, 21, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(250, 204, 21, 0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
 @media (min-width: 768px) {
   .landing-section { padding: 6rem 2rem; }
 }
@@ -127,3 +180,4 @@ textarea {
     transition: none !important;
   }
 }
+
