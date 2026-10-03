@@ -1,80 +1,74 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import { ArrowUp, Bot, Check, MessageCircleMore, Sparkles } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
+import { ArrowRight, ArrowUp, Check, MessageCircleMore, Play, Sparkles } from "lucide-react";
+import { WhatsAppDemo } from "./whatsapp-demo";
 
 export function JarvisHero() {
   const router = useRouter();
+  const reduced = useReducedMotion();
   const [idea, setIdea] = useState("");
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!idea.trim()) return;
-    router.push("/dashboard");
+    router.push("/signup");
   }
 
   return (
-    <main className="relative isolate min-h-svh overflow-hidden bg-zinc-950 text-white">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_48%,rgba(250,204,21,0.13),transparent_27%),radial-gradient(circle_at_10%_10%,rgba(250,204,21,0.06),transparent_22%)]" />
+    <section aria-labelledby="hero-title" className="relative isolate overflow-hidden bg-zinc-950 text-white">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_85%_30%,rgba(250,204,21,0.08),transparent_45%)]" />
       <div className="pointer-events-none absolute inset-0 opacity-20 [background-image:linear-gradient(rgba(255,255,255,.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.05)_1px,transparent_1px)] [background-size:64px_64px] [mask-image:linear-gradient(to_bottom,black,transparent_72%)]" />
-      <div className="pointer-events-none absolute left-1/2 top-[43%] h-80 w-80 -translate-x-1/2 rounded-full border border-yellow-300/10" />
-      <div className="pointer-events-none absolute left-1/2 top-[43%] h-[28rem] w-[28rem] -translate-x-1/2 rounded-full border border-dashed border-yellow-300/10" />
 
-      <section className="relative mx-auto flex min-h-svh max-w-6xl flex-col items-center px-5 pb-16 pt-32 text-center sm:pt-36">
+      <div className="relative mx-auto grid max-w-[76rem] items-center gap-14 px-5 pb-20 pt-32 sm:px-8 sm:pt-36 lg:min-h-[850px] lg:grid-cols-[1.12fr_1fr] lg:gap-12">
+        <div className="min-w-0">
         <motion.div
-          initial={{ opacity: 0, y: 14 }}
+          initial={reduced ? false : { opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.55 }}
           className="mb-5 inline-flex items-center gap-2 rounded-full border border-yellow-400/20 bg-yellow-400/5 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.18em] text-yellow-300"
         >
           <Sparkles className="size-3.5" />
-          Inteligencia que vende por ti
+          Tu nuevo aliado en WhatsApp
         </motion.div>
 
         <motion.h1
-          initial={{ opacity: 0, y: 24 }}
+          id="hero-title"
+          initial={reduced ? false : { opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.08 }}
-          className="max-w-4xl text-balance text-5xl font-medium leading-[0.98] tracking-[-0.055em] text-zinc-100 sm:text-7xl lg:text-[5.7rem]"
+          className="max-w-xl text-balance text-[2.8rem] font-medium leading-[1.04] tracking-[-0.055em] text-zinc-100 sm:text-6xl lg:text-[4.35rem]"
         >
-          A un mensaje de...
-          <span className="mt-2 block bg-gradient-to-r from-yellow-200 via-yellow-400 to-amber-500 bg-clip-text text-transparent">
-            automatizar tus ventas
+          Menos responder.
+          <span className="mt-2 block bg-gradient-to-r from-yellow-200 via-yellow-400 to-amber-400 bg-clip-text text-transparent">
+            Más vender por WhatsApp.
           </span>
         </motion.h1>
 
         <motion.p
-          initial={{ opacity: 0 }}
+          initial={reduced ? false : { opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.7, delay: 0.25 }}
-          className="mt-6 max-w-xl text-pretty text-sm leading-6 text-zinc-400 sm:text-base"
+          className="mt-6 max-w-md text-pretty text-base leading-7 text-zinc-400"
         >
-          Convierte cada conversación de WhatsApp en una oportunidad. Atiende,
-          agenda y vende incluso cuando no estás conectado.
+          Tu asistente de IA responde, toma pedidos y agenda citas por ti.
+          Atiende a tus clientes, incluso cuando tú estás atendiendo tu negocio.
         </motion.p>
 
-        <div id="experiencia" className="relative mt-8 flex w-full flex-col items-center sm:mt-10">
-          <motion.div
-            animate={{ y: [0, -13, 0], rotate: [0, 1.5, 0, -1.5, 0] }}
-            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-            className="relative z-10 flex size-36 items-center justify-center sm:size-44"
-          >
-            <div className="absolute inset-0 rounded-full bg-yellow-300/20 blur-3xl" />
-            <div className="absolute inset-3 rounded-full border border-yellow-300/25 bg-gradient-to-b from-zinc-700/60 to-black shadow-[0_0_70px_rgba(250,204,21,0.16)]" />
-            <div className="absolute inset-6 rounded-[2.5rem] border border-white/15 bg-gradient-to-br from-zinc-800 via-zinc-950 to-black shadow-inner shadow-white/10" />
-            <div className="absolute inset-9 rounded-[2rem] border border-yellow-300/30 bg-gradient-to-br from-yellow-300/15 via-zinc-950 to-zinc-950" />
-            <Bot className="relative size-16 text-yellow-300 drop-shadow-[0_0_18px_rgba(250,204,21,.6)] sm:size-20" strokeWidth={1.35} />
-            <span className="absolute right-3 top-6 size-3 rounded-full border-2 border-zinc-950 bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,.8)] sm:right-5" />
-          </motion.div>
+        <div className="mt-8 flex flex-wrap items-center gap-3">
+          <Link href="/signup" className="landing-primary">Empieza gratis <ArrowRight className="size-4" /></Link>
+          <a href="#demo" className="landing-secondary"><Play className="size-3.5" />Ver demo</a>
+        </div>
+        <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-[11px] text-zinc-500">
+          {["Sin tarjeta", "Configuración en minutos"].map((item) => <span key={item} className="flex items-center gap-1.5"><Check className="size-3 text-yellow-300" />{item}</span>)}
+        </div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.45 }}
-            className="relative z-20 mt-1 w-full max-w-2xl"
-          >
+        <details id="experiencia" className="relative mt-8 w-full max-w-md border-t border-white/10 pt-5">
+          <summary className="text-xs text-zinc-400 transition hover:text-white">¿Qué podría hacer por tu negocio?</summary>
+          <div className="relative mt-4 w-full">
             <div className="mb-3 flex items-start gap-3 rounded-2xl border border-white/10 bg-zinc-900/85 p-4 text-left shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-5">
               <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-yellow-400 text-zinc-950">
                 <MessageCircleMore className="size-4" />
@@ -115,16 +109,12 @@ export function JarvisHero() {
               </button>
             </form>
 
-            <div id="como-funciona" className="mt-4 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[11px] text-zinc-500">
-              {["Sin tarjeta", "Configuración en minutos", "Demo instantánea"].map((item) => (
-                <span key={item} className="flex items-center gap-1.5">
-                  <Check className="size-3 text-yellow-400" /> {item}
-                </span>
-              ))}
-            </div>
-          </motion.div>
+            <p className="mt-3 text-[11px] leading-relaxed text-zinc-500">Vista previa local. Configura los datos de tu negocio después del registro; este texto no se guarda.</p>
+          </div>
+        </details>
         </div>
-      </section>
-    </main>
+        <WhatsAppDemo />
+      </div>
+    </section>
   );
 }

@@ -39,3 +39,91 @@ textarea {
   background: #facc15;
   color: #18181b;
 }
+
+.landing-root {
+  background: #09090b;
+  color: #fafafa;
+  isolation: isolate;
+}
+
+.landing-root :is(section[id], footer[id], div[id], details[id]) {
+  scroll-margin-top: 7rem;
+}
+
+.landing-section {
+  width: 100%;
+  max-width: 76rem;
+  margin-inline: auto;
+  padding: 5rem 1.25rem;
+}
+
+.landing-eyebrow {
+  color: #facc15;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.landing-title {
+  max-width: 46rem;
+  margin-top: 1rem;
+  font-size: clamp(2rem, 4.5vw, 3.25rem);
+  line-height: 1.1;
+  font-weight: 500;
+  letter-spacing: -0.045em;
+  text-wrap: balance;
+}
+
+.landing-copy {
+  max-width: 36rem;
+  margin-top: 1.25rem;
+  color: #a1a1aa;
+  font-size: 0.9375rem;
+  line-height: 1.8;
+  text-wrap: pretty;
+}
+
+.landing-primary,
+.landing-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  min-height: 2.875rem;
+  padding: 0.75rem 1.125rem;
+  border: 1px solid transparent;
+  border-radius: 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  transition: background 180ms, transform 180ms, border-color 180ms;
+}
+
+.landing-primary { background: #facc15; color: #18181b; }
+.landing-primary:hover { background: #fde047; transform: translateY(-2px); }
+.landing-secondary { border-color: #3f3f46; color: #e4e4e7; }
+.landing-secondary:hover { border-color: #a1a1aa; background: #ffffff08; }
+.landing-root :is(a, button, input, summary):focus-visible { outline: 2px solid #facc15; outline-offset: 5px; }
+.landing-root button:not(:disabled), .landing-root summary { cursor: pointer; }
+
+.landing-illustration > * { animation: landing-rise 650ms both; animation-play-state: paused; }
+.landing-feature:hover .landing-illustration > * { animation-play-state: running; }
+.landing-illustration > :nth-child(2) { animation-delay: 100ms; }
+.landing-illustration > :nth-child(3) { animation-delay: 200ms; }
+
+@keyframes landing-rise {
+  from { transform: translateY(10px); opacity: 0.55; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@media (min-width: 768px) {
+  .landing-section { padding: 6rem 2rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .landing-root *, .landing-root *::before, .landing-root *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
