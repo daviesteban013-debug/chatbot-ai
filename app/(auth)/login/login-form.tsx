@@ -4,10 +4,9 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
-import { AlertCircle, Loader2, Lock, Mail } from "lucide-react";
+import { AlertCircle, ArrowRight, Loader2, Lock, Mail, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { authErrorMessage, callbackErrorMessage } from "@/lib/auth-messages";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 const loginSchema = z.object({
@@ -62,11 +61,15 @@ export function LoginForm({ callbackError }: { callbackError?: string }) {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight text-slate-950">
+        <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-yellow-400/20 bg-yellow-400/5 px-2.5 py-1 text-[10px] font-mono uppercase tracking-[0.16em] text-yellow-300">
+          <Sparkles className="size-3" />
+          <span>Acceso al Panel</span>
+        </div>
+        <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight text-white sm:text-3xl">
           Iniciar sesión
         </h1>
-        <p className="mt-1.5 text-sm text-slate-500">
-          Bienvenido de nuevo. Gestiona tu asistente y tus ventas.
+        <p className="mt-1.5 text-sm text-zinc-400">
+          Bienvenido de nuevo. Gestiona tu asistente y acelera tus ventas.
         </p>
       </div>
 
@@ -75,7 +78,7 @@ export function LoginForm({ callbackError }: { callbackError?: string }) {
           id="email"
           label="Correo electrónico"
           error={fieldErrors.email}
-          icon={<Mail className="size-4 text-slate-400" />}
+          icon={<Mail className="size-4 text-yellow-400/70" />}
         >
           <Input
             id="email"
@@ -83,7 +86,7 @@ export function LoginForm({ callbackError }: { callbackError?: string }) {
             type="email"
             autoComplete="email"
             placeholder="tu@empresa.com"
-            className="pl-10"
+            className="rounded-xl border-white/10 bg-black/60 pl-10 text-white placeholder:text-zinc-500 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             disabled={loading}
@@ -95,7 +98,7 @@ export function LoginForm({ callbackError }: { callbackError?: string }) {
           id="password"
           label="Contraseña"
           error={fieldErrors.password}
-          icon={<Lock className="size-4 text-slate-400" />}
+          icon={<Lock className="size-4 text-yellow-400/70" />}
         >
           <Input
             id="password"
@@ -103,7 +106,7 @@ export function LoginForm({ callbackError }: { callbackError?: string }) {
             type="password"
             autoComplete="current-password"
             placeholder="••••••••"
-            className="pl-10"
+            className="rounded-xl border-white/10 bg-black/60 pl-10 text-white placeholder:text-zinc-500 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             disabled={loading}
@@ -114,35 +117,37 @@ export function LoginForm({ callbackError }: { callbackError?: string }) {
         {formError ? (
           <p
             role="alert"
-            className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-700"
+            className="flex items-start gap-2 rounded-xl border border-rose-500/30 bg-rose-950/40 p-3 text-sm text-rose-300 backdrop-blur-md"
           >
-            <AlertCircle className="mt-0.5 size-4 shrink-0" />
+            <AlertCircle className="mt-0.5 size-4 shrink-0 text-rose-400" />
             {formError}
           </p>
         ) : null}
 
-        <Button
+        <button
           type="submit"
-          size="lg"
           disabled={loading}
-          className="w-full bg-slate-950 text-white hover:bg-slate-800"
+          className="group relative flex w-full min-h-12 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-yellow-300 via-amber-300 to-yellow-400 px-6 py-3.5 text-sm font-bold text-zinc-950 shadow-[0_0_25px_rgba(250,204,21,0.25)] transition duration-200 hover:scale-[1.01] hover:shadow-[0_0_35px_rgba(250,204,21,0.4)] disabled:opacity-50 disabled:pointer-events-none"
         >
           {loading ? (
             <>
-              <Loader2 className="size-4 animate-spin" />
-              Entrando…
+              <Loader2 className="size-4 animate-spin text-zinc-950" />
+              <span>Conectando al sistema…</span>
             </>
           ) : (
-            "Entrar"
+            <>
+              <span>Entrar a mi panel</span>
+              <ArrowRight className="size-4 transition duration-200 group-hover:translate-x-1" />
+            </>
           )}
-        </Button>
+        </button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-slate-500">
+      <p className="mt-6 text-center text-sm text-zinc-400">
         ¿Aún no tienes cuenta?{" "}
         <Link
           href="/signup"
-          className="font-semibold text-slate-950 underline decoration-yellow-400 decoration-2 underline-offset-2 transition hover:decoration-slate-950"
+          className="font-semibold text-yellow-300 underline decoration-yellow-400/50 decoration-2 underline-offset-4 transition hover:text-yellow-200 hover:decoration-yellow-300"
         >
           Regístrate gratis
         </Link>
@@ -169,7 +174,7 @@ function Field({
     <div>
       <label
         htmlFor={id}
-        className="mb-1.5 block text-sm font-medium text-slate-700"
+        className="mb-1.5 block text-xs font-mono font-medium uppercase tracking-wider text-zinc-300"
       >
         {label}
       </label>
@@ -180,7 +185,7 @@ function Field({
         {children}
       </div>
       {error ? (
-        <p className="mt-1.5 text-xs font-medium text-rose-600">{error}</p>
+        <p className="mt-1.5 text-xs font-medium text-rose-400">{error}</p>
       ) : null}
     </div>
   );
