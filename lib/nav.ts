@@ -6,6 +6,7 @@ import {
   UserPlus,
   CheckCircle,
   Bot,
+  Sparkles,
   type LucideIcon,
 } from "lucide-react";
 
@@ -27,4 +28,5 @@ export const navItems: NavItem[] = [
   { label: "Handoffs", href: "/dashboard/handoffs", icon: UserPlus },
   { label: "Aprobaciones", href: "/dashboard/approval", icon: CheckCircle },
   { label: "Agente", href: "/dashboard/agent", icon: Bot },
+  { label: "Jarvis", href: "/dashboard/jarvis", icon: Sparkles },
 ];

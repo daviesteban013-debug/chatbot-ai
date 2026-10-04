@@ -867,6 +867,130 @@ export type Database = {
           },
         ];
       };
+      jarvis_configs: {
+        Row: {
+          tenant_id: string;
+          config: Json;
+          updated_at: string;
+        };
+        Insert: {
+          tenant_id: string;
+          config?: Json;
+          updated_at?: string;
+        };
+        Update: {
+          tenant_id?: string;
+          config?: Json;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "jarvis_configs_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: true;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      jarvis_sessions: {
+        Row: {
+          id: string;
+          session_id: string;
+          user_id: string | null;
+          tenant_id: string | null;
+          title: string;
+          status: string;
+          metadata: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          session_id: string;
+          user_id?: string | null;
+          tenant_id?: string | null;
+          title?: string;
+          status?: string;
+          metadata?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          session_id?: string;
+          user_id?: string | null;
+          tenant_id?: string | null;
+          title?: string;
+          status?: string;
+          metadata?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "jarvis_sessions_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "jarvis_sessions_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      jarvis_messages: {
+        Row: {
+          id: string;
+          session_id: string;
+          role: string;
+          content: string;
+          tokens_in: number;
+          tokens_out: number;
+          latency_ms: number;
+          status: string;
+          metadata: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          session_id: string;
+          role: string;
+          content: string;
+          tokens_in?: number;
+          tokens_out?: number;
+          latency_ms?: number;
+          status?: string;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          session_id?: string;
+          role?: string;
+          content?: string;
+          tokens_in?: number;
+          tokens_out?: number;
+          latency_ms?: number;
+          status?: string;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "jarvis_messages_session_id_fkey";
+            columns: ["session_id"];
+            isOneToOne: false;
+            referencedRelation: "jarvis_sessions";
+            referencedColumns: ["session_id"];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;

@@ -186,7 +186,7 @@ async function runAgentInner(
     iterations++;
 
     const response: LLMResponse = await chatCompletion(messages, AGENT_TOOLS, {
-      model: agent.model || undefined,
+      model: process.env.LLM_MODEL || agent.model || undefined,
       temperature: 0.2,
     });
     totalTokensIn += response.tokensIn;

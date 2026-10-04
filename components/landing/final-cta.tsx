@@ -12,7 +12,7 @@ export function FinalCta() {
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-10 cyber-grid-pattern" />
 
         <p className="relative font-mono text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-900">
-          // Tu próximo cliente no quiere esperar
+          {"// Tu próximo cliente no quiere esperar"}
         </p>
         <h2 id="final-title" className="relative mx-auto mt-5 max-w-3xl text-balance text-4xl font-semibold leading-[1.05] tracking-[-0.05em] sm:text-6xl text-zinc-950">
           El próximo mensaje<br />puede ser tu próxima venta.

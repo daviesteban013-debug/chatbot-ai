@@ -3,7 +3,8 @@
  * Re-exporta el cliente, los tipos y la transcripción de audio.
  */
 
-export { chatCompletion, calculateCost } from './client'
+export { chatCompletion, chatCompletionStream, calculateCost } from './client'
+export type { LLMStreamEvent } from './client'
 export { transcribeAudio } from './transcribe'
 export type {
   LLMResponse,

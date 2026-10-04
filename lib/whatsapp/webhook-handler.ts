@@ -108,7 +108,8 @@ export async function handleWebhookPayload(
         if (value.statuses) {
           for (const status of value.statuses) {
             console.log(
-              `[webhook] Status update: ${status.id} → ${status.status}`
+              `[webhook] Status update: ${status.id} → ${status.status}`,
+              status.errors ? JSON.stringify(status.errors) : ""
             );
           }
         }
