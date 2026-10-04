@@ -600,7 +600,7 @@ export function DemoSection() {
                   href="#precios"
                   className="rounded-xl border border-white/10 px-4 py-2.5 text-xs font-medium text-zinc-300 hover:bg-white/5 hover:text-white transition"
                 >
-                  Ver planes desde $49.000 COP
+                  Ver planes desde $30 USD
                 </a>
               </div>
             </div>

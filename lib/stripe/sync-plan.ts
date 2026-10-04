@@ -36,13 +36,13 @@ export async function getOrCreateStripePrice(
   }
 
   // 3. Buscar precios activos de este producto con las características pedidas
-  const amount = planTotal(plan, annual) * 100; // En centavos
+  const amount = planTotal(plan, annual) * 100; // En centavos de USD (ej: $30 = 3000)
   const interval = annual ? "year" : "month";
 
   const { data: prices } = await stripe.prices.list({
     product: productId,
     active: true,
-    currency: "cop",
+    currency: "usd",
     type: "recurring",
   });
 
@@ -58,7 +58,7 @@ export async function getOrCreateStripePrice(
   const newPrice = await stripe.prices.create({
     product: productId,
     unit_amount: amount,
-    currency: "cop",
+    currency: "usd",
     recurring: { interval },
     metadata: { planId: plan.id, period: annual ? "annual" : "monthly" },
   });

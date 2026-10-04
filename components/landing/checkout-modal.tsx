@@ -105,7 +105,7 @@ export function CheckoutModal({ plan, annual, onClose }: Props) {
             <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-5 text-sm">
               <div className="flex justify-between text-zinc-400"><span>{annual ? "12 meses" : "1 mes"}</span><span className="tabular-nums">{money(annual ? plan.price * 12 : plan.price)}</span></div>
               {annual && <div className="mt-2 flex justify-between text-yellow-300"><span>Descuento anual −{ANNUAL_DISCOUNT * 100}%</span><span className="tabular-nums">−{money(plan.price * 12 * ANNUAL_DISCOUNT)}</span></div>}
-              <div className="mt-4 flex items-end justify-between border-t border-white/10 pt-4"><span className="text-zinc-300">Total hoy</span><span className="text-3xl font-medium tracking-[-0.05em] text-white tabular-nums">{money(total)} <span className="text-xs font-normal tracking-normal text-zinc-500">COP</span></span></div>
+              <div className="mt-4 flex items-end justify-between border-t border-white/10 pt-4"><span className="text-zinc-300">Total hoy</span><span className="text-3xl font-medium tracking-[-0.05em] text-white tabular-nums">{money(total)} <span className="text-xs font-normal tracking-normal text-zinc-500">USD</span></span></div>
             </div>
             <p className="mt-4 flex items-center gap-2 text-[11px] text-zinc-500"><ShieldCheck className="size-4 text-yellow-300" />Pago cifrado y procesado por Stripe. Nexo nunca ve tu tarjeta.</p>
           </div>
@@ -169,7 +169,7 @@ function PayForm({ total, planId, subscriptionId }: { total: number; planId: str
       <PaymentElement />
       {error && <p role="alert" className="rounded-xl border border-red-400/30 bg-red-400/10 p-3 text-xs text-red-300">{error}</p>}
       <button type="submit" disabled={!stripe || busy} className="landing-primary w-full disabled:cursor-not-allowed disabled:opacity-60">
-        {busy ? <><Loader2 className="size-4 animate-spin" />Procesando…</> : <><Lock className="size-4" />Pagar {money(total)} COP</>}
+        {busy ? <><Loader2 className="size-4 animate-spin" />Procesando…</> : <><Lock className="size-4" />Pagar {money(total)} USD</>}
       </button>
     </form>
   );
