@@ -3,16 +3,16 @@ import { getCurrentTenant } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { jarvisDefaults, sanitizeJarvisConfig } from "@/lib/jarvis";
 import { claimSubscription } from "@/lib/stripe/activate-plan";
-import { JarvisStudio } from "./jarvis-studio";
+import { JarvisView } from "./jarvis-view";
 
-export const metadata = { title: "Jarvis · Personaliza tu agente" };
+export const metadata = { title: "Jarvis · Asistente IA 3D" };
 
 export default async function JarvisPage({
   searchParams,
 }: {
   searchParams: Promise<{ plan?: string; paid?: string; sub?: string }>;
 }) {
-  const { sub: subId } = await searchParams;
+  const { sub: subId, paid } = await searchParams;
   const tenantContext = await getCurrentTenant();
 
   // Reclama el pago recién hecho (cubre pagos creados sin sesión iniciada).
@@ -44,11 +44,13 @@ export default async function JarvisPage({
     currentPlan = (data as { plan?: string } | null)?.plan ?? null;
   }
 
+  const justPaid = Boolean(paidPlan || paid === "1");
+
   return (
-    <JarvisStudio
+    <JarvisView
       initial={initial}
       plan={currentPlan ?? undefined}
-      justPaid={Boolean(paidPlan)}
+      justPaid={justPaid}
       claimError={claimError}
     />
   );

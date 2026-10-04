@@ -4,10 +4,9 @@ import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
-import { ArrowRight, ArrowUp, Box, Check, MessageCircleMore, Play, Sparkles } from "lucide-react";
+import { ArrowRight, ArrowUp, Check, MessageCircleMore, Play, Sparkles } from "lucide-react";
 import { WhatsAppDemo } from "./whatsapp-demo";
 import { JarvisHeroOrb3D } from "./jarvis-hero-orb-3d";
-import { JarvisLiveChat } from "./jarvis-live-chat";
 import { JarvisAvatarProvider } from "@/context/JarvisAvatarContext";
 
 export function JarvisHero() {
@@ -149,10 +148,10 @@ export function JarvisHero() {
                       : "text-zinc-400 hover:text-white"
                   }`}
                 >
-                  <Box className="size-3.5" />
-                  <span>Núcleo IA 3D</span>
+                  <Sparkles className="size-3.5" />
+                  <span>Agente Jarvis Incluido</span>
                   <span className="rounded-full bg-emerald-400/20 px-1.5 py-0.5 text-[9px] font-bold text-emerald-400">
-                    LIVE
+                    INCLUIDO
                   </span>
                 </button>
               </div>
@@ -173,10 +172,25 @@ export function JarvisHero() {
                 initial={reduced ? false : { opacity: 0, scale: 0.97 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.3 }}
-                className="space-y-4"
+                className="space-y-3"
               >
                 <JarvisHeroOrb3D />
-                <JarvisLiveChat compact />
+                <div className="rounded-2xl border border-yellow-400/20 bg-zinc-900/80 p-4 text-center backdrop-blur-xl shadow-xl">
+                  <div className="flex items-center justify-center gap-2 text-xs font-semibold text-yellow-300">
+                    <Sparkles className="size-3.5" />
+                    <span>Activación Post-Pago a Pantalla Completa</span>
+                  </div>
+                  <p className="mt-1.5 text-[11px] leading-relaxed text-zinc-400">
+                    Al adquirir tu plan, Jarvis se activará a pantalla completa para hablar contigo por voz y texto, configurando todo tu catálogo, reglas y respuestas automáticamente.
+                  </p>
+                  <a
+                    href="#precios"
+                    className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-yellow-400 px-4 py-1.5 text-xs font-bold text-zinc-950 transition hover:bg-yellow-300 shadow-md shadow-yellow-400/10"
+                  >
+                    <span>Ver Planes y Activar</span>
+                    <ArrowRight className="size-3" />
+                  </a>
+                </div>
               </motion.div>
             )}
           </div>
