@@ -62,12 +62,22 @@ export async function proxy(request: NextRequest) {
   }
 
   // Proteger el panel y el onboarding: sin sesión se redirige al login.
+  // Excepción: permitir acceso a Jarvis si viene de un pago recién completado (?paid=1).
+  const isJarvisPaid =
+    pathname.startsWith("/dashboard/jarvis") &&
+    request.nextUrl.searchParams.get("paid") === "1";
+
   if (
     !user &&
+    !isJarvisPaid &&
     (pathname.startsWith("/dashboard") || pathname.startsWith("/onboarding"))
   ) {
     const loginUrl = new URL("/login", request.url);
-    loginUrl.search = "";
+    if (pathname.startsWith("/dashboard/jarvis")) {
+      loginUrl.search = request.nextUrl.search;
+    } else {
+      loginUrl.search = "";
+    }
     return redirectWithCookies(loginUrl, supabaseResponse);
   }
 
@@ -87,7 +97,12 @@ export async function proxy(request: NextRequest) {
     }
 
     // Aún no completa y va al panel: una única consulta ligera (RLS la acota).
-    if (!onboarded && pathname.startsWith("/dashboard")) {
+    // Nota: Si el usuario va a /dashboard/jarvis, permitimos que Jarvis lo guíe en lugar de forzar /onboarding.
+    if (
+      !onboarded &&
+      pathname.startsWith("/dashboard") &&
+      !pathname.startsWith("/dashboard/jarvis")
+    ) {
       const { data: memberRow, error: memberError } = await supabase
         .from("tenant_members")
         .select("tenants(agents(onboarding_completed))")
