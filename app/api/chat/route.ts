@@ -31,6 +31,10 @@ export async function GET(request: NextRequest) {
       .limit(50);
 
     if (error) {
+      // Si la tabla aún no se ha creado en Supabase, responder con array vacío sin romper la UI
+      if (error.code === "PGRST205") {
+        return NextResponse.json({ messages: [] });
+      }
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
