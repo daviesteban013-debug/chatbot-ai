@@ -6,6 +6,7 @@ import { Bot, Menu, X } from "lucide-react";
 
 const links = [
   ["Producto", "#producto"],
+  ["Demo", "#demo"],
   ["Cómo funciona", "#como-funciona"],
   ["Precios", "#precios"],
   ["FAQ", "#faq"],

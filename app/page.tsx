@@ -3,6 +3,7 @@ import { FuturisticBackground3D } from "@/components/landing/futuristic-backgrou
 import { JarvisHero } from "@/components/landing/jarvis-hero";
 import { LandingNavbar } from "@/components/landing/navbar";
 import { SocialProof } from "@/components/landing/social-proof";
+import { DemoSection } from "@/components/landing/demo-section";
 import { ProblemSolution } from "@/components/landing/problem-solution";
 import { Features } from "@/components/landing/features";
 import { HowItWorks } from "@/components/landing/how-it-works";
@@ -37,6 +38,7 @@ export default async function HomePage({
       <main id="contenido" className="relative z-10">
         <JarvisHero />
         <SocialProof />
+        <DemoSection />
         <ProblemSolution />
         <Features />
         <HowItWorks />

@@ -49,11 +49,11 @@ export function WhatsAppDemo() {
   }
 
   return (
-    <div id="demo" className="relative mx-auto w-full max-w-[460px] min-w-0 scroll-mt-28">
+    <div id="hero-demo" className="relative mx-auto w-full max-w-[460px] min-w-0 scroll-mt-28">
       <div className="pointer-events-none absolute -inset-8 -z-10 rounded-full bg-yellow-300/8 blur-3xl" />
       <div className="mb-4 flex items-center justify-between gap-3 text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-400">
         <span className="flex items-center gap-2"><span className="size-1.5 rounded-full bg-emerald-400" />Tu próximo cliente, bien atendido</span>
-        <span className="shrink-0 text-zinc-500">Demo interactiva</span>
+        <span className="shrink-0 text-zinc-500">Vista previa rápida</span>
       </div>
       <div className="overflow-hidden rounded-[1.75rem] border border-white/15 bg-[#101b20] shadow-[0_32px_90px_#0009]">
         <div className="flex items-center gap-3 border-b border-white/5 bg-[#1b2a30] px-5 py-4">
@@ -84,7 +84,15 @@ export function WhatsAppDemo() {
           </div>
         </div>
       </div>
-      <p className="mt-4 text-center text-[11px] text-zinc-500">Una simulación. Sin mensajes enviados ni datos reales.</p>
+      <div className="mt-3 flex items-center justify-center">
+        <a
+          href="#demo"
+          className="text-xs text-yellow-300/80 hover:text-yellow-200 transition underline underline-offset-4 flex items-center gap-1"
+        >
+          <span>Probar chat interactivo con tus preguntas</span>
+          <span>↓</span>
+        </a>
+      </div>
     </div>
   );
 }
