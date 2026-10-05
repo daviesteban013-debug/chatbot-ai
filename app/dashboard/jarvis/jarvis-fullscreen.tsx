@@ -29,6 +29,7 @@ import { useJarvisVoice } from "@/hooks/useJarvisVoice";
 import { useJarvisMicrophone } from "@/hooks/useJarvisMicrophone";
 import { jarvisCommand } from "@/lib/jarvis-commands";
 import { JarvisPersonalizationPanel } from "./jarvis-personalization";
+import { InstallJarvisButton } from "@/components/pwa/app-provider";
 
 interface FullscreenProps {
   initialConfig: JarvisConfig;
@@ -231,6 +232,7 @@ function JarvisFullscreenInner({
 
         {/* Controles de Audio y Switch a Estudio Manual */}
         <div className="flex flex-wrap items-center gap-2">
+          <InstallJarvisButton />
           <button type="button" onClick={isPoweredOn ? powerOff : powerOn} aria-pressed={isPoweredOn} className="flex items-center gap-2 rounded-xl border border-yellow-300/30 bg-yellow-300/10 px-3 py-2 text-xs text-yellow-200"><Power className="size-4" />{isPoweredOn ? "Apagar Jarvis" : "Encender Jarvis"}</button>
           <button
             type="button"

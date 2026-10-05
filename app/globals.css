@@ -24,6 +24,11 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+@media (display-mode: standalone) {
+  [data-pwa-install] { display: none; }
+  body { background: #09090b; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+}
+
 * {
   box-sizing: border-box;
 }
@@ -180,4 +185,3 @@ textarea {
     transition: none !important;
   }
 }
-

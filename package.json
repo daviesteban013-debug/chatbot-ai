@@ -10,6 +10,7 @@
     "mcp": "node tools/mcp/server.mjs",
     "test:mcp": "node --test tools/mcp/*.test.mjs",
     "test:jarvis": "node --test tools/jarvis/*.test.mjs",
+    "test:pwa": "node --test tools/pwa/*.test.mjs",
     "test:mcp:live": "node tools/mcp/smoke.mjs",
     "mcp:env:watch": "node tools/mcp/env-cli.mjs watch"
   },

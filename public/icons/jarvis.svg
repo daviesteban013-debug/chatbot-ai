@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs><radialGradient id="bg"><stop stop-color="#29260f"/><stop offset="1" stop-color="#09090b"/></radialGradient><linearGradient id="gold" x2="1" y2="1"><stop stop-color="#fef08a"/><stop offset="1" stop-color="#eab308"/></linearGradient></defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="169" fill="none" stroke="#fde047" stroke-width="5" opacity=".3"/>
+  <circle cx="256" cy="256" r="144" fill="none" stroke="#fde047" stroke-width="2" opacity=".22"/>
+  <path d="M256 99 392 177 392 335 256 413 120 335 120 177Z" fill="none" stroke="#facc15" stroke-width="3" opacity=".55"/>
+  <path d="M120 177 392 335M120 335 392 177M256 99V413" stroke="#facc15" stroke-width="2" opacity=".16"/>
+  <circle cx="120" cy="177" r="7" fill="#facc15"/><circle cx="392" cy="335" r="7" fill="#facc15"/><circle cx="256" cy="99" r="7" fill="#fef08a"/>
+  <path d="M218 164H335V284C335 337 302 368 253 368 211 368 180 345 174 306L218 294C221 317 232 329 253 329 278 329 289 312 289 284V205H218Z" fill="url(#gold)"/>
+</svg>

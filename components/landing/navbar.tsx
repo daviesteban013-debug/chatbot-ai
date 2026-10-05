@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Bot, Menu, X } from "lucide-react";
+import { InstallJarvisButton } from "@/components/pwa/app-provider";
 
 const links = [
   ["Producto", "#producto"],
@@ -37,6 +38,7 @@ export function LandingNavbar() {
         </div>
 
         <div className="flex items-center gap-2 sm:gap-4">
+          <InstallJarvisButton compact />
           <Link href="/login" className="hidden text-xs font-medium text-zinc-300 transition hover:text-white sm:block">Inicia sesión</Link>
           <Link href="/signup" className="rounded-xl bg-yellow-300 px-3.5 py-2.5 text-xs font-semibold text-zinc-950 transition hover:bg-yellow-200">Empieza gratis</Link>
           <button id="landing-menu-toggle" type="button" aria-label={open ? "Cerrar menú" : "Abrir menú"} aria-expanded={open} aria-controls="landing-mobile-menu" onClick={() => setOpen(!open)} className="rounded-lg p-2 text-zinc-300 lg:hidden">{open ? <X className="size-5" /> : <Menu className="size-5" />}</button>

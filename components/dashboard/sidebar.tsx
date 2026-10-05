@@ -6,6 +6,7 @@ import { Bot, LogOut, Settings2 } from "lucide-react";
 import { signOut } from "@/app/dashboard/actions";
 import { navItems } from "@/lib/nav";
 import { cn } from "@/lib/utils";
+import { InstallJarvisButton } from "@/components/pwa/app-provider";
 
 export function DashboardSidebar({ tenantName }: { tenantName?: string }) {
   const pathname = usePathname();
@@ -54,6 +55,7 @@ export function DashboardSidebar({ tenantName }: { tenantName?: string }) {
         ))}
       </nav>
 
+      <div className="px-4 pb-3"><InstallJarvisButton className="w-full" /></div>
       <div className="mt-auto hidden p-4 lg:block">
         <Link
           href="/dashboard/agent"
