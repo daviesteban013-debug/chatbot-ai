@@ -16,11 +16,15 @@ import {
   Bot,
   User,
   Zap,
+  Settings2,
 } from "lucide-react";
 import { JarvisHeroOrb3D } from "@/components/landing/jarvis-hero-orb-3d";
 import { JarvisAvatarProvider, useJarvisAvatar } from "@/context/JarvisAvatarContext";
 import { useJarvisAgent } from "@/hooks/useJarvisAgent";
 import type { JarvisConfig } from "@/lib/jarvis";
+import type { JarvisPersonalization } from "@/lib/jarvis-personalization";
+import { useJarvisVoice } from "@/hooks/useJarvisVoice";
+import { JarvisPersonalizationPanel } from "./jarvis-personalization";
 
 // Tipos para Web Speech API
 interface SpeechRecognitionEventLike {
@@ -43,23 +47,35 @@ interface SpeechRecognitionLike {
   onend: () => void;
   start: () => void;
   stop: () => void;
+  abort: () => void;
+}
+
+interface FullscreenProps {
+  initialConfig: JarvisConfig;
+  profile: JarvisPersonalization;
+  userId?: string;
+  onProfileChange: (profile: JarvisPersonalization) => void;
+  plan?: string;
+  justPaid: boolean;
+  onSwitchToStudio?: () => void;
 }
 
 export function JarvisFullscreenExperience({
   initialConfig,
+  profile,
+  userId,
+  onProfileChange,
   plan,
   justPaid,
   onSwitchToStudio,
-}: {
-  initialConfig: JarvisConfig;
-  plan?: string;
-  justPaid: boolean;
-  onSwitchToStudio?: () => void;
-}) {
+}: FullscreenProps) {
   return (
     <JarvisAvatarProvider initialAccent={initialConfig.accent}>
       <JarvisFullscreenInner
         initialConfig={initialConfig}
+        profile={profile}
+        userId={userId}
+        onProfileChange={onProfileChange}
         plan={plan}
         justPaid={justPaid}
         onSwitchToStudio={onSwitchToStudio}
@@ -70,16 +86,26 @@ export function JarvisFullscreenExperience({
 
 function JarvisFullscreenInner({
   initialConfig,
+  profile,
+  userId,
+  onProfileChange,
   plan,
   justPaid,
   onSwitchToStudio,
-}: {
-  initialConfig: JarvisConfig;
-  plan?: string;
-  justPaid: boolean;
-  onSwitchToStudio?: () => void;
-}) {
-  const { state, statusLabel, setAudioLevel } = useJarvisAvatar();
+}: FullscreenProps) {
+  const { state, statusLabel, setAudioLevel, setState } = useJarvisAvatar();
+  const [isVoiceOutputEnabled, setIsVoiceOutputEnabled] = useState(profile.voice.enabled);
+  const [showPersonalization, setShowPersonalization] = useState(false);
+  const onVoiceActivity = useCallback((speaking: boolean) => {
+    setState(speaking ? "SPEAKING" : "IDLE");
+    setAudioLevel(speaking ? 0.4 : 0);
+  }, [setState, setAudioLevel]);
+  const { speak, stop: stopVoice, error: voiceError } = useJarvisVoice(
+    { ...profile, voice: { ...profile.voice, enabled: isVoiceOutputEnabled } }, initialConfig.tone, onVoiceActivity
+  );
+  const speakRef = useRef(speak);
+  useEffect(() => { speakRef.current = speak; }, [speak]);
+  const onResponseComplete = useCallback((message: { content: string }) => { speakRef.current(message.content); }, []);
   const {
     messages,
     isLoading,
@@ -88,19 +114,13 @@ function JarvisFullscreenInner({
     handleInputChange,
     sendMessage,
     clearChat,
-  } = useJarvisAgent();
+  } = useJarvisAgent({ sessionScope: userId ?? "public", onResponseComplete, onPersonalizationChange: onProfileChange });
 
   // Estados de voz y audio
-  const [isVoiceOutputEnabled, setIsVoiceOutputEnabled] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
-  const [speechSupported] = useState(() => {
-    if (typeof window === "undefined") return false;
-    const w = window as unknown as {
-      SpeechRecognition?: unknown;
-      webkitSpeechRecognition?: unknown;
-    };
-    return Boolean(w.SpeechRecognition || w.webkitSpeechRecognition);
-  });
+  const [speechSupported, setSpeechSupported] = useState(false);
+  const voiceInputRef = useRef({ handleInputChange, sendMessage });
+  useEffect(() => { voiceInputRef.current = { handleInputChange, sendMessage }; }, [handleInputChange, sendMessage]);
 
   const hasWelcomedRef = useRef(false);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
@@ -124,8 +144,10 @@ function JarvisFullscreenInner({
         WinWithSpeech.SpeechRecognition || WinWithSpeech.webkitSpeechRecognition;
 
       if (SpeechClass) {
+        const enableSpeech = () => setSpeechSupported(true);
+        enableSpeech();
         const recognition = new SpeechClass();
-        recognition.lang = "es-CO";
+        recognition.lang = profile.voice.locale;
         recognition.continuous = false;
         recognition.interimResults = false;
 
@@ -136,73 +158,23 @@ function JarvisFullscreenInner({
         recognition.onresult = (event: SpeechRecognitionEventLike) => {
           const transcript = event.results[0]?.[0]?.transcript;
           if (transcript?.trim()) {
-            handleInputChange(transcript);
-            sendMessage(transcript);
+            voiceInputRef.current.handleInputChange(transcript);
+            voiceInputRef.current.sendMessage(transcript);
           }
         };
 
         recognitionRef.current = recognition;
+        return () => {
+          recognition.onstart = () => {};
+          recognition.onresult = () => {};
+          recognition.onend = () => {};
+          recognition.onerror = () => {};
+          recognition.abort();
+          recognitionRef.current = null;
+        };
       }
     }
-  }, [handleInputChange, sendMessage]);
-
-  // Text-To-Speech: Jarvis habla en voz alta
-  const speakText = useCallback(
-    (text: string) => {
-      if (!isVoiceOutputEnabled || typeof window === "undefined" || !("speechSynthesis" in window)) {
-        return;
-      }
-
-      window.speechSynthesis.cancel();
-      // Limpiar markdown o emojis para una voz más limpia
-      const clean = text
-        .replace(/[*_#`~]/g, "")
-        .replace(/:[\w-]+:/g, "")
-        .trim();
-
-      if (!clean) return;
-
-      const utterance = new SpeechSynthesisUtterance(clean);
-      utterance.lang = "es-ES";
-      utterance.rate = 1.05;
-      utterance.pitch = 0.95; // Tono más tecnológico tipo Jarvis
-
-      // Seleccionar voz en español si está disponible
-      const voices = window.speechSynthesis.getVoices();
-      const spanishVoice =
-        voices.find((v) => v.lang.startsWith("es") && (v.name.includes("Google") || v.name.includes("Natural") || v.name.includes("Jorge") || v.name.includes("Pablo"))) ||
-        voices.find((v) => v.lang.startsWith("es"));
-
-      if (spanishVoice) {
-        utterance.voice = spanishVoice;
-      }
-
-      utterance.onboundary = () => {
-        setAudioLevel(0.35 + Math.random() * 0.45);
-      };
-
-      utterance.onend = () => {
-        setAudioLevel(0);
-      };
-
-      utterance.onerror = () => {
-        setAudioLevel(0);
-      };
-
-      window.speechSynthesis.speak(utterance);
-    },
-    [isVoiceOutputEnabled, setAudioLevel]
-  );
-
-  // Leer en voz alta la última respuesta de Jarvis cuando termine de generarse
-  useEffect(() => {
-    if (messages.length > 0) {
-      const lastMessage = messages[messages.length - 1];
-      if (lastMessage.role === "assistant" && lastMessage.status === "completed") {
-        speakText(lastMessage.content);
-      }
-    }
-  }, [messages, speakText]);
+  }, [profile.voice.locale]);
 
   // Mensaje de bienvenida inicial de Jarvis al cargar tras el pago
   useEffect(() => {
@@ -219,7 +191,7 @@ function JarvisFullscreenInner({
     if (isRecording) {
       recognitionRef.current.stop();
     } else {
-      window.speechSynthesis?.cancel();
+      stopVoice();
       try {
         recognitionRef.current.start();
       } catch (err) {
@@ -231,7 +203,7 @@ function JarvisFullscreenInner({
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
-    window.speechSynthesis?.cancel();
+    stopVoice();
     sendMessage();
   };
 
@@ -282,8 +254,8 @@ function JarvisFullscreenInner({
             type="button"
             onClick={() => {
               setIsVoiceOutputEnabled(!isVoiceOutputEnabled);
-              if (isVoiceOutputEnabled && typeof window !== "undefined") {
-                window.speechSynthesis?.cancel();
+              if (isVoiceOutputEnabled) {
+                stopVoice();
               }
             }}
             title={isVoiceOutputEnabled ? "Silenciar voz de Jarvis" : "Activar voz hablada de Jarvis"}
@@ -299,13 +271,14 @@ function JarvisFullscreenInner({
 
           <button
             type="button"
-            onClick={clearChat}
+            onClick={() => { stopVoice(); recognitionRef.current?.abort(); clearChat(); }}
             title="Reiniciar sesión de conversación"
             className="rounded-xl border border-white/10 bg-white/5 p-2 text-zinc-400 transition hover:bg-white/10 hover:text-white"
           >
             <RotateCcw className="size-3.5" />
           </button>
 
+          <button type="button" onClick={() => { stopVoice(); recognitionRef.current?.abort(); setShowPersonalization(p => !p); }} aria-expanded={showPersonalization} className="flex items-center gap-2 rounded-xl border border-yellow-300/30 px-3 py-2 text-xs text-yellow-200"><Settings2 className="size-4" /><span className="hidden sm:inline">Personalización</span><span className="sr-only sm:hidden">Personalización</span></button>
           {onSwitchToStudio && (
             <button
               type="button"
@@ -318,6 +291,9 @@ function JarvisFullscreenInner({
           )}
         </div>
       </header>
+
+      {showPersonalization && <JarvisPersonalizationPanel profile={profile} tone={initialConfig.tone} authenticated={Boolean(userId)} onClose={() => setShowPersonalization(false)} onSaved={next => { onProfileChange(next); setIsVoiceOutputEnabled(next.voice.enabled); }} />}
+      {voiceError && <p role="alert" className="relative z-20 px-6 py-2 text-sm text-red-300">{voiceError}</p>}
 
       {/* Notificación de Pago Exitoso */}
       {justPaid && (

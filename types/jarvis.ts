@@ -1,3 +1,5 @@
+import type { JarvisPersonalization } from "@/lib/jarvis-personalization";
+
 export type AvatarState = "IDLE" | "LISTENING" | "PROCESSING" | "SPEAKING" | "ERROR";
 
 export interface ChatMessage {
@@ -21,6 +23,7 @@ export interface AgentStreamPayload {
   tool?: string;
   error?: string;
   latencyMs?: number;
+  personalization?: JarvisPersonalization;
 }
 
 export interface JarvisTelemetry {

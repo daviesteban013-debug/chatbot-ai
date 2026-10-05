@@ -1,0 +1,9 @@
+{
+  "servers": {
+    "chatbot_programador": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["${workspaceFolder}/tools/mcp/server.mjs"]
+    }
+  }
+}

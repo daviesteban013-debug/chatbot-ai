@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getCurrentTenant } from "@/lib/auth";
+import { getCurrentTenant, getCurrentUser } from "@/lib/auth";
+import { sanitizePersonalization } from "@/lib/jarvis-personalization";
 import { createClient } from "@/lib/supabase/server";
 import { jarvisDefaults, sanitizeJarvisConfig } from "@/lib/jarvis";
 import { claimSubscription } from "@/lib/stripe/activate-plan";
@@ -14,6 +15,7 @@ export default async function JarvisPage({
 }) {
   const { sub: subId, paid } = await searchParams;
   const tenantContext = await getCurrentTenant();
+  const user = await getCurrentUser();
 
   // Reclama el pago recién hecho (cubre pagos creados sin sesión iniciada).
   let claimError: string | null = null;
@@ -48,7 +50,10 @@ export default async function JarvisPage({
 
   return (
     <JarvisView
+      key={user?.id ?? "public"}
       initial={initial}
+      initialProfile={sanitizePersonalization(user?.user_metadata?.jarvis_personalization)}
+      userId={user?.id}
       plan={currentPlan ?? undefined}
       justPaid={justPaid}
       claimError={claimError}

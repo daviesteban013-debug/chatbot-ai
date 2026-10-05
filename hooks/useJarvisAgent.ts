@@ -3,11 +3,14 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useJarvisAvatar } from "@/context/JarvisAvatarContext";
 import type { ChatMessage, AgentStreamPayload } from "@/types/jarvis";
+import type { JarvisPersonalization } from "@/lib/jarvis-personalization";
 
 export interface UseJarvisAgentOptions {
   initialSessionId?: string;
   tenantId?: string;
   onResponseComplete?: (message: ChatMessage) => void;
+  onPersonalizationChange?: (profile: JarvisPersonalization) => void;
+  sessionScope?: string;
 }
 
 export interface UseJarvisAgentReturn {
@@ -24,18 +27,19 @@ export interface UseJarvisAgentReturn {
 }
 
 export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAgentReturn {
-  const { initialSessionId, tenantId, onResponseComplete } = options;
+  const { initialSessionId, tenantId, onResponseComplete, onPersonalizationChange, sessionScope = "public" } = options;
+  const sessionKey = `jarvis_chat_session_id:${sessionScope}`;
   const { setState, setAudioLevel, triggerListening } = useJarvisAvatar();
 
   const [sessionId, setSessionId] = useState<string>(() => {
     if (initialSessionId) return initialSessionId;
     if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("jarvis_chat_session_id");
+      const stored = localStorage.getItem(sessionKey);
       if (stored) return stored;
     }
-    const fresh = `session_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    const fresh = `session_${crypto.randomUUID()}`;
     if (typeof window !== "undefined") {
-      localStorage.setItem("jarvis_chat_session_id", fresh);
+      localStorage.setItem(sessionKey, fresh);
     }
     return fresh;
   });
@@ -214,6 +218,7 @@ export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAg
             const jsonStr = trimmed.replace(/^data:\s*/, "");
             try {
               const payload: AgentStreamPayload = JSON.parse(jsonStr);
+              if (payload.personalization) onPersonalizationChange?.(payload.personalization);
 
               if (payload.status === "processing") {
                 setState("PROCESSING");
@@ -316,19 +321,21 @@ export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAg
       startSpeechPulse,
       stopSpeechPulse,
       onResponseComplete,
+      onPersonalizationChange,
     ]
   );
 
   const clearChat = useCallback(() => {
-    const newSession = `session_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    abortControllerRef.current?.abort();
+    const newSession = `session_${crypto.randomUUID()}`;
     setSessionId(newSession);
     if (typeof window !== "undefined") {
-      localStorage.setItem("jarvis_chat_session_id", newSession);
+      localStorage.setItem(sessionKey, newSession);
     }
     setMessages([]);
     setError(null);
     setState("IDLE");
-  }, [setState]);
+  }, [setState, sessionKey]);
 
   return {
     messages,

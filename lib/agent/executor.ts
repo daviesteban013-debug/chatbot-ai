@@ -8,12 +8,15 @@ import { chatCompletionStream, calculateCost, type LLMMessage } from "@/lib/llm"
 import { AGENT_TOOLS, executeToolCall, type ToolContext } from "./tools";
 import { jarvisDefaults, sanitizeJarvisConfig, type JarvisConfig } from "@/lib/jarvis";
 import type { AgentStreamPayload } from "@/types/jarvis";
+import { personalizationPrompt, sanitizePersonalization, type JarvisPersonalization } from "@/lib/jarvis-personalization";
 
 export interface AgentExecutorParams {
   sessionId: string;
   userMessage: string;
   tenantId?: string | null;
   userId?: string | null;
+  personalization?: JarvisPersonalization;
+  memoryReply?: string;
 }
 
 const HISTORY_LIMIT = 20;
@@ -25,7 +28,8 @@ const HISTORY_LIMIT = 20;
 export async function* createAgentExecutor(
   params: AgentExecutorParams
 ): AsyncGenerator<AgentStreamPayload, void, unknown> {
-  const { sessionId, userMessage, tenantId, userId } = params;
+  const { sessionId, userMessage, tenantId, userId, memoryReply } = params;
+  const personalization = sanitizePersonalization(params.personalization);
   const startTime = Date.now();
   const supabase = createAdminClient();
 
@@ -37,21 +41,7 @@ export async function* createAgentExecutor(
       sessionId,
     };
 
-    // 2. Asegurar o crear la sesión en jarvis_sessions
-    try {
-      await supabase.from("jarvis_sessions").upsert(
-        {
-          session_id: sessionId,
-          user_id: userId ?? null,
-          tenant_id: tenantId ?? null,
-          title: userMessage.slice(0, 48) || "Conversación con Jarvis",
-          status: "active",
-        },
-        { onConflict: "session_id" }
-      );
-    } catch (sessionErr) {
-      console.warn("[AgentExecutor] Advertencia guardando sesión:", sessionErr);
-    }
+    // The route has created and authorized this session before streaming starts.
 
     // 3. Persistir el mensaje del usuario en jarvis_messages
     try {
@@ -63,6 +53,14 @@ export async function* createAgentExecutor(
       });
     } catch (msgErr) {
       console.warn("[AgentExecutor] Advertencia persistiendo mensaje de usuario:", msgErr);
+    }
+
+    if (memoryReply !== undefined) {
+      const { data: saved } = await supabase.from("jarvis_messages").insert({
+        session_id: sessionId, role: "assistant", content: memoryReply, status: "completed",
+      }).select("id").single();
+      yield { status: "completed", content: memoryReply, sessionId, messageId: saved?.id, personalization: userId ? personalization : undefined };
+      return;
     }
 
     // 4. Cargar configuración de Jarvis (personalizada o por defecto)
@@ -106,7 +104,7 @@ export async function* createAgentExecutor(
     }
 
     // 6. Construir System Prompt con la identidad de Jarvis
-    const systemPrompt = buildJarvisPrompt(jarvisConfig);
+    const systemPrompt = buildJarvisPrompt(jarvisConfig) + (userId ? `\n\n${personalizationPrompt(personalization)}` : "");
     const messages: LLMMessage[] = [
       { role: "system", content: systemPrompt },
       ...historyMessages.filter((m) => m.content !== userMessage), // evitar duplicar el actual

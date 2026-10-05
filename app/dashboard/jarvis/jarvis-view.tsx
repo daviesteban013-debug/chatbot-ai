@@ -3,29 +3,36 @@
 import { useState } from "react";
 import { Sparkles } from "lucide-react";
 import type { JarvisConfig } from "@/lib/jarvis";
+import type { JarvisPersonalization } from "@/lib/jarvis-personalization";
 import { JarvisStudio } from "./jarvis-studio";
 import { JarvisFullscreenExperience } from "./jarvis-fullscreen";
 
 export function JarvisView({
   initial,
+  initialProfile,
+  userId,
   plan,
   justPaid,
   claimError,
 }: {
   initial: JarvisConfig;
+  initialProfile: JarvisPersonalization;
+  userId?: string;
   plan?: string;
   justPaid: boolean;
   claimError: string | null;
 }) {
-  // Si recién pagó, salta directamente en modo pantalla completa inmersivo
-  const [mode, setMode] = useState<"fullscreen" | "studio">(() =>
-    justPaid ? "fullscreen" : "fullscreen"
-  );
+  const [mode, setMode] = useState<"fullscreen" | "studio">("fullscreen");
+  const [config, setConfig] = useState(initial);
+  const [profile, setProfile] = useState(initialProfile);
 
   if (mode === "fullscreen") {
     return (
       <JarvisFullscreenExperience
-        initialConfig={initial}
+        initialConfig={config}
+        profile={profile}
+        userId={userId}
+        onProfileChange={setProfile}
         plan={plan}
         justPaid={justPaid}
         onSwitchToStudio={() => setMode("studio")}
@@ -48,7 +55,8 @@ export function JarvisView({
       </div>
 
       <JarvisStudio
-        initial={initial}
+        initial={config}
+        onSaved={setConfig}
         plan={plan}
         justPaid={justPaid}
         claimError={claimError}
