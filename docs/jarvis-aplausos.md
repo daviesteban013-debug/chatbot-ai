@@ -17,7 +17,13 @@ El audio para detectar aplausos se analiza localmente con Web Audio; no se graba
 
 ## Avatar
 
-Asset generado con la herramienta integrada de imágenes: casco metálico frontal, visor de galaxia violeta, dos ojos luminosos y fondo transparente, inspirado en la referencia del usuario. Se sirve desde `public/jarvis/avatar.webp` (960 × 901). Es una imagen con movimiento CSS; el brillo responde a estados reales de escucha, procesamiento y reproducción. Se respeta la preferencia de reducir movimiento.
+Jarvis es una esfera de metal líquido en 3D, con ojos luminosos, reflejos de estudio y dos gotas flotantes. El avatar y los controles comparten el acento configurado para el agente (dorado por defecto), sobre el negro de la página.
+
+Los ojos siguen el cursor con suavidad. Tocar o pulsar Enter/Espacio sobre la esfera la deforma brevemente; si Jarvis estaba en espera también lo enciende. En espera entrecierra los ojos; al escuchar los abre, al procesar cambia su expresión y su superficie, y al hablar tiene un movimiento más expresivo. Estas animaciones representan estados reales del agente, sin simular una medición de voz o micrófono.
+
+El componente `components/jarvis/liquid-avatar.tsx` usa la dependencia Three.js existente, un shader de deformación y materiales físicos. No descarga texturas ni modelos externos. Limita el renderizado a 30 FPS, reduce la resolución en móvil, pausa cuando el documento está oculto o el avatar sale de pantalla, y libera geometrías, materiales, texturas y el contexto al desmontarse.
+
+Con reducción de movimiento queda estático y se actualiza solo al cambiar estado o tamaño. Si WebGL no está disponible o pierde el contexto, se conserva una esfera con ojos dibujada en CSS. La entrada de texto, la voz ElevenLabs y los dos aplausos siguen disponibles.
 
 ## Verificación
 

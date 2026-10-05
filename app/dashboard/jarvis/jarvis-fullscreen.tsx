@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, type CSSProperties } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import { JarvisLiquidAvatar } from "@/components/jarvis/liquid-avatar";
 import { useRouter } from "next/navigation";
 import styles from "./jarvis-fullscreen.module.css";
 import { Mic, MicOff, Volume2, VolumeX, Send, Sliders, RotateCcw, LayoutDashboard, Power, Settings2, Menu, X, MessageSquare, Hand, Square } from "lucide-react";
@@ -220,7 +220,7 @@ function JarvisFullscreenInner({
   const exit = () => { claps.stop(); stopMicrophone(); stopVoice(); cancelResponse(); };
 
   return (
-    <div className={styles.experience}>
+    <div className={styles.experience} style={{ "--jarvis-accent": initialConfig.accent } as CSSProperties}>
       <div aria-hidden="true" className={styles.constellation} />
       <header className={styles.header}>
         <Link href="/dashboard" onClick={exit} className={styles.crm}><LayoutDashboard size={15} /><span>CRM</span></Link>
@@ -230,9 +230,8 @@ function JarvisFullscreenInner({
 
       <main className={styles.main}>
         <section className={styles.stage} aria-label="Jarvis, tu agente">
-          <div className={styles.avatar} data-powered={isPoweredOn} data-state={isRecording ? "LISTENING" : state}>
-            <div aria-hidden="true" className={styles.aura} />
-            <Image src="/jarvis/avatar.webp" width={960} height={901} sizes="(max-width: 600px) 82vw, 480px" loading="eager" alt="Jarvis, un robot con casco metálico y visor de estrellas violeta" className={styles.helmet} />
+          <div className={styles.avatar}>
+            <JarvisLiquidAvatar powered={isPoweredOn} state={isRecording || claps.listening ? "LISTENING" : state} accent={initialConfig.accent} onActivate={powerOn} />
           </div>
           <div className={styles.identity}>
             <h1>{initialConfig.name || "Jarvis"}</h1>
