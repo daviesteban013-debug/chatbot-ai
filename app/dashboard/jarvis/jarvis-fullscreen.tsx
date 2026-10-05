@@ -25,6 +25,7 @@ import { JarvisAvatarProvider, useJarvisAvatar } from "@/context/JarvisAvatarCon
 import { useJarvisAgent } from "@/hooks/useJarvisAgent";
 import type { JarvisConfig } from "@/lib/jarvis";
 import type { JarvisPersonalization } from "@/lib/jarvis-personalization";
+import type { VoiceAvailability } from "@/lib/jarvis-voice";
 import { useJarvisVoice } from "@/hooks/useJarvisVoice";
 import { useJarvisMicrophone } from "@/hooks/useJarvisMicrophone";
 import { jarvisCommand } from "@/lib/jarvis-commands";
@@ -35,6 +36,7 @@ interface FullscreenProps {
   initialConfig: JarvisConfig;
   profile: JarvisPersonalization;
   userId?: string;
+  voiceAvailability: VoiceAvailability;
   onProfileChange: (profile: JarvisPersonalization) => void;
   plan?: string;
   justPaid: boolean;
@@ -45,6 +47,7 @@ export function JarvisFullscreenExperience({
   initialConfig,
   profile,
   userId,
+  voiceAvailability,
   onProfileChange,
   plan,
   justPaid,
@@ -56,6 +59,7 @@ export function JarvisFullscreenExperience({
         initialConfig={initialConfig}
         profile={profile}
         userId={userId}
+        voiceAvailability={voiceAvailability}
         onProfileChange={onProfileChange}
         plan={plan}
         justPaid={justPaid}
@@ -69,6 +73,7 @@ function JarvisFullscreenInner({
   initialConfig,
   profile,
   userId,
+  voiceAvailability,
   onProfileChange,
   plan,
   justPaid,
@@ -85,12 +90,12 @@ function JarvisFullscreenInner({
     setState(speaking ? "SPEAKING" : "IDLE");
     setAudioLevel(speaking ? 0.4 : 0);
   }, [setState, setAudioLevel]);
-  const { speak, stop: stopVoice, error: voiceError } = useJarvisVoice(
-    { ...profile, voice: { ...profile.voice, enabled: isVoiceOutputEnabled } }, initialConfig.tone, onVoiceActivity
+  const { speak, stop: stopVoice, error: voiceError, readyToPlay, resume, pending: voicePending } = useJarvisVoice(
+    { ...profile, voice: { ...profile.voice, enabled: isVoiceOutputEnabled } }, initialConfig.tone, onVoiceActivity, voiceAvailability
   );
   const speakRef = useRef(speak);
   useEffect(() => { speakRef.current = speak; }, [speak]);
-  const onResponseComplete = useCallback((message: { content: string }) => { if (poweredRef.current) speakRef.current(message.content); }, []);
+  const onResponseComplete = useCallback((message: { content: string }) => { if (poweredRef.current && !showPersonalization) speakRef.current(message.content); }, [showPersonalization]);
   const {
     messages,
     isLoading,
@@ -108,6 +113,7 @@ function JarvisFullscreenInner({
   const microphoneStopRef = useRef<() => void>(() => {});
 
   const powerOn = useCallback(() => {
+    setShowPersonalization(false);
     microphoneStopRef.current();
     poweredRef.current = true;
     setIsPoweredOn(true);
@@ -120,6 +126,7 @@ function JarvisFullscreenInner({
   }, [profile.displayName, setState, speak]);
 
   const powerOff = useCallback(() => {
+    setShowPersonalization(false);
     poweredRef.current = false;
     setIsPoweredOn(false);
     microphoneStopRef.current();
@@ -239,6 +246,7 @@ function JarvisFullscreenInner({
             onClick={() => {
               setIsVoiceOutputEnabled(!isVoiceOutputEnabled);
               if (isVoiceOutputEnabled) {
+                setShowPersonalization(false);
                 stopVoice();
               }
             }}
@@ -255,7 +263,7 @@ function JarvisFullscreenInner({
 
           <button
             type="button"
-            onClick={() => { stopVoice(); stopMicrophone(); clearChat(); }}
+            onClick={() => { setShowPersonalization(false); stopVoice(); stopMicrophone(); clearChat(); }}
             title="Reiniciar sesión de conversación"
             className="rounded-xl border border-white/10 bg-white/5 p-2 text-zinc-400 transition hover:bg-white/10 hover:text-white"
           >
@@ -276,8 +284,10 @@ function JarvisFullscreenInner({
         </div>
       </header>
 
-      {showPersonalization && <JarvisPersonalizationPanel profile={profile} tone={initialConfig.tone} authenticated={Boolean(userId)} onClose={() => setShowPersonalization(false)} onSaved={next => { onProfileChange(next); setIsVoiceOutputEnabled(next.voice.enabled); }} />}
+      {showPersonalization && <JarvisPersonalizationPanel profile={profile} tone={initialConfig.tone} authenticated={Boolean(userId)} availability={voiceAvailability} onClose={() => setShowPersonalization(false)} onSaved={next => { onProfileChange(next); setIsVoiceOutputEnabled(next.voice.enabled); }} />}
+      {voicePending && <p role="status" className="relative z-20 px-6 py-2 text-sm text-yellow-200">Preparando la voz de Jarvis…</p>}
       {voiceError && <p role="alert" className="relative z-20 px-6 py-2 text-sm text-red-300">{voiceError}</p>}
+      {readyToPlay && <div className="relative z-20 px-6 py-2"><button type="button" onClick={resume} className="rounded-xl bg-yellow-300 px-4 py-2 text-sm font-semibold text-black">Reproducir voz</button></div>}
       {microphoneError && <p role="alert" className="relative z-20 px-6 py-2 text-sm text-red-300">{microphoneError}</p>}
 
       {/* Notificación de Pago Exitoso */}

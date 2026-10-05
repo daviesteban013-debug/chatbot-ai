@@ -8,11 +8,14 @@ export interface JarvisPersonalization {
   memories: string[];
   voice: {
     enabled: boolean;
+    engine: "auto" | "browser" | "elevenlabs";
     uri: string;
     locale: string;
     rate: number;
     pitch: number;
     adaptive: boolean;
+    stability: number;
+    similarity: number;
   };
 }
 
@@ -21,7 +24,7 @@ export const personalizationDefaults: JarvisPersonalization = {
   address: "tu",
   responseLength: "equilibrada",
   memories: [],
-  voice: { enabled: true, uri: "", locale: "es-CO", rate: 1, pitch: 0.95, adaptive: true },
+  voice: { enabled: true, engine: "auto", uri: "", locale: "es-CO", rate: 1, pitch: 0.95, adaptive: true, stability: 0.5, similarity: 0.75 },
 };
 
 const record = (value: unknown): Record<string, unknown> =>
@@ -43,11 +46,14 @@ export function sanitizePersonalization(input: unknown): JarvisPersonalization {
     memories: Array.from(new Set(memories)).slice(0, MAX_MEMORIES),
     voice: {
       enabled: typeof v.enabled === "boolean" ? v.enabled : d.voice.enabled,
+      engine: v.engine === "browser" || v.engine === "elevenlabs" ? v.engine : "auto",
       uri: typeof v.uri === "string" ? v.uri.slice(0, 300) : "",
       locale: voiceLocales.includes(v.locale as typeof voiceLocales[number]) ? v.locale as string : d.voice.locale,
       rate: bounded(v.rate, 0.7, 1.4, d.voice.rate),
       pitch: bounded(v.pitch, 0.6, 1.4, d.voice.pitch),
       adaptive: typeof v.adaptive === "boolean" ? v.adaptive : d.voice.adaptive,
+      stability: bounded(v.stability, 0, 1, d.voice.stability),
+      similarity: bounded(v.similarity, 0, 1, d.voice.similarity),
     },
   };
 }

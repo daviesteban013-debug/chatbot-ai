@@ -14,13 +14,13 @@ Los visitantes pueden probar la voz; guardar preferencias requiere iniciar sesi�
 
 ## Voz adaptativa
 
-La adaptación ajusta la velocidad y entonación según el tono configurado, y ralentiza explicaciones largas, pasos o cifras. Desactivarla conserva exactamente los controles manuales. Es síntesis del navegador: no clona voces ni identifica emociones. Las voces y la calidad dependen del dispositivo.
+La adaptación ajusta la velocidad y entonación del navegador según el tono configurado, y ralentiza explicaciones largas, pasos o cifras. Con ElevenLabs ajusta velocidad y estabilidad. No identifica emociones ni clona voces. En Motor de voz puedes elegir Automático, ElevenLabs o Voz del dispositivo. Consulta [la configuración de ElevenLabs](jarvis-elevenlabs.md).
 
 Solo se leen respuestas nuevas, nunca el historial al abrir la página. El audio se cancela al iniciar otra entrada, silenciar, reiniciar el chat o salir. El micrófono usa la variante de español seleccionada.
 
 ## Instalación y comprobación
 
-No requiere nuevas variables de entorno ni un servicio de voz adicional.
+La voz del dispositivo no requiere variables adicionales. ElevenLabs requiere `ELEVENLABS_API_KEY` y `ELEVENLABS_VOICE_ID`; `ELEVENLABS_MODEL` es opcional. La clave se utiliza solo en el servidor, y generar audio requiere iniciar sesión.
 
 Antes de publicar, aplica `supabase/migrations/005_jarvis_private_sessions.sql` en el editor SQL de tu proyecto Supabase o con el flujo de migraciones que utilices. Restringe la lectura y escritura directa de sesiones y mensajes al dueño autenticado. El endpoint también verifica pertenencia al negocio y dueño de la conversación antes de acceder a datos o herramientas.
 

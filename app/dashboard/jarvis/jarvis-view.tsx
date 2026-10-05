@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Sparkles } from "lucide-react";
 import type { JarvisConfig } from "@/lib/jarvis";
 import type { JarvisPersonalization } from "@/lib/jarvis-personalization";
+import type { VoiceAvailability } from "@/lib/jarvis-voice";
 import { JarvisStudio } from "./jarvis-studio";
 import { JarvisFullscreenExperience } from "./jarvis-fullscreen";
 
@@ -11,6 +12,7 @@ export function JarvisView({
   initial,
   initialProfile,
   userId,
+  voiceAvailability,
   plan,
   justPaid,
   claimError,
@@ -18,6 +20,7 @@ export function JarvisView({
   initial: JarvisConfig;
   initialProfile: JarvisPersonalization;
   userId?: string;
+  voiceAvailability: VoiceAvailability;
   plan?: string;
   justPaid: boolean;
   claimError: string | null;
@@ -32,6 +35,7 @@ export function JarvisView({
         initialConfig={config}
         profile={profile}
         userId={userId}
+        voiceAvailability={voiceAvailability}
         onProfileChange={setProfile}
         plan={plan}
         justPaid={justPaid}

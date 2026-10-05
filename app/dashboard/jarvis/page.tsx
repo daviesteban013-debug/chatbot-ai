@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { jarvisDefaults, sanitizeJarvisConfig } from "@/lib/jarvis";
 import { claimSubscription } from "@/lib/stripe/activate-plan";
 import { JarvisView } from "./jarvis-view";
+import { voiceAvailability } from "@/lib/voice/elevenlabs";
 
 export const metadata = { title: "Jarvis · Asistente IA 3D" };
 
@@ -54,6 +55,7 @@ export default async function JarvisPage({
       initial={initial}
       initialProfile={sanitizePersonalization(user?.user_metadata?.jarvis_personalization)}
       userId={user?.id}
+      voiceAvailability={voiceAvailability()}
       plan={currentPlan ?? undefined}
       justPaid={justPaid}
       claimError={claimError}
