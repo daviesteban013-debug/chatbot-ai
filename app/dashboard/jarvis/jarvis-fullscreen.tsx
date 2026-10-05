@@ -78,6 +78,8 @@ function JarvisFullscreenInner({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const clapStopRef = useRef<() => void>(() => {});
   const microphoneStopRef = useRef<() => void>(() => {});
+  const microphonePauseRef = useRef<() => void>(() => {});
+  const microphoneStartRef = useRef<(wakeOnly: boolean, continuous?: boolean, initiallyPaused?: boolean) => void>(() => {});
   const [turnStart, setTurnStart] = useState<number | null>(null);
   const onVoiceActivity = useCallback((speaking: boolean) => {
     setState(speaking ? "SPEAKING" : "IDLE");
@@ -90,7 +92,7 @@ function JarvisFullscreenInner({
   useEffect(() => { speakRef.current = speak; }, [speak]);
   const onResponseComplete = useCallback((message: { content: string }) => {
     if (poweredRef.current && !showPersonalization) {
-      microphoneStopRef.current(); clapStopRef.current(); speakRef.current(message.content);
+      microphonePauseRef.current(); clapStopRef.current(); speakRef.current(message.content);
     }
   }, [showPersonalization]);
   const {
@@ -119,6 +121,7 @@ function JarvisFullscreenInner({
       : "Jarvis activo. ¿Qué hacemos con tu negocio hoy?";
     setCommandNotice(greeting);
     speak(greeting);
+    microphoneStartRef.current(false, true, true);
   }, [profile.displayName, setState, speak]);
 
   const powerOff = useCallback(() => {
@@ -152,6 +155,7 @@ function JarvisFullscreenInner({
       return false;
     }
     if (isLoading) return false;
+    microphonePauseRef.current();
     stopVoice();
     clapStopRef.current();
     setTurnStart(messages.length);
@@ -159,8 +163,13 @@ function JarvisFullscreenInner({
     return true;
   }, [setInput, powerOn, powerOff, stopVoice, cancelResponse, router, isLoading, messages.length, sendMessage]);
 
-  const { supported: speechSupported, listening: isRecording, error: microphoneError, start: startMicrophone, stop: stopMicrophone } = useJarvisMicrophone(profile.voice.locale, submitInstruction);
-  useEffect(() => { microphoneStopRef.current = stopMicrophone; }, [stopMicrophone]);
+  const microphoneBlocked = isLoading || voicePending || readyToPlay || state === "SPEAKING" || panel !== null;
+  const { supported: speechSupported, listening: isRecording, armed: microphoneArmed, error: microphoneError, start: startMicrophone, stop: stopMicrophone, pause: pauseMicrophone } = useJarvisMicrophone(profile.voice.locale, submitInstruction, microphoneBlocked);
+  useEffect(() => {
+    microphoneStopRef.current = stopMicrophone;
+    microphonePauseRef.current = pauseMicrophone;
+    microphoneStartRef.current = startMicrophone;
+  }, [stopMicrophone, pauseMicrophone, startMicrophone]);
   const claps = useJarvisClaps(powerOn);
   useEffect(() => { clapStopRef.current = claps.stop; }, [claps.stop]);
   useEffect(() => {
@@ -191,25 +200,25 @@ function JarvisFullscreenInner({
 
   // Alternar micrófono
   const toggleRecording = () => {
-    if (isRecording) {
+    if (microphoneArmed) {
       stopMicrophone();
     } else {
       claps.stop();
       stopVoice();
-      startMicrophone(!isPoweredOn);
+      startMicrophone(!isPoweredOn, true);
     }
   };
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
-    stopMicrophone();
+    pauseMicrophone();
     claps.stop();
     submitInstruction(input);
   };
 
   const openPanel = (nextPanel: "menu" | "history" | "personalization") => {
-    stopMicrophone(); claps.stop(); stopVoice(); setPanel(nextPanel);
+    pauseMicrophone(); claps.stop(); stopVoice(); setPanel(nextPanel);
   };
   const toggleClaps = () => {
     if (claps.listening || claps.pending) { claps.stop(); return; }
@@ -243,13 +252,13 @@ function JarvisFullscreenInner({
             <button type="button" onClick={isPoweredOn ? powerOff : powerOn} aria-pressed={isPoweredOn} className={styles.powerButton}><Power size={16} />{isPoweredOn ? "En espera" : "Encender Jarvis"}</button>
             {!isPoweredOn && claps.supported && <button type="button" onClick={toggleClaps} aria-pressed={claps.listening || claps.pending} className={styles.clapButton}><Hand size={16} />{claps.pending ? "Cancelar permiso" : claps.listening ? "Detener aplausos" : "Activar 2 aplausos"}</button>}
           </div>
-          <p className={styles.wakeHint}>{claps.listening ? "Dos aplausos rápidos, separados por medio segundo. Solo se analizan aquí." : !isPoweredOn ? "Un toque, dos aplausos o «Jarvis, enciéndete»." : "Tu negocio, a una conversación de distancia."}</p>
+          <p className={styles.wakeHint}>{claps.listening ? "Dos aplausos rápidos, separados por medio segundo. Solo se analizan aquí." : !isPoweredOn ? "Un toque, dos aplausos o «Jarvis, enciéndete»." : microphoneArmed ? "Escucha continua. Habla cuando termine mi respuesta." : speechSupported ? "Escucha pausada. Puedes activarla o escribir aquí abajo." : "Escribe aquí abajo; este navegador no ofrece reconocimiento de voz."}</p>
         </section>
 
         <section className={styles.dock} aria-label="Habla o escribe a Jarvis">
           {justPaid && <p className={styles.notice}>Tu plan está activo. Enciende a Jarvis para comenzar.</p>}
           {(error || voiceError || microphoneError || claps.error) && <p role="alert" className={styles.error}>{error || voiceError || microphoneError || claps.error}</p>}
-          {readyToPlay && <button type="button" onClick={() => { claps.stop(); stopMicrophone(); resume(); }} className={styles.playVoice}>Reproducir voz</button>}
+          {readyToPlay && <button type="button" onClick={() => { claps.stop(); pauseMicrophone(); resume(); }} className={styles.playVoice}>Reproducir voz</button>}
           <div className={styles.reply}>
             {latest ? <>
               <p className={styles.replyText}>{latest.content || "Estoy preparando tu respuesta…"}</p>
@@ -257,14 +266,14 @@ function JarvisFullscreenInner({
             </> : <p className={styles.greeting}>{commandNotice}</p>}
           </div>
           <form onSubmit={handleFormSubmit} className={styles.composer}>
-            {speechSupported && <button type="button" onClick={toggleRecording} aria-label={isRecording ? "Detener micrófono" : isPoweredOn ? "Hablar con Jarvis" : "Activar comando de voz"} aria-pressed={isRecording} className={styles.micButton} data-recording={isRecording}>{isRecording ? <MicOff size={20} /> : <Mic size={20} />}</button>}
+            {speechSupported && <button type="button" onClick={toggleRecording} aria-label={microphoneArmed ? "Pausar escucha continua" : isPoweredOn ? "Activar escucha continua" : "Activar comando de voz"} aria-pressed={microphoneArmed} className={styles.micButton} data-recording={isRecording}>{microphoneArmed ? <MicOff size={20} /> : <Mic size={20} />}</button>}
             <input value={input} onChange={e => { if (isPoweredOn) handleInputChange(e); else setInput(e.target.value); }} aria-label="Mensaje o comando para Jarvis" placeholder={isRecording ? "Te escucho…" : "O escribe aquí…"} className={styles.input} autoComplete="off" />
             {isLoading ? <button type="button" onClick={() => { cancelResponse(); stopVoice(); }} aria-label="Detener respuesta" className={styles.sendButton}><Square size={16} /></button> : <button type="submit" disabled={!input.trim()} aria-label="Enviar mensaje" className={styles.sendButton}><Send size={18} /></button>}
           </form>
           <div className={styles.dockFooter}>
-            <span>{isRecording ? "Micrófono activo" : claps.pending ? "Solicitando micrófono" : claps.listening ? "Aplausos: escucha activa" : "Micrófono apagado"}</span>
+            <span>{isRecording ? "Escucha continua activa" : microphoneArmed ? "Escucha en pausa temporal" : claps.pending ? "Solicitando micrófono" : claps.listening ? "Aplausos: escucha activa" : "Micrófono apagado"}</span>
             <div>
-              <button type="button" onClick={() => { claps.stop(); stopMicrophone(); stopVoice(); setIsVoiceOutputEnabled(value => !value); }} aria-label={isVoiceOutputEnabled ? "Silenciar voz de Jarvis" : "Activar voz de Jarvis"} aria-pressed={isVoiceOutputEnabled}>{isVoiceOutputEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}</button>
+              <button type="button" onClick={() => { claps.stop(); stopVoice(); setIsVoiceOutputEnabled(value => !value); }} aria-label={isVoiceOutputEnabled ? "Silenciar voz de Jarvis" : "Activar voz de Jarvis"} aria-pressed={isVoiceOutputEnabled}>{isVoiceOutputEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}</button>
               <button type="button" onClick={() => openPanel("history")} aria-label="Abrir historial"><MessageSquare size={15} /></button>
             </div>
           </div>
@@ -283,7 +292,7 @@ function JarvisFullscreenInner({
             <Link href="/dashboard" onClick={exit}><LayoutDashboard size={18} />Abrir CRM</Link>
             <InstallJarvisButton />
             <p className={styles.help}>Para los aplausos, pulsa «Activar 2 aplausos» y permite el micrófono. Deja esta pantalla abierta y da dos aplausos separados por medio segundo. La escucha se apaga al encender, cambiar de pestaña o salir.</p>
-            <p className={styles.help}>También puedes usar el micrófono y decir «Jarvis, enciéndete», «Jarvis, apágate» o «Jarvis, abre el CRM».</p>
+            <p className={styles.help}>Al encender Jarvis se activa la escucha continua con permiso del micrófono. Espera a que termine de hablar y dile tu siguiente instrucción: no necesitas pulsar el micrófono en cada turno. Puedes pausar la escucha con su botón o decir «Jarvis, apágate» o «Jarvis, abre el CRM». Mientras hablo, abres un panel o cambias de pestaña, la escucha queda en pausa.</p>
           </div>}
           {panel === "history" && <div ref={chatScrollRef} className={styles.history}>
             {messages.length ? messages.map(message => <article key={message.id} data-role={message.role}><span>{message.role === "user" ? "Tú" : initialConfig.name || "Jarvis"}</span><p>{message.content || "Preparando respuesta…"}</p></article>) : <p className={styles.help}>Tu conversación aparecerá aquí cuando envíes tu primera instrucción.</p>}

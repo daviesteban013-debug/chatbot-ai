@@ -11,6 +11,7 @@ export function useJarvisVoice(profile: JarvisPersonalization, tone: string, onA
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [browserSupported, setBrowserSupported] = useState(false);
   const [pending, setPending] = useState(false);
+  const [browserQueued, setBrowserQueued] = useState(false);
   const [readyToPlay, setReadyToPlay] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
@@ -25,6 +26,7 @@ export function useJarvisVoice(profile: JarvisPersonalization, tone: string, onA
   const supported = engine === "elevenlabs" ? availability.elevenLabs : browserSupported;
 
   const stop = useCallback(() => {
+    setBrowserQueued(false);
     if (activeVoice?.owner === neural) activeVoice = null;
     // Detach handlers before cancel: browsers may deliver canceled events later.
     if (utteranceRef.current) {
@@ -62,23 +64,24 @@ export function useJarvisVoice(profile: JarvisPersonalization, tone: string, onA
     }
     if (!browserSupported) { setError("Este navegador no ofrece voz del dispositivo."); return; }
     const utterance = new SpeechSynthesisUtterance(clean);
+    setBrowserQueued(true);
     const voice = selectVoice(window.speechSynthesis.getVoices(), profile);
     if (voice) utterance.voice = voice;
     utterance.lang = voice?.lang ?? profile.voice.locale;
     Object.assign(utterance, speechSettings(profile, tone, clean));
     utterance.onstart = () => activityRef.current?.(true);
-    const finish = () => { if (utteranceRef.current === utterance) { utteranceRef.current = null; activityRef.current?.(false); } };
+    const finish = () => { if (utteranceRef.current === utterance) { utteranceRef.current = null; setBrowserQueued(false); activityRef.current?.(false); } };
     utterance.onend = finish;
     utterance.onerror = (event) => {
       if (event.error !== "canceled" && event.error !== "interrupted") setError("No se pudo reproducir la voz. Prueba otra voz y pulsa Escuchar prueba.");
       finish();
     };
     utteranceRef.current = utterance;
-    window.speechSynthesis.speak(utterance);
+    try { window.speechSynthesis.speak(utterance); }
+    catch { finish(); setError("No se pudo iniciar la voz del dispositivo. Puedes seguir hablando o escribir."); }
   }, [profile, tone, stop, engine, availability.elevenLabs, browserSupported, neural]);
 
-  useEffect(() => { if (!profile.voice.enabled) stop(); }, [profile.voice.enabled, stop]);
-  useEffect(() => stop, [engine, stop]);
+  useEffect(() => stop, [engine, profile.voice.enabled, stop]);
   const resume = useCallback(() => { setError(null); void neural.play(); }, [neural]);
-  return { voices, supported, browserSupported, engine, pending, readyToPlay, resume, error, speak, stop };
+  return { voices, supported, browserSupported, engine, pending: pending || browserQueued, readyToPlay, resume, error, speak, stop };
 }

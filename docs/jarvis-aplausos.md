@@ -15,6 +15,14 @@ El detector usa amplitud, cresta, duración breve, silencio previo y una ventana
 
 El audio para detectar aplausos se analiza localmente con Web Audio; no se graba ni se envía al servidor. Es independiente del reconocimiento de voz del navegador y de ElevenLabs. Abrir ajustes, iniciar voz o enviar texto detiene el detector.
 
+## Conversación sin pulsar el micrófono en cada turno
+
+Al encender Jarvis se arma la escucha continua del navegador y se solicita permiso para usar el micrófono si todavía no está concedido. Después del saludo puedes hablar: cada transcripción final aceptada envía una instrucción. La captura se pausa mientras se procesa la respuesta, se prepara/reproduce la voz o queda una reproducción pendiente de un toque, evitando que Jarvis transcriba su propia voz. Al terminar retoma automáticamente la escucha, con una breve separación de 350 ms.
+
+Los cortes normales por silencio reconectan la sesión. Si el navegador falla repetidamente, no tiene micrófono o deniega el permiso, se detiene y muestra un mensaje; no vuelve a solicitar permiso en bucle. El botón de micrófono ahora pausa/reactiva la escucha continua. Apagar Jarvis, salir o desmontar la pantalla cancela también los reinicios pendientes. Los paneles y una pestaña oculta suspenden la captura; al volver a esta pantalla se reanuda únicamente la sesión que habías activado.
+
+No escucha con la aplicación cerrada, ni puede oír sin un micrófono y el permiso del navegador. Se usa SpeechRecognition/webkitSpeechRecognition cuando está disponible; su procesamiento puede depender del servicio de reconocimiento del navegador. El texto funciona aunque no esté disponible la voz. No se guarda una preferencia que encienda el micrófono por sí sola al recargar la página.
+
 ## Avatar
 
 Jarvis es una esfera de metal líquido en 3D, con ojos luminosos, reflejos de estudio y dos gotas flotantes. El avatar y los controles de la pantalla principal comparten el dorado de la página sobre fondo negro. El acento personalizado del estudio se conserva en su configuración.

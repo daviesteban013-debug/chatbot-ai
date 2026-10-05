@@ -84,6 +84,90 @@ test("wake listening reconnects after silence but explicit stop cancels reconnec
   oneTurn.dispose();
 });
 
+const waitReconnect = () => new Promise(resolve => setTimeout(resolve, 400));
+
+test("continuous conversation pauses per accepted turn, ignores late speech and resumes for the next instruction", async () => {
+  const recognition = fakeRecognition(), accepted = [];
+  const listener = createJarvisListener(recognition, { listening() {}, error() {}, transcript: text => { accepted.push(text); return true; } });
+  listener.start(false, true);
+  assert.equal(recognition.continuous, true);
+  recognition.result("primer pedido");
+  recognition.result("voz de Jarvis");
+  recognition.onend();
+  await waitReconnect();
+  assert.equal(recognition.starts, 1);
+  assert.deepEqual(accepted, ["primer pedido"]);
+  listener.setPaused(false);
+  await waitReconnect();
+  assert.equal(recognition.starts, 2);
+  recognition.result("segundo pedido");
+  assert.deepEqual(accepted, ["primer pedido", "segundo pedido"]);
+  listener.dispose();
+});
+
+test("continuous silence reconnects, but explicit stop cancels its pending restart", async () => {
+  const recognition = fakeRecognition();
+  const listener = createJarvisListener(recognition, { listening() {}, error() {}, transcript: () => false });
+  listener.start(false, true);
+  recognition.onerror({ error: "no-speech" }); recognition.onend();
+  await waitReconnect();
+  assert.equal(recognition.starts, 2);
+  recognition.onend(); listener.stop(); listener.setPaused(false);
+  await waitReconnect();
+  assert.equal(recognition.starts, 2);
+  listener.dispose();
+});
+
+test("voice/hidden-tab suspension prevents recognition and survives a late aborted event after resuming", async () => {
+  const recognition = fakeRecognition(), errors = [], transcripts = [];
+  const listener = createJarvisListener(recognition, { listening() {}, error: error => errors.push(error), transcript: text => { transcripts.push(text); return true; } });
+  listener.start(false, true);
+  listener.setPaused(true);
+  listener.setPaused(false); // Audio ended before the prior recognizer's abort event arrived.
+  recognition.result("eco tardío");
+  recognition.onerror({ error: "aborted" }); recognition.onend();
+  await waitReconnect();
+  assert.equal(recognition.starts, 2);
+  assert.deepEqual(transcripts, []);
+  assert.deepEqual(errors, [null]);
+  listener.setPaused(true); recognition.onend();
+  await waitReconnect();
+  assert.equal(recognition.starts, 2);
+  listener.dispose();
+});
+
+test("arming during playback does not capture until the response finishes", async () => {
+  const recognition = fakeRecognition();
+  const listener = createJarvisListener(recognition, { listening() {}, error() {}, transcript: () => true });
+  listener.setPaused(true); listener.start(false, true);
+  assert.equal(recognition.starts, 0);
+  listener.setPaused(false); await waitReconnect();
+  assert.equal(recognition.starts, 1);
+  listener.dispose();
+});
+
+test("continuous permission failure remains stopped even when playback/visibility changes", async () => {
+  const recognition = fakeRecognition();
+  const listener = createJarvisListener(recognition, { listening() {}, error() {}, transcript: () => true });
+  listener.start(false, true);
+  recognition.onerror({ error: "not-allowed" }); recognition.onend();
+  listener.setPaused(true); listener.setPaused(false); await waitReconnect();
+  assert.equal(recognition.starts, 1);
+  listener.dispose();
+});
+
+test("repeated rapid disconnections and disposal cannot create an infinite reconnect loop", async () => {
+  const recognition = fakeRecognition(), errors = [];
+  const listener = createJarvisListener(recognition, { listening() {}, error: message => errors.push(message), transcript: () => false });
+  listener.start(false, true);
+  for (let i = 0; i < 3; i++) { recognition.onend(); await waitReconnect(); }
+  assert.equal(recognition.starts, 3);
+  assert.match(errors.at(-1), /detuvo la escucha/);
+  listener.setPaused(false); listener.dispose(); listener.start(false, true);
+  await waitReconnect();
+  assert.equal(recognition.starts, 3);
+});
+
 let authState;
 globalThis.__entryClient = () => ({ auth: {
   exchangeCodeForSession: async () => ({ error: authState.fail ? new Error("failed") : null }),
