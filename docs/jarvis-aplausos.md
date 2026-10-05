@@ -17,7 +17,7 @@ El audio para detectar aplausos se analiza localmente con Web Audio; no se graba
 
 ## Avatar
 
-Jarvis es una esfera de metal líquido en 3D, con ojos luminosos, reflejos de estudio y dos gotas flotantes. El avatar y los controles comparten el acento configurado para el agente (dorado por defecto), sobre el negro de la página.
+Jarvis es una esfera de metal líquido en 3D, con ojos luminosos, reflejos de estudio y dos gotas flotantes. El avatar y los controles de la pantalla principal comparten el dorado de la página sobre fondo negro. El acento personalizado del estudio se conserva en su configuración.
 
 Los ojos siguen el cursor con suavidad. Tocar o pulsar Enter/Espacio sobre la esfera la deforma brevemente; si Jarvis estaba en espera también lo enciende. En espera entrecierra los ojos; al escuchar los abre, al procesar cambia su expresión y su superficie, y al hablar tiene un movimiento más expresivo. Estas animaciones representan estados reales del agente, sin simular una medición de voz o micrófono.
 

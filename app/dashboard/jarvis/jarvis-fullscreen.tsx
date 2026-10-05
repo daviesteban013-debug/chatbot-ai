@@ -18,6 +18,8 @@ import { jarvisCommand } from "@/lib/jarvis-commands";
 import { JarvisPersonalizationPanel } from "./jarvis-personalization";
 import { InstallJarvisButton } from "@/components/pwa/app-provider";
 
+const pageAccent = "#facc15";
+
 interface FullscreenProps {
   initialConfig: JarvisConfig;
   profile: JarvisPersonalization;
@@ -40,7 +42,7 @@ export function JarvisFullscreenExperience({
   onSwitchToStudio,
 }: FullscreenProps) {
   return (
-    <JarvisAvatarProvider initialAccent={initialConfig.accent}>
+    <JarvisAvatarProvider initialAccent={pageAccent}>
       <JarvisFullscreenInner
         initialConfig={initialConfig}
         profile={profile}
@@ -220,7 +222,7 @@ function JarvisFullscreenInner({
   const exit = () => { claps.stop(); stopMicrophone(); stopVoice(); cancelResponse(); };
 
   return (
-    <div className={styles.experience} style={{ "--jarvis-accent": initialConfig.accent } as CSSProperties}>
+    <div className={styles.experience} style={{ "--jarvis-accent": pageAccent } as CSSProperties}>
       <div aria-hidden="true" className={styles.constellation} />
       <header className={styles.header}>
         <Link href="/dashboard" onClick={exit} className={styles.crm}><LayoutDashboard size={15} /><span>CRM</span></Link>
@@ -231,7 +233,7 @@ function JarvisFullscreenInner({
       <main className={styles.main}>
         <section className={styles.stage} aria-label="Jarvis, tu agente">
           <div className={styles.avatar}>
-            <JarvisLiquidAvatar powered={isPoweredOn} state={isRecording || claps.listening ? "LISTENING" : state} accent={initialConfig.accent} onActivate={powerOn} />
+            <JarvisLiquidAvatar powered={isPoweredOn} state={isRecording || claps.listening ? "LISTENING" : state} accent={pageAccent} onActivate={powerOn} />
           </div>
           <div className={styles.identity}>
             <h1>{initialConfig.name || "Jarvis"}</h1>
