@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { LifeBuoy } from "lucide-react";
-import { DashboardSidebar } from "@/components/dashboard/sidebar";
+import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { getCurrentTenant, getCurrentUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { signOut } from "./actions";
@@ -23,14 +23,11 @@ export default async function DashboardLayout({
   const tenantContext = await getCurrentTenant();
 
   if (!tenantContext) {
-    return <NoTenantScreen email={user.email ?? ""} />;
+    return <DashboardShell fallback={<NoTenantScreen email={user.email ?? ""} />}>{children}</DashboardShell>;
   }
 
   return (
-    <div className="min-h-svh bg-slate-50 text-slate-950 lg:flex">
-      <DashboardSidebar tenantName={tenantContext.tenant?.name} />
-      <main className="min-w-0 flex-1">{children}</main>
-    </div>
+    <DashboardShell tenantName={tenantContext.tenant?.name}>{children}</DashboardShell>
   );
 }
 

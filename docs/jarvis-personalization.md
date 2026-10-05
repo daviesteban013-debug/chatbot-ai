@@ -33,3 +33,10 @@ npm run build
 ```
 
 Para comprobar con tu cuenta: guarda un apodo y una voz, envía un comando «recuerda que…», inicia una nueva conversación y comprueba el recuerdo en Personalización. Bórralo, guarda y vuelve a abrir el panel para confirmar que se eliminó. Los tests automatizados usan un cliente simulado y no modifican cuentas reales.
+## Entrada principal y encendido
+
+Crear cuenta, confirmar correo e iniciar sesión llevan a `/dashboard/jarvis`. Jarvis ocupa toda la pantalla; el CRM se abre con el enlace **Abrir CRM** o el comando escrito/hablado **«Jarvis, abre el CRM»**. La configuración manual en `/onboarding` sigue disponible, pero ya no bloquea el acceso al CRM.
+
+Jarvis empieza en espera, con el micrófono apagado. **Encender Jarvis** o **«Jarvis, enciéndete»** escrito lo activan. Para despertarlo por voz, pulsa **Activar comando de voz**, permite el micrófono y di la frase. En espera, otras frases no se envían al agente. La escucha de encendido termina al despertar, al detenerla, ante errores de permisos/conexión o al ocultar la pestaña. No funciona con el navegador cerrado.
+
+Con Jarvis activo, el micrófono captura una instrucción por pulsación. **«Jarvis, apágate»** o **Poner en espera** detienen voz, escucha y la respuesta pendiente; conservan el historial. El encendido usa un saludo local y no hace una petición al modelo. Si el reconocimiento no está disponible, los botones y comandos escritos siguen funcionando.

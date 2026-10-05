@@ -54,7 +54,7 @@ export function LoginForm({ callbackError }: { callbackError?: string }) {
       return;
     }
 
-    router.push("/dashboard");
+    router.replace("/dashboard/jarvis");
     router.refresh();
   }
 
@@ -63,13 +63,13 @@ export function LoginForm({ callbackError }: { callbackError?: string }) {
       <div className="mb-6">
         <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-yellow-400/20 bg-yellow-400/5 px-2.5 py-1 text-[10px] font-mono uppercase tracking-[0.16em] text-yellow-300">
           <Sparkles className="size-3" />
-          <span>Acceso al Panel</span>
+          <span>Tu centro de mando</span>
         </div>
         <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight text-white sm:text-3xl">
           Iniciar sesión
         </h1>
         <p className="mt-1.5 text-sm text-zinc-400">
-          Bienvenido de nuevo. Gestiona tu asistente y acelera tus ventas.
+          Vuelve a Jarvis. Tu agente y tu negocio, en un mismo lugar.
         </p>
       </div>
 
@@ -136,7 +136,7 @@ export function LoginForm({ callbackError }: { callbackError?: string }) {
             </>
           ) : (
             <>
-              <span>Entrar a mi panel</span>
+              <span>Entrar a Jarvis</span>
               <ArrowRight className="size-4 transition duration-200 group-hover:translate-x-1" />
             </>
           )}

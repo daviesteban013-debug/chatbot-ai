@@ -267,7 +267,7 @@ export function OnboardingChat() {
         setAnswered(TOTAL);
         pushMessage("jarvis", FINAL_MESSAGE);
         await delay(2200);
-        router.push("/dashboard");
+        router.replace("/dashboard/jarvis");
         router.refresh();
       } else {
         setError(result.error ?? "Algo salió mal. Inténtalo de nuevo.");

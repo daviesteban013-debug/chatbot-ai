@@ -6,7 +6,7 @@ import { Cpu, ShieldCheck, Sparkles, Zap, AlertTriangle, Radio } from "lucide-re
 import { useJarvisAvatar } from "@/context/JarvisAvatarContext";
 import type { AvatarState } from "@/types/jarvis";
 
-export function JarvisHeroOrb3D() {
+export function JarvisHeroOrb3D({ variant = "demo" }: { variant?: "demo" | "agent" }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeMode, setActiveMode] = useState<"synapse" | "quantum" | "guardian">("synapse");
 
@@ -359,7 +359,7 @@ export function JarvisHeroOrb3D() {
   };
 
   return (
-    <div className="relative mx-auto flex w-full max-w-[420px] flex-col items-center">
+    <div className={`relative mx-auto flex w-full flex-col items-center ${variant === "agent" ? "max-w-[min(320px,38svh)]" : "max-w-[420px]"}`}>
       {/* Ambient background glow behind the 3D Hologram */}
       <div
         className="pointer-events-none absolute inset-0 -z-10 blur-2xl transition-all duration-500"
@@ -373,7 +373,7 @@ export function JarvisHeroOrb3D() {
         className={`relative w-full rounded-3xl border bg-gradient-to-b from-zinc-900/70 via-black/80 to-zinc-950/90 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.8),inset_0_1px_1px_rgba(255,255,255,0.1)] backdrop-blur-xl transition-colors duration-500 ${stateColorClasses.border}`}
       >
         {/* Top HUD Telemetry Bar */}
-        <div className="flex items-center justify-between border-b border-white/10 pb-3 text-[10px] font-mono tracking-widest text-zinc-400">
+        {variant === "demo" && <div className="flex items-center justify-between border-b border-white/10 pb-3 text-[10px] font-mono tracking-widest text-zinc-400">
           <div className="flex items-center gap-2">
             <span className="relative flex size-2">
               <span className={`absolute inline-flex h-full w-full rounded-full opacity-75 ${stateColorClasses.ping}`} />
@@ -384,7 +384,7 @@ export function JarvisHeroOrb3D() {
           <span className={`rounded px-1.5 py-0.5 border font-semibold ${stateColorClasses.badge}`}>
             {state === "SPEAKING" ? "VOZ ACTIVA" : state === "PROCESSING" ? "LLM THINKING" : "60 FPS · REALTIME"}
           </span>
-        </div>
+        </div>}
 
         {/* 3D WebGL Canvas Container */}
         <div className="relative my-2 flex aspect-square w-full items-center justify-center overflow-hidden">
@@ -400,7 +400,7 @@ export function JarvisHeroOrb3D() {
           <div ref={containerRef} className="relative z-10 h-full w-full cursor-grab active:cursor-grabbing" />
 
           {/* Interactive floating HUD tag */}
-          <div className="pointer-events-none absolute bottom-3 left-3 z-20 flex items-center gap-1.5 rounded-lg border border-white/10 bg-black/60 px-2 py-1 text-[9px] font-mono text-zinc-400 backdrop-blur-md">
+          {variant === "demo" && <div className="pointer-events-none absolute bottom-3 left-3 z-20 flex items-center gap-1.5 rounded-lg border border-white/10 bg-black/60 px-2 py-1 text-[9px] font-mono text-zinc-400 backdrop-blur-md">
             {state === "ERROR" ? (
               <>
                 <AlertTriangle className="size-3 text-red-400" />
@@ -417,16 +417,16 @@ export function JarvisHeroOrb3D() {
                 <span>LATENCIA: 12ms</span>
               </>
             )}
-          </div>
+          </div>}
 
-          <div className="pointer-events-none absolute top-3 right-3 z-20 flex items-center gap-1.5 rounded-lg border border-white/10 bg-black/60 px-2 py-1 text-[9px] font-mono text-zinc-400 backdrop-blur-md">
+          {variant === "demo" && <div className="pointer-events-none absolute top-3 right-3 z-20 flex items-center gap-1.5 rounded-lg border border-white/10 bg-black/60 px-2 py-1 text-[9px] font-mono text-zinc-400 backdrop-blur-md">
             <Sparkles className="size-3 text-emerald-400" />
             <span>NEURAL SYNC</span>
-          </div>
+          </div>}
         </div>
 
         {/* Bottom Mode Selectors & Quick Avatar Controls */}
-        <div className="grid grid-cols-3 gap-1.5 pt-2 border-t border-white/10">
+        {variant === "demo" && <div className="grid grid-cols-3 gap-1.5 pt-2 border-t border-white/10">
           <button
             type="button"
             onClick={() => {
@@ -472,13 +472,13 @@ export function JarvisHeroOrb3D() {
             <ShieldCheck className="size-3" />
             <span>Control Total</span>
           </button>
-        </div>
+        </div>}
       </div>
 
-      <p className="mt-2.5 text-center font-mono text-[10px] text-zinc-500">
+      {variant === "demo" && <p className="mt-2.5 text-center font-mono text-[10px] text-zinc-500">
         {/* INTERACTIVO: Mueve el cursor para explorar el núcleo 3D */}
         INTERACTIVO · Mueve el cursor para explorar el núcleo 3D en tiempo real
-      </p>
+      </p>}
     </div>
   );
 }

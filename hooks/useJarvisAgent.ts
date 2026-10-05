@@ -23,6 +23,7 @@ export interface UseJarvisAgentReturn {
   handleInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | string) => void;
   sendMessage: (customText?: string) => Promise<void>;
   clearChat: () => void;
+  cancelResponse: () => void;
   reloadHistory: () => Promise<void>;
 }
 
@@ -212,6 +213,7 @@ export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAg
           buffer = lines.pop() || "";
 
           for (const line of lines) {
+            if (abortController.signal.aborted) break;
             const trimmed = line.trim();
             if (!trimmed.startsWith("data:")) continue;
 
@@ -337,6 +339,16 @@ export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAg
     setState("IDLE");
   }, [setState, sessionKey]);
 
+  const cancelResponse = useCallback(() => {
+    abortControllerRef.current?.abort();
+    stopSpeechPulse();
+    setState("IDLE");
+    setMessages(previous => previous.flatMap(message =>
+      message.status === "processing" && !message.content ? [] :
+      message.status === "streaming" ? [{ ...message, status: "completed" as const }] : [message]
+    ));
+  }, [stopSpeechPulse, setState]);
+
   return {
     messages,
     sessionId,
@@ -347,6 +359,7 @@ export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAg
     handleInputChange,
     sendMessage,
     clearChat,
+    cancelResponse,
     reloadHistory,
   };
 }

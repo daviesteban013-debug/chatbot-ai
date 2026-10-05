@@ -18,12 +18,12 @@ export function DashboardSidebar({ tenantName }: { tenantName?: string }) {
   return (
     <aside className="sticky top-0 z-30 flex max-h-svh flex-col border-b border-slate-200 bg-slate-950 text-white lg:h-svh lg:w-64 lg:shrink-0 lg:border-b-0 lg:border-r lg:border-white/5">
       <div className="flex h-16 items-center justify-between px-5 lg:h-20">
-        <Link href="/dashboard" className="flex items-center gap-2.5">
+        <Link href="/dashboard/jarvis" className="flex items-center gap-2.5">
           <span className="flex size-9 items-center justify-center rounded-xl bg-yellow-400 text-slate-950 shadow-lg shadow-yellow-400/15">
             <Bot className="size-5" strokeWidth={2.4} />
           </span>
           <span className="min-w-0">
-            <span className="block font-semibold tracking-tight">Nexo</span>
+            <span className="block font-semibold tracking-tight">Jarvis</span>
             {tenantName ? (
               <span className="block max-w-[9rem] truncate text-[11px] text-slate-500">
                 {tenantName}

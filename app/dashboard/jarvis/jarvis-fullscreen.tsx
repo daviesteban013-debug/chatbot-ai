@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Mic,
   MicOff,
@@ -12,7 +13,8 @@ import {
   Sliders,
   RotateCcw,
   CheckCircle2,
-  ArrowLeft,
+  LayoutDashboard,
+  Power,
   Bot,
   User,
   Zap,
@@ -24,31 +26,9 @@ import { useJarvisAgent } from "@/hooks/useJarvisAgent";
 import type { JarvisConfig } from "@/lib/jarvis";
 import type { JarvisPersonalization } from "@/lib/jarvis-personalization";
 import { useJarvisVoice } from "@/hooks/useJarvisVoice";
+import { useJarvisMicrophone } from "@/hooks/useJarvisMicrophone";
+import { jarvisCommand } from "@/lib/jarvis-commands";
 import { JarvisPersonalizationPanel } from "./jarvis-personalization";
-
-// Tipos para Web Speech API
-interface SpeechRecognitionEventLike {
-  results: {
-    [index: number]: {
-      [index: number]: {
-        transcript: string;
-      };
-    };
-  };
-}
-
-interface SpeechRecognitionLike {
-  lang: string;
-  continuous: boolean;
-  interimResults: boolean;
-  onstart: () => void;
-  onresult: (event: SpeechRecognitionEventLike) => void;
-  onerror: (event: unknown) => void;
-  onend: () => void;
-  start: () => void;
-  stop: () => void;
-  abort: () => void;
-}
 
 interface FullscreenProps {
   initialConfig: JarvisConfig;
@@ -93,7 +73,11 @@ function JarvisFullscreenInner({
   justPaid,
   onSwitchToStudio,
 }: FullscreenProps) {
+  const router = useRouter();
   const { state, statusLabel, setAudioLevel, setState } = useJarvisAvatar();
+  const [isPoweredOn, setIsPoweredOn] = useState(false);
+  const poweredRef = useRef(false);
+  const [commandNotice, setCommandNotice] = useState("Enciende a Jarvis para comenzar. Tu CRM está a un comando de distancia.");
   const [isVoiceOutputEnabled, setIsVoiceOutputEnabled] = useState(profile.voice.enabled);
   const [showPersonalization, setShowPersonalization] = useState(false);
   const onVoiceActivity = useCallback((speaking: boolean) => {
@@ -105,7 +89,7 @@ function JarvisFullscreenInner({
   );
   const speakRef = useRef(speak);
   useEffect(() => { speakRef.current = speak; }, [speak]);
-  const onResponseComplete = useCallback((message: { content: string }) => { speakRef.current(message.content); }, []);
+  const onResponseComplete = useCallback((message: { content: string }) => { if (poweredRef.current) speakRef.current(message.content); }, []);
   const {
     messages,
     isLoading,
@@ -114,17 +98,61 @@ function JarvisFullscreenInner({
     handleInputChange,
     sendMessage,
     clearChat,
+    cancelResponse,
+    setInput,
   } = useJarvisAgent({ sessionScope: userId ?? "public", onResponseComplete, onPersonalizationChange: onProfileChange });
 
-  // Estados de voz y audio
-  const [isRecording, setIsRecording] = useState(false);
-  const [speechSupported, setSpeechSupported] = useState(false);
-  const voiceInputRef = useRef({ handleInputChange, sendMessage });
-  useEffect(() => { voiceInputRef.current = { handleInputChange, sendMessage }; }, [handleInputChange, sendMessage]);
-
   const hasWelcomedRef = useRef(false);
-  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
+  const microphoneStopRef = useRef<() => void>(() => {});
+
+  const powerOn = useCallback(() => {
+    microphoneStopRef.current();
+    poweredRef.current = true;
+    setIsPoweredOn(true);
+    setState("IDLE");
+    const greeting = profile.displayName
+      ? `Hola, ${profile.displayName}. Jarvis activo. ¿Qué hacemos con tu negocio hoy?`
+      : "Jarvis activo. ¿Qué hacemos con tu negocio hoy?";
+    setCommandNotice(greeting);
+    speak(greeting);
+  }, [profile.displayName, setState, speak]);
+
+  const powerOff = useCallback(() => {
+    poweredRef.current = false;
+    setIsPoweredOn(false);
+    microphoneStopRef.current();
+    stopVoice();
+    cancelResponse();
+    setState("IDLE");
+    setCommandNotice("Jarvis en espera. El micrófono está apagado. Tu conversación se conserva.");
+  }, [stopVoice, cancelResponse, setState]);
+
+  const submitInstruction = useCallback((text: string, wakeOnly = false) => {
+    const command = jarvisCommand(text);
+    if (wakeOnly && command !== "wake") return false;
+    if (command === "wake") { setInput(""); powerOn(); return true; }
+    if (command === "sleep") { setInput(""); powerOff(); return true; }
+    if (command === "crm") {
+      microphoneStopRef.current();
+      stopVoice();
+      cancelResponse();
+      setInput("");
+      router.push("/dashboard");
+      return true;
+    }
+    if (!poweredRef.current) {
+      setCommandNotice("Primero pulsa Encender Jarvis o escribe «Jarvis, enciéndete».");
+      return false;
+    }
+    if (isLoading) return false;
+    stopVoice();
+    sendMessage(text);
+    return true;
+  }, [setInput, powerOn, powerOff, stopVoice, cancelResponse, router, isLoading, sendMessage]);
+
+  const { supported: speechSupported, listening: isRecording, error: microphoneError, start: startMicrophone, stop: stopMicrophone } = useJarvisMicrophone(profile.voice.locale, submitInstruction);
+  useEffect(() => { microphoneStopRef.current = stopMicrophone; }, [stopMicrophone]);
 
   // Auto-scroll del historial de mensajes
   useEffect(() => {
@@ -133,78 +161,30 @@ function JarvisFullscreenInner({
     }
   }, [messages]);
 
-  // Inicializar Web Speech Recognition (Micrófono)
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const WinWithSpeech = window as unknown as {
-        SpeechRecognition?: new () => SpeechRecognitionLike;
-        webkitSpeechRecognition?: new () => SpeechRecognitionLike;
-      };
-      const SpeechClass =
-        WinWithSpeech.SpeechRecognition || WinWithSpeech.webkitSpeechRecognition;
-
-      if (SpeechClass) {
-        const enableSpeech = () => setSpeechSupported(true);
-        enableSpeech();
-        const recognition = new SpeechClass();
-        recognition.lang = profile.voice.locale;
-        recognition.continuous = false;
-        recognition.interimResults = false;
-
-        recognition.onstart = () => setIsRecording(true);
-        recognition.onend = () => setIsRecording(false);
-        recognition.onerror = () => setIsRecording(false);
-
-        recognition.onresult = (event: SpeechRecognitionEventLike) => {
-          const transcript = event.results[0]?.[0]?.transcript;
-          if (transcript?.trim()) {
-            voiceInputRef.current.handleInputChange(transcript);
-            voiceInputRef.current.sendMessage(transcript);
-          }
-        };
-
-        recognitionRef.current = recognition;
-        return () => {
-          recognition.onstart = () => {};
-          recognition.onresult = () => {};
-          recognition.onend = () => {};
-          recognition.onerror = () => {};
-          recognition.abort();
-          recognitionRef.current = null;
-        };
-      }
-    }
-  }, [profile.voice.locale]);
-
   // Mensaje de bienvenida inicial de Jarvis al cargar tras el pago
   useEffect(() => {
-    if (justPaid && !hasWelcomedRef.current && messages.length === 0) {
+    if (isPoweredOn && justPaid && !hasWelcomedRef.current && messages.length === 0) {
       hasWelcomedRef.current = true;
       const welcomePrompt = `¡Hola! Acabo de activar mi suscripción a ${plan ? `Plan ${plan}` : "tu plan"}. Actívate e inicia la configuración de mi negocio.`;
       sendMessage(welcomePrompt);
     }
-  }, [justPaid, messages.length, plan, sendMessage]);
+  }, [isPoweredOn, justPaid, messages.length, plan, sendMessage]);
 
   // Alternar micrófono
   const toggleRecording = () => {
-    if (!recognitionRef.current) return;
     if (isRecording) {
-      recognitionRef.current.stop();
+      stopMicrophone();
     } else {
       stopVoice();
-      try {
-        recognitionRef.current.start();
-      } catch (err) {
-        console.warn("[Voice] Error iniciando reconocimiento:", err);
-      }
+      startMicrophone(!isPoweredOn);
     }
   };
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isLoading) return;
-    stopVoice();
-    sendMessage();
+    if (!input.trim()) return;
+    stopMicrophone();
+    submitInstruction(input);
   };
 
   const quickPrompts = [
@@ -215,30 +195,31 @@ function JarvisFullscreenInner({
   ];
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden bg-black text-white flex flex-col font-sans select-none">
+    <div className="relative min-h-svh w-full overflow-hidden bg-black text-white flex flex-col font-sans">
       {/* Dynamic Cyber Grid & Scanline Background */}
       <div className="pointer-events-none absolute inset-0 opacity-20 cyber-grid-pattern" />
       <div className="scanner-line opacity-30" />
       <div className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 h-[600px] w-[1000px] rounded-full bg-[radial-gradient(ellipse_at_center,rgba(250,204,21,0.15),rgba(56,189,248,0.08)_45%,transparent_75%)] blur-3xl" />
 
       {/* Top Header Command Bar */}
-      <header className="relative z-20 flex items-center justify-between border-b border-white/10 bg-zinc-950/80 px-6 py-4 backdrop-blur-xl">
-        <div className="flex items-center gap-3">
+      <header className="relative z-20 flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-zinc-950/80 px-4 py-4 sm:px-6 backdrop-blur-xl">
+        <div className="flex min-w-0 flex-wrap items-center gap-3">
           <Link
             href="/dashboard"
+            onClick={() => { stopMicrophone(); stopVoice(); cancelResponse(); }}
             className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-zinc-400 transition hover:bg-white/10 hover:text-white"
           >
-            <ArrowLeft className="size-3.5" />
-            <span>Dashboard</span>
+            <LayoutDashboard className="size-3.5" />
+            <span>Abrir CRM</span>
           </Link>
           <div className="h-4 w-px bg-white/10" />
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
             <span className="relative flex size-2.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex size-2.5 rounded-full bg-emerald-400" />
+              {isPoweredOn && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />}
+              <span className={`relative inline-flex size-2.5 rounded-full ${isPoweredOn ? "bg-emerald-400" : "bg-zinc-500"}`} />
             </span>
             <span className="font-mono text-xs font-bold tracking-wider text-yellow-300">
-              JARVIS // FULLSCREEN COMMAND CENTER
+              JARVIS · TU CENTRO DE MANDO
             </span>
             {plan && (
               <span className="rounded-full bg-yellow-400/10 px-2 py-0.5 font-mono text-[10px] text-yellow-300 border border-yellow-400/20">
@@ -249,7 +230,8 @@ function JarvisFullscreenInner({
         </div>
 
         {/* Controles de Audio y Switch a Estudio Manual */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" onClick={isPoweredOn ? powerOff : powerOn} aria-pressed={isPoweredOn} className="flex items-center gap-2 rounded-xl border border-yellow-300/30 bg-yellow-300/10 px-3 py-2 text-xs text-yellow-200"><Power className="size-4" />{isPoweredOn ? "Apagar Jarvis" : "Encender Jarvis"}</button>
           <button
             type="button"
             onClick={() => {
@@ -271,14 +253,14 @@ function JarvisFullscreenInner({
 
           <button
             type="button"
-            onClick={() => { stopVoice(); recognitionRef.current?.abort(); clearChat(); }}
+            onClick={() => { stopVoice(); stopMicrophone(); clearChat(); }}
             title="Reiniciar sesión de conversación"
             className="rounded-xl border border-white/10 bg-white/5 p-2 text-zinc-400 transition hover:bg-white/10 hover:text-white"
           >
             <RotateCcw className="size-3.5" />
           </button>
 
-          <button type="button" onClick={() => { stopVoice(); recognitionRef.current?.abort(); setShowPersonalization(p => !p); }} aria-expanded={showPersonalization} className="flex items-center gap-2 rounded-xl border border-yellow-300/30 px-3 py-2 text-xs text-yellow-200"><Settings2 className="size-4" /><span className="hidden sm:inline">Personalización</span><span className="sr-only sm:hidden">Personalización</span></button>
+          <button type="button" onClick={() => { stopVoice(); stopMicrophone(); setShowPersonalization(p => !p); }} aria-expanded={showPersonalization} className="flex items-center gap-2 rounded-xl border border-yellow-300/30 px-3 py-2 text-xs text-yellow-200"><Settings2 className="size-4" /><span className="hidden sm:inline">Personalización</span><span className="sr-only sm:hidden">Personalización</span></button>
           {onSwitchToStudio && (
             <button
               type="button"
@@ -294,6 +276,7 @@ function JarvisFullscreenInner({
 
       {showPersonalization && <JarvisPersonalizationPanel profile={profile} tone={initialConfig.tone} authenticated={Boolean(userId)} onClose={() => setShowPersonalization(false)} onSaved={next => { onProfileChange(next); setIsVoiceOutputEnabled(next.voice.enabled); }} />}
       {voiceError && <p role="alert" className="relative z-20 px-6 py-2 text-sm text-red-300">{voiceError}</p>}
+      {microphoneError && <p role="alert" className="relative z-20 px-6 py-2 text-sm text-red-300">{microphoneError}</p>}
 
       {/* Notificación de Pago Exitoso */}
       {justPaid && (
@@ -304,21 +287,29 @@ function JarvisFullscreenInner({
       )}
 
       {/* Main Fullscreen Layout: Split 3D Avatar (Izquierda / Centro) y Feed de Chat (Derecha / Abajo) */}
-      <main className="relative z-10 flex flex-1 flex-col lg:flex-row items-center justify-between p-4 sm:p-6 lg:p-8 gap-6 overflow-hidden">
+      <main className="relative z-10 flex flex-1 flex-col lg:flex-row items-center justify-between p-4 sm:p-6 lg:px-8 lg:py-4 gap-6 overflow-hidden">
         {/* Left Column: Huge 3D Holographic Core & Telemetry */}
         <section className="flex flex-1 flex-col items-center justify-center w-full max-w-[540px]">
-          <div className="w-full">
-            <JarvisHeroOrb3D />
+          <div className={`w-full transition duration-700 ${isPoweredOn ? "opacity-100" : "opacity-40 grayscale"}`}>
+            <JarvisHeroOrb3D variant="agent" />
+          </div>
+
+          <div className="mt-2 max-w-md text-center">
+            <h1 className="text-2xl font-semibold tracking-tight">Tu negocio comienza con Jarvis.</h1>
+            <p aria-live="polite" className="mt-3 text-sm leading-6 text-zinc-300">{commandNotice}</p>
+            <button type="button" onClick={isPoweredOn ? powerOff : powerOn} className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-yellow-300 px-6 py-3 font-semibold text-black transition hover:bg-yellow-200"><Power className="size-5" />{isPoweredOn ? "Poner en espera" : "Encender Jarvis"}</button>
+            {!isPoweredOn && speechSupported && <button type="button" onClick={toggleRecording} aria-pressed={isRecording} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm text-yellow-200"><Mic className="size-4" />{isRecording ? "Detener escucha de encendido" : "Activar comando de voz"}</button>}
+            <p className="mt-3 text-xs leading-5 text-zinc-500">{isRecording ? (isPoweredOn ? "Micrófono activo: te escucho." : "Escucha de encendido activa: di «Jarvis, enciéndete».") : "Micrófono apagado. También puedes escribir los comandos."}</p>
           </div>
 
           <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-[11px] font-mono text-zinc-400">
             <span className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-zinc-900/60 px-2.5 py-1 backdrop-blur-md">
               <Zap className="size-3 text-yellow-400" />
-              <span>ESTADO: {statusLabel}</span>
+              <span>ESTADO: {!isPoweredOn ? (isRecording ? "ESPERANDO ENCENDIDO" : "EN ESPERA") : statusLabel}</span>
             </span>
             <span className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-zinc-900/60 px-2.5 py-1 backdrop-blur-md">
               <Sparkles className="size-3 text-emerald-400" />
-              <span>CANAL: VOZ & CHAT SINCRONIZADOS</span>
+              <span>{isPoweredOn ? "AGENTE ACTIVO" : "LISTO PARA ENCENDER"}</span>
             </span>
           </div>
         </section>
@@ -340,8 +331,8 @@ function JarvisFullscreenInner({
             </div>
 
             <div className="flex items-center gap-1.5 font-mono text-[10px] text-zinc-400">
-              <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>RESPUESTA ULTRA-RÁPIDA</span>
+              <span className={`size-2 rounded-full ${isPoweredOn ? "bg-emerald-400" : "bg-zinc-500"}`} />
+              <span>{isPoweredOn ? "ACTIVO" : "EN ESPERA"}</span>
             </div>
           </div>
 
@@ -354,10 +345,10 @@ function JarvisFullscreenInner({
               <div className="flex h-full flex-col items-center justify-center py-10 text-center text-zinc-500">
                 <Sparkles className="mb-3 size-8 text-yellow-400/50 animate-pulse" />
                 <p className="text-sm font-medium text-zinc-300">
-                  Jarvis está en línea y escuchando.
+                  {isPoweredOn ? "Jarvis está listo para ayudarte." : "Enciende tu agente."}
                 </p>
                 <p className="mt-1 max-w-[320px] text-xs text-zinc-500">
-                  Presiona el micrófono para hablarle o escribe abajo. Puedes pedirle que configure tu negocio, defina precios, o probar cómo respondería a tus clientes.
+                  {isPoweredOn ? "Habla o escribe tus instrucciones. Di «Jarvis, abre el CRM» para entrar al panel o «Jarvis, apágate» para ponerme en espera." : "Pulsa Encender Jarvis o escribe «Jarvis, enciéndete». Para usar la frase por voz, activa primero el comando de voz."}
                 </p>
               </div>
             ) : (
@@ -403,13 +394,13 @@ function JarvisFullscreenInner({
           </div>
 
           {/* Chips de sugerencias rápidas */}
-          {messages.length < 3 && (
+          {isPoweredOn && messages.length < 3 && (
             <div className="mb-3 flex flex-wrap gap-1.5">
               {quickPrompts.map((prompt) => (
                 <button
                   key={prompt}
                   type="button"
-                  onClick={() => sendMessage(prompt)}
+                  onClick={() => { stopMicrophone(); submitInstruction(prompt); }}
                   disabled={isLoading}
                   className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-zinc-300 transition hover:border-yellow-400/30 hover:bg-yellow-400/10 hover:text-yellow-200 disabled:opacity-50"
                 >
@@ -426,7 +417,8 @@ function JarvisFullscreenInner({
                 type="button"
                 onClick={toggleRecording}
                 disabled={isLoading}
-                title={isRecording ? "Detener grabación" : "Hablar con Jarvis (Micrófono)"}
+                title={isRecording ? "Detener escucha" : isPoweredOn ? "Hablar con Jarvis" : "Activar comando de voz"}
+                aria-label={isRecording ? "Detener escucha" : isPoweredOn ? "Hablar con Jarvis" : "Activar comando de voz"}
                 className={`flex size-11 shrink-0 items-center justify-center rounded-2xl border transition ${
                   isRecording
                     ? "border-red-500 bg-red-500/20 text-red-400 animate-pulse shadow-[0_0_20px_rgba(239,68,68,0.4)]"
@@ -439,7 +431,8 @@ function JarvisFullscreenInner({
 
             <input
               value={input}
-              onChange={handleInputChange}
+              onChange={e => { if (isPoweredOn) handleInputChange(e); else setInput(e.target.value); }}
+              aria-label="Mensaje o comando para Jarvis"
               placeholder={
                 isRecording
                   ? "Escuchando tu voz..."
@@ -447,15 +440,14 @@ function JarvisFullscreenInner({
                   ? "Jarvis pensando..."
                   : state === "SPEAKING"
                   ? "Jarvis respondiendo..."
-                  : "Habla con el micrófono o escribe aquí..."
+                  : isPoweredOn ? "¿Qué hacemos con tu negocio?" : "Jarvis, enciéndete..."
               }
-              disabled={isLoading}
               className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-zinc-900/90 px-4 py-3 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-500 focus:border-yellow-400/40 focus:ring-1 focus:ring-yellow-400/30 disabled:opacity-60"
             />
 
             <button
               type="submit"
-              disabled={!input.trim() || isLoading}
+              disabled={!input.trim() || (isLoading && !jarvisCommand(input))}
               className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-yellow-400 text-zinc-950 transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-600 shadow-lg shadow-yellow-400/10"
               title="Enviar mensaje"
             >

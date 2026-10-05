@@ -9,11 +9,10 @@ import { NextResponse, type NextRequest } from "next/server";
  *  1. Refrescar la sesión de Supabase en cada request (escribe las cookies
  *     rotadas en la respuesta) usando `createServerClient` de @supabase/ssr.
  *  2. Proteger `/dashboard/**` y `/onboarding`: sin sesión -> redirige a `/login`.
- *  3. Evitar que un usuario autenticado vea `/login` o `/signup` -> `/dashboard`.
+ *  3. Evitar que un usuario autenticado vea `/login` o `/signup` -> Jarvis.
  *  4. Dejar pasar `/auth/**` (callback de OAuth / magic link) solo refrescando.
- *  5. Forzar el onboarding: si el agente del tenant aún no lo completa, enviar
- *     `/dashboard` -> `/onboarding` (y viceversa si ya terminó). Se apoya en la
- *     cookie `onboarding_done` para no consultar la BD en cada request.
+ *  5. Mantener el onboarding manual disponible, sin bloquear la entrada al CRM
+ *     desde Jarvis. Recordar si ya se completó para evitar repetir el flujo.
  */
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -58,7 +57,7 @@ export async function proxy(request: NextRequest) {
 
   // Usuario autenticado no debe ver las pantallas de acceso.
   if (user && (pathname === "/login" || pathname === "/signup")) {
-    return redirectWithCookies(new URL("/dashboard", request.url), supabaseResponse);
+    return redirectWithCookies(new URL("/dashboard/jarvis", request.url), supabaseResponse);
   }
 
   // Proteger el panel y el onboarding: sin sesión se redirige al login.
@@ -91,7 +90,7 @@ export async function proxy(request: NextRequest) {
     // Ya completó el onboarding: no debe volver a verlo.
     if (onboarded && pathname.startsWith("/onboarding")) {
       return redirectWithCookies(
-        new URL("/dashboard", request.url),
+        new URL("/dashboard/jarvis", request.url),
         supabaseResponse
       );
     }
@@ -138,11 +137,6 @@ export async function proxy(request: NextRequest) {
           secure: true,
           maxAge: 60 * 60 * 24 * 365,
         });
-      } else if (status === "pending") {
-        return redirectWithCookies(
-          new URL("/onboarding", request.url),
-          supabaseResponse
-        );
       }
     }
   }

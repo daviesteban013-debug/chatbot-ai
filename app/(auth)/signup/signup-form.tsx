@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { authErrorMessage } from "@/lib/auth-messages";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { provisionTenant } from "./actions";
 
@@ -100,7 +99,7 @@ export function SignupForm() {
 
     // Si Supabase devolvió sesión (confirmación desactivada), entrar directo.
     if (data.session) {
-      router.push("/dashboard");
+      router.replace("/dashboard/jarvis");
       router.refresh();
       return;
     }
@@ -122,7 +121,7 @@ export function SignupForm() {
         <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-zinc-400">
           Te enviamos un enlace de confirmación a{" "}
           <span className="font-semibold text-yellow-300">{email}</span>. Cuando lo
-          actives, podrás entrar a tu panel.
+          actives, podrás entrar a Jarvis en pantalla completa.
         </p>
         <Link href="/login" className="mt-6 inline-block w-full">
           <button

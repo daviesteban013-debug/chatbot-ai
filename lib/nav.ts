@@ -21,6 +21,7 @@ export interface NavItem {
  * consume este arreglo y marca la ruta activa con `usePathname`.
  */
 export const navItems: NavItem[] = [
+  { label: "Jarvis · Centro de mando", href: "/dashboard/jarvis", icon: Sparkles },
   { label: "Resumen", href: "/dashboard", icon: LayoutDashboard },
   { label: "Conversaciones", href: "/dashboard/conversations", icon: MessageSquare },
   { label: "Pedidos", href: "/dashboard/orders", icon: ShoppingBag },
@@ -28,5 +29,4 @@ export const navItems: NavItem[] = [
   { label: "Handoffs", href: "/dashboard/handoffs", icon: UserPlus },
   { label: "Aprobaciones", href: "/dashboard/approval", icon: CheckCircle },
   { label: "Agente", href: "/dashboard/agent", icon: Bot },
-  { label: "Jarvis", href: "/dashboard/jarvis", icon: Sparkles },
 ];
