@@ -1,7 +1,7 @@
 # Acceso con Google y correo de Nexo.ai
 
 El código incluye Google, contraseña, reenvío de confirmación y entrada directa a Jarvis.
-La plantilla de correo está en `supabase/templates/confirmation.html`. No se activa solo por subir el archivo a Vercel.
+Las plantillas de correo están en `supabase/templates/confirmation.html` y `supabase/templates/magic-link.html`. No se activan solo por subir los archivos a Vercel.
 
 ## Google
 
@@ -30,11 +30,14 @@ El SMTP predeterminado de Supabase restringe destinatarios a miembros del equipo
 1. Crea/configura un proveedor de correo y verifica el remitente/dominio según sus instrucciones (por ejemplo Resend o Brevo).
 2. Copia sus ajustes SMTP directamente en Supabase → Authentication → Emails → SMTP Settings: host, puerto, usuario, contraseña SMTP, dirección y nombre del remitente. Usa **Nexo.ai · Jarvis** como nombre.
 3. En Emails → Confirm sign up, asunto: **Tu Jarvis te espera — confirma tu correo**. Copia el HTML de `supabase/templates/confirmation.html` y guarda.
+   En Emails → Magic link or OTP, asunto: **Tu enlace de acceso — Nexo.ai**. Copia el HTML de `supabase/templates/magic-link.html` y guarda. Este enlace también usa `/auth/confirm` para crear la sesión mediante un POST deliberado.
 4. Conserva **Confirm email** activado. Desactiva el seguimiento de clics del proveedor para que no altere los enlaces de autenticación.
 5. Prueba crear una cuenta con un correo ajeno al equipo, recibir el mensaje, confirmar, entrar a Jarvis y reenviar un enlace expirado.
 
 La nueva plantilla abre `/auth/confirm` y verifica el token solo al pulsar el botón (POST). Una visita de un escáner de correo no consume la confirmación. También permite confirmar en otro navegador sin depender del verificador PKCE del registro original. Los correos antiguos siguen usando `/auth/callback`; abre esos enlaces en el navegador donde te registraste o solicita un correo nuevo después de activar la plantilla.
 
-Un Gmail personal no equivale a tener un proveedor SMTP configurado. Si eliges Gmail SMTP, requiere verificación en dos pasos y una contraseña de aplicación, introducida por el propietario directamente en Supabase. No uses tu contraseña normal; sus cuotas y límites no son adecuados para un volumen grande de registros.
+Un Gmail personal no equivale a tener un proveedor SMTP configurado. Si eliges Gmail SMTP, requiere verificación en dos pasos y una contraseña de aplicación, introducida por el propietario directamente en Supabase. Usa `smtp.gmail.com`, puerto `465`, tu Gmail como dirección del remitente y usuario, y **Nexo.ai · Jarvis** como nombre del remitente. No uses tu contraseña normal; sus cuotas y límites no son adecuados para un volumen grande de registros.
+
+Para probar SMTP con una cuenta existente, `signInWithOtp` con `shouldCreateUser: false` envía el enlace de acceso sin crear otra cuenta ni cambiar su contraseña. Comprueba la recepción real y la entrada a `/dashboard/jarvis`; una respuesta HTTP 200 al envío, por sí sola, no demuestra la entrega.
 
 Documentación: [Google en Supabase](https://supabase.com/docs/guides/auth/social-login/auth-google), [audiencia de Google y excepción para identidad básica](https://support.google.com/cloud/answer/15549945?hl=en), [SMTP](https://supabase.com/docs/guides/auth/auth-smtp), [plantillas](https://supabase.com/docs/guides/auth/auth-email-templates).
