@@ -78,9 +78,14 @@ export function createJarvisListener(recognition: Recognition, callbacks: {
   recognition.onerror = event => {
     if (!mode || event.error === "no-speech" || (abortExpected && event.error === "aborted")) return;
     stop();
-    callbacks.error(event.error === "not-allowed" || event.error === "service-not-allowed"
+    const message = event.error === "not-allowed" || event.error === "service-not-allowed"
       ? "Permite el micrófono en tu navegador o usa Encender Jarvis y el chat."
-      : "La escucha se detuvo. Puedes reactivarla o seguir por escrito.");
+      : event.error === "audio-capture"
+        ? "El navegador no puede captar el micrófono. Comprueba que esté conectado y disponible."
+        : event.error === "network"
+          ? "El servicio de reconocimiento de voz no pudo conectarse. Prueba esta página en Chrome o Edge y revisa tu conexión."
+          : "La escucha se detuvo. Puedes reactivarla o seguir por escrito.";
+    callbacks.error(message);
   };
   recognition.onend = () => {
     const intentional = abortExpected;

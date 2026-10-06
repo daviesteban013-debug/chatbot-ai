@@ -60,6 +60,7 @@ test("permission and network failures release the mic without retrying; late res
     assert.equal(recognition.starts, 1);
     assert.deepEqual(transcripts, []);
     assert.equal(typeof errors.at(-1), "string");
+    assert.match(errors.at(-1), error === "not-allowed" ? /Permite el micrófono/ : error === "network" ? /no pudo conectarse/ : /no puede captar/);
     listener.dispose();
     assert.equal(recognition.onresult, null);
   }
