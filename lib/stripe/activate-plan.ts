@@ -1,106 +1,68 @@
 import type Stripe from "stripe";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
-import { plans } from "@/lib/plans";
+import { plans, planTotal } from "@/lib/plans";
 import { getStripe } from "@/lib/stripe/server";
-
-function adminUntyped() {
-  return createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  );
-}
+import { stripeMode } from "@/lib/stripe/config";
+import { assertBillingMode, billingDatabase } from "@/lib/stripe/billing";
 
 export type ActivationResult =
   | { ok: true; planId: string; alreadyActive: boolean }
   | { ok: false; reason: string };
 
-/**
- * Activa el plan de un tenant a partir de una Suscripción de Stripe.
- *
- * `tenantId` es el tenant que reclama la suscripción.
- */
-export async function activatePlanFromSubscription(
-  subscription: Stripe.Subscription,
-  tenantId: string
-): Promise<ActivationResult> {
-  // Las suscripciones en proceso de pago tienen estatus "incomplete"
-  if (subscription.status !== "active") return { ok: false, reason: "La suscripción aún no está activa o el pago falló." };
-
-  const planId = subscription.metadata.planId;
-  const period = subscription.metadata.period === "annual" ? "annual" : "monthly";
-  if (!plans.some((p) => p.id === planId)) return { ok: false, reason: "Plan desconocido en la suscripción." };
-
-  const owner = subscription.metadata.tenant_id;
-  if (owner && owner !== tenantId) return { ok: false, reason: "Esta suscripción pertenece a otro negocio." };
-
-  const db = adminUntyped();
-
-  // Verificar si la suscripción ya está en uso
-  const { data: existing, error: lookupError } = await db
-    .from("tenants")
-    .select("id, plan_paid_at")
-    .eq("stripe_subscription_id", subscription.id)
-    .maybeSingle();
-
-  if (lookupError) return { ok: false, reason: lookupError.message };
-
-  if (existing && existing.id !== tenantId)
-    return { ok: false, reason: "Esta suscripción ya está asignada a otro negocio." };
-
-  const endsAt = Math.min(...subscription.items.data.map(item => item.current_period_end));
+export async function activatePlanFromSubscription(subscription: Stripe.Subscription, tenantId: string): Promise<ActivationResult> {
+  if (!["active", "trialing"].includes(subscription.status)) return { ok: false, reason: "La suscripción aún no está activa." };
+  if (subscription.metadata.tenant_id !== tenantId || subscription.livemode !== (stripeMode() === "live"))
+    return { ok: false, reason: "La suscripción pertenece a otro negocio o entorno." };
+  await assertBillingMode();
+  const item = subscription.items.data[0];
+  const price = item?.price;
+  const plan = plans.find(p => p.id === price?.metadata.planId);
+  const annual = price?.recurring?.interval === "year";
+  if (subscription.items.data.length !== 1 || !plan || item.quantity !== 1 || price.currency !== "usd"
+    || price.product !== `prod_${plan.id}`
+    || price.unit_amount !== planTotal(plan, annual) * 100 || price.recurring?.interval_count !== 1
+    || !["month", "year"].includes(price.recurring.interval))
+    return { ok: false, reason: "El precio no corresponde a un plan disponible." };
+  const endsAt = item.current_period_end;
   if (!Number.isFinite(endsAt) || endsAt * 1000 <= Date.now()) return { ok: false, reason: "El periodo de la suscripción no está vigente." };
-
-  // Activar el plan en el tenant
   const customerId = typeof subscription.customer === "string" ? subscription.customer : subscription.customer.id;
-  
-  const { error } = await db
-    .from("tenants")
-    .update({
-      plan: planId,
-      plan_period: period,
-      plan_paid_at: existing?.plan_paid_at ?? new Date().toISOString(),
-      stripe_subscription_id: subscription.id,
-      stripe_customer_id: customerId,
-      stripe_subscription_status: subscription.status,
-      stripe_current_period_end: new Date(endsAt * 1000).toISOString(),
-    })
-    .eq("id", tenantId).select("id").single();
-
-  if (error) return { ok: false, reason: error.message };
-
-  return { ok: true, planId, alreadyActive: Boolean(existing) };
+  const db = billingDatabase();
+  const { data: account, error: accountError } = await db.from("billing_accounts").select("customer_id,subscription_id")
+    .eq("tenant_id", tenantId).eq("mode", stripeMode()).maybeSingle();
+  if (accountError || !account || account.customer_id !== customerId) return { ok: false, reason: "No se pudo verificar la cuenta de pagos." };
+  if (account.subscription_id && account.subscription_id !== subscription.id) {
+    const previous = await getStripe().subscriptions.retrieve(account.subscription_id);
+    if (!["canceled", "incomplete_expired"].includes(previous.status) || previous.created >= subscription.created)
+      return { ok: false, reason: "El negocio tiene otra suscripción vigente." };
+  }
+  const { data: tenant, error: tenantError } = await db.from("tenants").select("stripe_subscription_id,plan_paid_at").eq("id", tenantId).single();
+  if (tenantError) return { ok: false, reason: "No se pudo verificar el negocio." };
+  const { error: accountSaveError } = await db.from("billing_accounts").update({ subscription_id: subscription.id })
+    .eq("tenant_id", tenantId).eq("mode", stripeMode()).select("tenant_id").single();
+  if (accountSaveError) return { ok: false, reason: "No se pudo guardar la suscripción." };
+  const alreadyActive = tenant.stripe_subscription_id === subscription.id;
+  const { error } = await db.from("tenants").update({
+    plan: plan.id, plan_period: annual ? "annual" : "monthly",
+    plan_paid_at: alreadyActive ? tenant.plan_paid_at : new Date().toISOString(),
+    stripe_subscription_id: subscription.id, stripe_customer_id: customerId, stripe_mode: stripeMode(),
+    stripe_subscription_status: subscription.status, stripe_current_period_end: new Date(endsAt * 1000).toISOString(),
+  }).eq("id", tenantId).select("id").single();
+  return error ? { ok: false, reason: "No se pudo activar el plan." } : { ok: true, planId: plan.id, alreadyActive };
 }
 
-/** Called with a subscription freshly retrieved from Stripe, so delayed events
- * cannot restore an expired paid allowance or overwrite a later plan change. */
+/** Always receives the current subscription from Stripe, never an old event snapshot. */
 export async function synchronizeSubscription(subscription: Stripe.Subscription): Promise<ActivationResult | null> {
-  const db = adminUntyped();
-  const { data: existing, error } = await db.from("tenants").select("id")
-    .eq("stripe_subscription_id", subscription.id).maybeSingle();
-  if (error) return { ok: false, reason: error.message };
-  const tenantId = existing?.id ?? subscription.metadata.tenant_id;
-  if (!tenantId) return null; // An anonymous purchase is assigned when its authenticated owner claims it.
-  if (!existing) {
-    const { data: target, error: targetError } = await db.from("tenants").select("stripe_subscription_id")
-      .eq("id", tenantId).maybeSingle();
-    if (targetError || !target) return { ok: false, reason: "No se pudo verificar el negocio de la suscripción." };
-    // A delayed event for an old subscription cannot replace the current one.
-    // Switching to a different subscription uses the explicit authenticated claim.
-    if (target.stripe_subscription_id && target.stripe_subscription_id !== subscription.id) return null;
-  }
-  if (subscription.status === "active") return activatePlanFromSubscription(subscription, tenantId);
+  if (subscription.livemode !== (stripeMode() === "live")) return null;
+  const tenantId = subscription.metadata.tenant_id;
+  if (!tenantId) return null; // Legacy anonymous subscriptions cannot be claimed by knowing an ID.
+  await assertBillingMode();
+  if (["active", "trialing"].includes(subscription.status)) return activatePlanFromSubscription(subscription, tenantId);
+  const customerId = typeof subscription.customer === "string" ? subscription.customer : subscription.customer.id;
+  const db = billingDatabase();
+  const { data: account, error } = await db.from("billing_accounts").select("customer_id,subscription_id")
+    .eq("tenant_id", tenantId).eq("mode", stripeMode()).maybeSingle();
+  if (error) return { ok: false, reason: "No se pudo verificar la suscripción." };
+  if (!account || account.customer_id !== customerId || account.subscription_id !== subscription.id) return null;
   const { error: updateError } = await db.from("tenants").update({ stripe_subscription_status: subscription.status })
-    .eq("id", tenantId).eq("stripe_subscription_id", subscription.id);
-  return updateError ? { ok: false, reason: updateError.message } : null;
-}
-
-/** Recupera la suscripción desde Stripe (fuente de verdad) y activa el plan. */
-export async function claimSubscription(subscriptionId: string, tenantId: string): Promise<ActivationResult> {
-  try {
-    const sub = await getStripe().subscriptions.retrieve(subscriptionId);
-    return await activatePlanFromSubscription(sub, tenantId);
-  } catch (e) {
-    return { ok: false, reason: e instanceof Error ? e.message : "No se pudo recuperar la suscripción." };
-  }
+    .eq("id", tenantId).eq("stripe_subscription_id", subscription.id).eq("stripe_mode", stripeMode());
+  return updateError ? { ok: false, reason: "No se pudo actualizar el plan." } : null;
 }

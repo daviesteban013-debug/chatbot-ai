@@ -3,29 +3,14 @@ import { getCurrentTenant, getCurrentUser } from "@/lib/auth";
 import { sanitizePersonalization } from "@/lib/jarvis-personalization";
 import { createClient } from "@/lib/supabase/server";
 import { jarvisDefaults, sanitizeJarvisConfig } from "@/lib/jarvis";
-import { claimSubscription } from "@/lib/stripe/activate-plan";
 import { JarvisView } from "./jarvis-view";
 import { voiceAvailability } from "@/lib/voice/elevenlabs";
 
 export const metadata = { title: "Jarvis · Asistente IA 3D" };
 
-export default async function JarvisPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ plan?: string; paid?: string; sub?: string }>;
-}) {
-  const { sub: subId, paid } = await searchParams;
+export default async function JarvisPage() {
   const tenantContext = await getCurrentTenant();
   const user = await getCurrentUser();
-
-  // Reclama el pago recién hecho (cubre pagos creados sin sesión iniciada).
-  let claimError: string | null = null;
-  let paidPlan: string | null = null;
-  if (subId && tenantContext) {
-    const result = await claimSubscription(subId, tenantContext.tenantId);
-    if (result.ok) paidPlan = result.planId;
-    else claimError = result.reason;
-  }
 
   const supabase = (await createClient()) as unknown as SupabaseClient;
   const { data: row } = tenantContext
@@ -41,13 +26,11 @@ export default async function JarvisPage({
     : { ...jarvisDefaults, business: tenantContext?.tenant?.name ?? "" };
 
   // El plan vigente sale de la BD (recién actualizado si el pago se reclamó arriba).
-  let currentPlan: string | null = paidPlan;
+  let currentPlan: string | null = null;
   if (!currentPlan && tenantContext) {
     const { data } = await supabase.from("tenants").select("plan").eq("id", tenantContext.tenantId).maybeSingle();
     currentPlan = (data as { plan?: string } | null)?.plan ?? null;
   }
-
-  const justPaid = Boolean(paidPlan || paid === "1");
 
   return (
     <JarvisView
@@ -57,8 +40,8 @@ export default async function JarvisPage({
       userId={user?.id}
       voiceAvailability={voiceAvailability()}
       plan={currentPlan ?? undefined}
-      justPaid={justPaid}
-      claimError={claimError}
+      justPaid={false}
+      claimError={null}
     />
   );
 }

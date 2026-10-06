@@ -42,44 +42,53 @@ test("the simulator cannot consume any tenant credits in production or without o
 });
 
 // Stripe is stubbed at the boundary; actual quota changes are covered by SQL tests.
-globalThis.__creditStripeDb=()=>({from(){
+globalThis.__creditStripeDb=()=>({from(table){
   const filters={};let writes;
   const q={select(){return q;},eq(key,value){filters[key]=value;return q;},
     update(values){writes=values;return q;},
-    async maybeSingle(){if(state.dbFailure)return {data:null,error:{message:"failure"}};return {data:filters.id ? state.target : state.existing,error:null};},
-    async single(){state.writes.push({filters,values:writes});return {data:{id:filters.id},error:state.dbFailure?{message:"failure"}:null};},
-    then(resolve,reject){if(writes)state.writes.push({filters,values:writes});return Promise.resolve({data:null,error:state.dbFailure?{message:"failure"}:null}).then(resolve,reject);},
+    async maybeSingle(){if(state.dbFailure)return {data:null,error:{message:"failure"}};return {data:table === "billing_accounts" ? state.account : state.existing,error:null};},
+    async single(){if(writes)state.writes.push({table,filters,values:writes});return {data:state.existing ?? {id:filters.id},error:state.dbFailure?{message:"failure"}:null};},
+    then(resolve,reject){if(writes)state.writes.push({table,filters,values:writes});return Promise.resolve({data:null,error:state.dbFailure?{message:"failure"}:null}).then(resolve,reject);},
   };return q;
 }});
 const stripeModule=await load("../../lib/stripe/activate-plan.ts",{
-  "@supabase/supabase-js":url("export const createClient=()=>globalThis.__creditStripeDb();"),
-  "@/lib/plans":url("export const plans=[{id:'esencial'},{id:'crecimiento'},{id:'equipo'}];"),
+  "@/lib/stripe/billing":url("export const billingDatabase=()=>globalThis.__creditStripeDb(); export const assertBillingMode=async()=>{};"),
+  "@/lib/stripe/config":url("export const stripeMode=()=>\"test\";"),
+  "@/lib/plans":url("export const plans=[{id:'esencial'},{id:'crecimiento'},{id:'equipo'}]; export const planTotal=()=>60;"),
   "@/lib/stripe/server":url("export function getStripe(){return {subscriptions:{retrieve:async()=>globalThis.__creditRouteState().currentSubscription}};}"),
 });
 const billing=await import(stripeModule);
-const sub=(extra={})=>({id:"sub-test",customer:"cus-test",status:"active",metadata:{planId:"crecimiento",tenant_id:"tenant-1",period:"monthly"},items:{data:[{current_period_end:Math.floor(Date.now()/1000)+86400}]},...extra});
+const sub=(extra={})=>({id:"sub-test",customer:"cus-test",livemode:false,created:1,status:"active",metadata:{planId:"crecimiento",tenant_id:"tenant-1",period:"monthly"},items:{data:[{quantity:1,price:{product:"prod_crecimiento",currency:"usd",unit_amount:6000,metadata:{planId:"crecimiento"},recurring:{interval:"month",interval_count:1}},current_period_end:Math.floor(Date.now()/1000)+86400}]},...extra});
 test("an existing subscription updates its plan and verified validity without resetting its paid date",async()=>{
-  state.existing={id:"tenant-1",plan_paid_at:"2026-01-01T00:00:00Z"};state.writes=[];
+  state.account={customer_id:"cus-test",subscription_id:"sub-test"};state.existing={stripe_subscription_id:"sub-test",id:"tenant-1",plan_paid_at:"2026-01-01T00:00:00Z"};state.writes=[];
   const result=await billing.activatePlanFromSubscription(sub(),"tenant-1");
   assert.equal(result.ok,true);assert.equal(result.alreadyActive,true);
-  assert.equal(state.writes[0].values.plan,"crecimiento");assert.equal(state.writes[0].values.stripe_subscription_status,"active");
-  assert.equal(state.writes[0].values.plan_paid_at,state.existing.plan_paid_at);
+  assert.equal(state.writes[1].values.plan,"crecimiento");assert.equal(state.writes[1].values.stripe_subscription_status,"active");
+  assert.equal(state.writes[1].values.plan_paid_at,state.existing.plan_paid_at);
 });
 test("cancellation updates only the currently assigned subscription; foreign or expired claims fail",async()=>{
-  state.existing={id:"tenant-1"};state.writes=[];
+  state.account={customer_id:"cus-test",subscription_id:"sub-test"};state.existing={stripe_subscription_id:"sub-test",id:"tenant-1"};state.writes=[];
   await billing.synchronizeSubscription(sub({status:"canceled"}));
-  assert.deepEqual(state.writes[0].filters,{id:"tenant-1",stripe_subscription_id:"sub-test"});
+  assert.deepEqual(state.writes[0].filters,{id:"tenant-1",stripe_subscription_id:"sub-test",stripe_mode:"test"});
   assert.equal(state.writes[0].values.stripe_subscription_status,"canceled");
   assert.equal((await billing.activatePlanFromSubscription(sub(),"other-tenant")).ok,false);
   assert.equal((await billing.activatePlanFromSubscription(sub({items:{data:[]}}),"tenant-1")).ok,false);
 });
+test("anonymous legacy purchases, a price outside the catalog and another Stripe mode cannot grant paid credits",async()=>{
+  state.account={customer_id:"cus-test",subscription_id:"sub-test"};state.writes=[];
+  assert.equal((await billing.activatePlanFromSubscription(sub({metadata:{planId:"crecimiento"}}),"tenant-1")).ok,false);
+  assert.equal((await billing.activatePlanFromSubscription(sub({livemode:true}),"tenant-1")).ok,false);
+  const forged=sub();forged.items.data[0].price.unit_amount=0;
+  assert.equal((await billing.activatePlanFromSubscription(forged,"tenant-1")).ok,false);
+  assert.equal(state.writes.length,0);
+});
 test("webhook retrieves current Stripe state; failed synchronization returns a retryable response",async()=>{
   const stripe=url("export function getStripe(){const s=globalThis.__creditRouteState();return {webhooks:{constructEvent:()=>s.event},subscriptions:{retrieve:async()=>s.currentSubscription}};}");
-  const webhook=await import(await load("../../app/api/stripe/webhook/route.ts",{"next/server":next,"@/lib/stripe/server":stripe,"@/lib/stripe/activate-plan":stripeModule}));
+  const webhook=await import(await load("../../app/api/stripe/webhook/route.ts",{"next/server":next,"@/lib/stripe/server":stripe,"@/lib/stripe/activate-plan":stripeModule,"@/lib/stripe/config":url("export const stripeMode=()=>\"test\";")}));
   const originalSecret=process.env.STRIPE_WEBHOOK_SECRET;process.env.STRIPE_WEBHOOK_SECRET="test-secret";
   try{
-    state.existing={id:"tenant-1"};state.writes=[];
-    state.event={type:"customer.subscription.updated",data:{object:sub()}};
+    state.account={customer_id:"cus-test",subscription_id:"sub-test"};state.existing={stripe_subscription_id:"sub-test",id:"tenant-1"};state.writes=[];
+    state.event={livemode:false,type:"customer.subscription.updated",data:{object:sub()}};
     state.currentSubscription=sub({status:"canceled"});
     const request=()=>new Request("https://example.com/webhook",{method:"POST",headers:{"stripe-signature":"test"},body:"fixture"});
     assert.equal((await webhook.POST(request())).status,200);
@@ -88,7 +97,7 @@ test("webhook retrieves current Stripe state; failed synchronization returns a r
   }finally{if(originalSecret===undefined)delete process.env.STRIPE_WEBHOOK_SECRET;else process.env.STRIPE_WEBHOOK_SECRET=originalSecret;}
 });
 test("a delayed active event from an old subscription cannot replace a new assigned subscription",async()=>{
-  state.existing=null;state.target={stripe_subscription_id:"sub-new"};state.writes=[];
-  assert.equal(await billing.synchronizeSubscription(sub()),null);
+  state.account={customer_id:"cus-test",subscription_id:"sub-new"};state.currentSubscription=sub({id:"sub-new",created:2});state.writes=[];
+  assert.equal((await billing.synchronizeSubscription(sub())).ok,false);
   assert.equal(state.writes.length,0);
 });

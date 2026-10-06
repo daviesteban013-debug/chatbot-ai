@@ -42,6 +42,7 @@ yarn-error.log*
 next-env.d.ts
 cloudflared.exe
 /.codex/
+/supabase/.temp/
 
 # local tooling / logs (never commit, never deploy)
 .vercel-tmp/

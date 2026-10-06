@@ -323,6 +323,7 @@ function JarvisFullscreenInner({
             <button type="button" onClick={() => { clearChat(); setTurnStart(null); setPanel(null); }}><RotateCcw size={18} />Nueva conversación</button>
             {onSwitchToStudio && <button type="button" onClick={() => { exit(); onSwitchToStudio(); }}><Sliders size={18} />Configuración del agente</button>}
             <Link href="/dashboard" onClick={exit}><LayoutDashboard size={18} />Abrir CRM</Link>
+            <Link href="/dashboard/billing" onClick={exit}><LayoutDashboard size={18} />Planes y pagos</Link>
             <InstallJarvisButton />
             <p className={styles.help}>Para los aplausos, pulsa «Activar 2 aplausos» y permite el micrófono. Deja esta pantalla abierta y da dos aplausos separados por medio segundo. La escucha se apaga al encender, cambiar de pestaña o salir.</p>
             <p className={styles.help}>Al encender Jarvis se activa la escucha continua con permiso del micrófono. Espera a que termine de hablar y dile tu siguiente instrucción: no necesitas pulsar el micrófono en cada turno. Puedes pausar la escucha con su botón o decir «Jarvis, apágate» o «Jarvis, abre el CRM». Mientras hablo, abres un panel o cambias de pestaña, la escucha queda en pausa.</p>

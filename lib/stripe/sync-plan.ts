@@ -19,7 +19,7 @@ export async function getOrCreateStripePrice(
   try {
     product = await stripe.products.retrieve(productId);
   } catch (err: unknown) {
-    if (err && typeof err === "object" && "statusCode" in err && err.statusCode === 404) {
+    if (err && typeof err === "object" && "code" in err && err.code === "resource_missing") {
       // 404 significa que no existe
     } else {
       throw err;
@@ -32,7 +32,8 @@ export async function getOrCreateStripePrice(
       id: productId,
       name: `Nexo · Plan ${plan.name}`,
       description: plan.description,
-    });
+      metadata: { nexo: "true", planId: plan.id },
+    }, { idempotencyKey: `nexo-product-${plan.id}` });
   }
 
   // 3. Buscar precios activos de este producto con las características pedidas
@@ -47,10 +48,11 @@ export async function getOrCreateStripePrice(
   });
 
   const existingPrice = prices.find(
-    (p) => p.unit_amount === amount && p.recurring?.interval === interval
+    (p) => p.unit_amount === amount && p.recurring?.interval === interval && p.recurring.interval_count === 1
   );
 
   if (existingPrice) {
+    if (existingPrice.metadata.planId !== plan.id) await stripe.prices.update(existingPrice.id, { metadata: { planId: plan.id, period: annual ? "annual" : "monthly" } });
     return existingPrice.id;
   }
 
@@ -61,7 +63,7 @@ export async function getOrCreateStripePrice(
     currency: "usd",
     recurring: { interval },
     metadata: { planId: plan.id, period: annual ? "annual" : "monthly" },
-  });
+  }, { idempotencyKey: `nexo-price-${plan.id}-${interval}-${amount}` });
 
   return newPrice.id;
 }

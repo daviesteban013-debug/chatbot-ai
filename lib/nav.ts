@@ -7,6 +7,7 @@ import {
   CheckCircle,
   Bot,
   Sparkles,
+  CreditCard,
   type LucideIcon,
 } from "lucide-react";
 
@@ -29,4 +30,5 @@ export const navItems: NavItem[] = [
   { label: "Handoffs", href: "/dashboard/handoffs", icon: UserPlus },
   { label: "Aprobaciones", href: "/dashboard/approval", icon: CheckCircle },
   { label: "Agente", href: "/dashboard/agent", icon: Bot },
+  { label: "Planes y pagos", href: "/dashboard/billing", icon: CreditCard },
 ];

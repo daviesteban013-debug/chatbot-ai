@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { getStripe } from "@/lib/stripe/server";
 import { synchronizeSubscription } from "@/lib/stripe/activate-plan";
+import { stripeMode } from "@/lib/stripe/config";
 
 export const runtime = "nodejs";
 
@@ -23,6 +24,8 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: "Firma inválida." }, { status: 400 });
   }
+
+  if (event.livemode !== (stripeMode() === "live")) return NextResponse.json({ received: true, ignored: true });
 
   if (event.type === "customer.subscription.created" || event.type === "customer.subscription.updated" || event.type === "customer.subscription.deleted") {
     const subscription = event.data.object as Stripe.Subscription;

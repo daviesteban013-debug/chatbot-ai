@@ -30,10 +30,29 @@ after(async () => { await db?.close(); });
 beforeEach(async () => {
   await db.exec("reset role; truncate public.credit_requests, public.credit_periods; update credit_limits set tokens = 1000000 where plan = 'esencial';");
   await db.exec("update tenants set plan = 'esencial', stripe_subscription_status = 'active', stripe_current_period_end = now() + interval '2 months';");
+  await db.exec("update billing_settings set mode='test'; update tenants set stripe_mode='test';");
 });
 const balance = async (id = tenant, uid = null) => (await db.query("select credit_balance($1,$2) as value", [id, uid])).rows[0].value;
 const reserve = async (requested = 600000, minimum = requested, channel = "web", id = crypto.randomUUID()) => ({ id, ...(await db.query("select reserve_credits($1,$2,null,$3,$4,$5) as value", [id, tenant, requested, minimum, channel])).rows[0].value });
 const settle = (id, input = 120, output = 130) => db.query("select settle_credits($1,$2,$3,'test-model')", [id, input, output]);
+
+test("live cutover cannot carry over a test subscription's paid allowance", async () => {
+  assert.equal((await balance()).quotaTokens,1000000);
+  await db.exec("update billing_settings set mode='live';");
+  assert.equal((await balance()).quotaTokens,20000);
+  await db.exec("update tenants set stripe_mode='live';");
+  assert.equal((await balance()).quotaTokens,1000000);
+});
+
+test("checkout retries share an attempt; competing plans are rejected and browsers cannot reserve checkout", async () => {
+  await db.query("insert into billing_accounts(tenant_id,mode,customer_id) values($1,'test','cus_fixture') on conflict do nothing",[tenant]);
+  await db.query("update billing_accounts set checkout_expires_at=null where tenant_id=$1",[tenant]);
+  const claim=async(plan='esencial')=>(await db.query("select claim_billing_checkout($1,'test',$2,false) as value",[tenant,plan])).rows[0].value;
+  const a=await claim(),b=await claim();assert.equal(a.ok,true);assert.equal(a.attempt,b.attempt);assert.equal((await claim('equipo')).ok,false);
+  await db.exec("set role authenticated;");
+  try { await assert.rejects(claim(),/permission denied/); await assert.rejects(db.query("update billing_settings set mode='live'"),/permission denied/); }
+  finally { await db.exec("reset role;"); }
+});
 
 test("all versioned migrations apply; configured plans contain the selected monthly credits", async () => {
   const rows = (await db.query("select plan,tokens from credit_limits where plan in ('esencial','crecimiento','equipo') order by tokens")).rows;

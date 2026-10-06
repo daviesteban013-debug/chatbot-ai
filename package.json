@@ -12,6 +12,8 @@
     "test:jarvis": "node --test tools/jarvis/*.test.mjs",
     "test:pwa": "node --test tools/pwa/*.test.mjs",
     "test:credits": "node --test tools/credits/*.test.mjs",
+    "test:stripe": "node --test tools/stripe/*.test.mjs",
+    "stripe:setup": "node tools/stripe/setup.mjs",
     "test:files": "node --test tools/files/*.test.mjs",
     "test:files:runtime": "node tools/files/runtime-smoke.mjs",
     "test:mcp:live": "node tools/mcp/smoke.mjs",
