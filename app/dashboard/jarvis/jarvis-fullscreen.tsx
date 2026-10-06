@@ -5,7 +5,7 @@ import Link from "next/link";
 import { JarvisLiquidAvatar } from "@/components/jarvis/liquid-avatar";
 import { useRouter } from "next/navigation";
 import styles from "./jarvis-fullscreen.module.css";
-import { Mic, MicOff, Volume2, VolumeX, Send, Sliders, RotateCcw, LayoutDashboard, Power, Settings2, Menu, X, MessageSquare, Hand, Square } from "lucide-react";
+import { Mic, MicOff, Volume2, VolumeX, Send, Sliders, RotateCcw, LayoutDashboard, Power, Settings2, Menu, X, MessageSquare, Hand, Square, Paperclip, FileText, Trash2 } from "lucide-react";
 import { useJarvisClaps } from "@/hooks/useJarvisClaps";
 import { JarvisAvatarProvider, useJarvisAvatar } from "@/context/JarvisAvatarContext";
 import { useJarvisAgent } from "@/hooks/useJarvisAgent";
@@ -17,6 +17,10 @@ import { useJarvisMicrophone } from "@/hooks/useJarvisMicrophone";
 import { jarvisCommand } from "@/lib/jarvis-commands";
 import { JarvisPersonalizationPanel } from "./jarvis-personalization";
 import { InstallJarvisButton } from "@/components/pwa/app-provider";
+import { CreditBalancePanel } from "@/components/dashboard/credit-balance";
+import { useJarvisFiles } from "@/hooks/useJarvisFiles";
+import { FILE_ACCEPT } from "@/lib/files/types";
+import type { FileSummary } from "@/lib/files/types";
 
 const pageAccent = "#facc15";
 
@@ -74,7 +78,6 @@ function JarvisFullscreenInner({
   const [commandNotice, setCommandNotice] = useState("Estoy aquí. ¿Qué vamos a hacer hoy?");
   const [isVoiceOutputEnabled, setIsVoiceOutputEnabled] = useState(profile.voice.enabled);
   const [panel, setPanel] = useState<"menu" | "history" | "personalization" | null>(null);
-  const showPersonalization = panel === "personalization";
   const dialogRef = useRef<HTMLDialogElement>(null);
   const clapStopRef = useRef<() => void>(() => {});
   const microphoneStopRef = useRef<() => void>(() => {});
@@ -85,18 +88,28 @@ function JarvisFullscreenInner({
     setState(speaking ? "SPEAKING" : "IDLE");
     setAudioLevel(speaking ? 0.4 : 0);
   }, [setState, setAudioLevel]);
-  const { speak, stop: stopVoice, error: voiceError, readyToPlay, resume, pending: voicePending } = useJarvisVoice(
+  const { speak, stop: stopVoice, error: voiceError, readyToPlay, resume, pending: voicePending, busy: voiceBusy, speaking: voiceSpeaking, beginStream, pushText, finishStream } = useJarvisVoice(
     { ...profile, voice: { ...profile.voice, enabled: isVoiceOutputEnabled } }, initialConfig.tone, onVoiceActivity, voiceAvailability
   );
-  const speakRef = useRef(speak);
-  useEffect(() => { speakRef.current = speak; }, [speak]);
+  const spokenTurnRef = useRef(false);
+  const [fileSession, setFileSession] = useState("");
+  const attachments = useJarvisFiles(fileSession, Boolean(userId && fileSession));
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const onResponseStart = useCallback(() => {
+    spokenTurnRef.current = poweredRef.current && panel === null && isVoiceOutputEnabled;
+    if (spokenTurnRef.current) { microphonePauseRef.current(); clapStopRef.current(); beginStream(); }
+  }, [panel, isVoiceOutputEnabled, beginStream]);
+  const onResponseDelta = useCallback((delta: string) => {
+    if (spokenTurnRef.current) pushText(delta);
+  }, [pushText]);
   const onResponseComplete = useCallback((message: { content: string }) => {
-    if (poweredRef.current && !showPersonalization) {
-      microphonePauseRef.current(); clapStopRef.current(); speakRef.current(message.content);
-    }
-  }, [showPersonalization]);
+    if (spokenTurnRef.current) finishStream(message.content);
+    else setState("IDLE");
+  }, [finishStream, setState]);
+  const stopSpokenTurn = useCallback(() => { spokenTurnRef.current = false; stopVoice(); }, [stopVoice]);
   const {
     messages,
+    sessionId,
     isLoading,
     error,
     input,
@@ -105,7 +118,8 @@ function JarvisFullscreenInner({
     clearChat,
     cancelResponse,
     setInput,
-  } = useJarvisAgent({ sessionScope: userId ?? "public", onResponseComplete, onPersonalizationChange: onProfileChange });
+  } = useJarvisAgent({ sessionScope: userId ?? "public", onResponseStart, onResponseDelta, onResponseComplete, onResponseError: stopSpokenTurn, spokenResponse: isVoiceOutputEnabled, onPersonalizationChange: onProfileChange, attachments: attachments.selected, onFilesSubmitted: attachments.submitted });
+  useEffect(() => { const sync = () => setFileSession(sessionId); sync(); }, [sessionId]);
 
   const hasWelcomedRef = useRef(false);
   const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -130,11 +144,11 @@ function JarvisFullscreenInner({
     poweredRef.current = false;
     setIsPoweredOn(false);
     microphoneStopRef.current();
-    stopVoice();
+    stopSpokenTurn();
     cancelResponse();
     setState("IDLE");
     setCommandNotice("Jarvis en espera. El micrófono está apagado. Tu conversación se conserva.");
-  }, [stopVoice, cancelResponse, setState]);
+  }, [stopSpokenTurn, cancelResponse, setState]);
 
   const submitInstruction = useCallback((text: string, wakeOnly = false) => {
     const command = jarvisCommand(text);
@@ -154,16 +168,16 @@ function JarvisFullscreenInner({
       setCommandNotice("Primero pulsa Encender Jarvis o escribe «Jarvis, enciéndete».");
       return false;
     }
-    if (isLoading) return false;
+    if (isLoading || attachments.pending) return false;
     microphonePauseRef.current();
     stopVoice();
     clapStopRef.current();
     setTurnStart(messages.length);
     sendMessage(text);
     return true;
-  }, [setInput, powerOn, powerOff, stopVoice, cancelResponse, router, isLoading, messages.length, sendMessage]);
+  }, [setInput, powerOn, powerOff, stopVoice, cancelResponse, router, isLoading, attachments.pending, messages.length, sendMessage]);
 
-  const microphoneBlocked = isLoading || voicePending || readyToPlay || state === "SPEAKING" || panel !== null;
+  const microphoneBlocked = isLoading || voiceBusy || attachments.pending || panel !== null;
   const { supported: speechSupported, listening: isRecording, armed: microphoneArmed, error: microphoneError, start: startMicrophone, stop: stopMicrophone, pause: pauseMicrophone } = useJarvisMicrophone(profile.voice.locale, submitInstruction, microphoneBlocked);
   useEffect(() => {
     microphoneStopRef.current = stopMicrophone;
@@ -204,21 +218,21 @@ function JarvisFullscreenInner({
       stopMicrophone();
     } else {
       claps.stop();
-      stopVoice();
+      stopSpokenTurn(); cancelResponse();
       startMicrophone(!isPoweredOn, true);
     }
   };
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() && !attachments.selected.length) return;
     pauseMicrophone();
     claps.stop();
     submitInstruction(input);
   };
 
   const openPanel = (nextPanel: "menu" | "history" | "personalization") => {
-    pauseMicrophone(); claps.stop(); stopVoice(); setPanel(nextPanel);
+    pauseMicrophone(); claps.stop(); stopSpokenTurn(); setPanel(nextPanel);
   };
   const toggleClaps = () => {
     if (claps.listening || claps.pending) { claps.stop(); return; }
@@ -227,8 +241,18 @@ function JarvisFullscreenInner({
   const latest = turnStart === null ? undefined : messages.slice(turnStart).reverse().find(message => message.role === "assistant");
   const activity = !isPoweredOn
     ? claps.pending ? "Esperando permiso del micrófono" : claps.listening ? "Da dos aplausos para encender" : isRecording ? "Di «Jarvis, enciéndete»" : "Listo cuando tú lo estés"
-    : isRecording ? "Te escucho" : isLoading ? "Pensando contigo" : voicePending ? "Preparando mi voz" : state === "SPEAKING" ? "Hablando contigo" : "Aquí para ayudarte";
-  const exit = () => { claps.stop(); stopMicrophone(); stopVoice(); cancelResponse(); };
+    : isRecording ? "Te escucho" : voiceSpeaking ? "Hablando contigo" : readyToPlay ? "Pulsa Reproducir voz" : voicePending ? "Preparando mi voz" : isLoading ? "Pensando contigo" : "Aquí para ayudarte";
+  const exit = () => { claps.stop(); stopMicrophone(); stopSpokenTurn(); cancelResponse(); };
+  const avatarState = voiceSpeaking ? "SPEAKING" : isRecording || claps.listening ? "LISTENING" : isLoading || voicePending ? "PROCESSING" : state === "ERROR" ? "ERROR" : "IDLE";
+  useEffect(() => {
+    const interrupt = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && panel === null && (isLoading || voiceBusy)) {
+        stopSpokenTurn(); cancelResponse();
+      }
+    };
+    window.addEventListener("keydown", interrupt);
+    return () => window.removeEventListener("keydown", interrupt);
+  }, [panel, isLoading, voiceBusy, stopSpokenTurn, cancelResponse]);
 
   return (
     <div className={styles.experience} style={{ "--jarvis-accent": pageAccent } as CSSProperties}>
@@ -242,7 +266,7 @@ function JarvisFullscreenInner({
       <main className={styles.main}>
         <section className={styles.stage} aria-label="Jarvis, tu agente">
           <div className={styles.avatar}>
-            <JarvisLiquidAvatar powered={isPoweredOn} state={isRecording || claps.listening ? "LISTENING" : state} accent={pageAccent} onActivate={powerOn} />
+            <JarvisLiquidAvatar powered={isPoweredOn} state={avatarState} accent={pageAccent} onActivate={powerOn} />
           </div>
           <div className={styles.identity}>
             <h1>{initialConfig.name || "Jarvis"}</h1>
@@ -255,9 +279,15 @@ function JarvisFullscreenInner({
           <p className={styles.wakeHint}>{claps.listening ? "Dos aplausos rápidos, separados por medio segundo. Solo se analizan aquí." : !isPoweredOn ? "Un toque, dos aplausos o «Jarvis, enciéndete»." : microphoneArmed ? "Escucha continua. Habla cuando termine mi respuesta." : speechSupported ? "Escucha pausada. Puedes activarla o escribir aquí abajo." : "Escribe aquí abajo; este navegador no ofrece reconocimiento de voz."}</p>
         </section>
 
-        <section className={styles.dock} aria-label="Habla o escribe a Jarvis">
+        <section className={styles.dock} aria-label="Habla o escribe a Jarvis" onDragOver={event => { if (event.dataTransfer.types.includes("Files")) event.preventDefault(); }} onDrop={event => { event.preventDefault(); if (userId && !isLoading && !attachments.pending) void attachments.upload(event.dataTransfer.files); }}>
+          {userId && <CreditBalancePanel compact />}
           {justPaid && <p className={styles.notice}>Tu plan está activo. Enciende a Jarvis para comenzar.</p>}
           {(error || voiceError || microphoneError || claps.error) && <p role="alert" className={styles.error}>{error || voiceError || microphoneError || claps.error}</p>}
+          {attachments.error && <p role="alert" className={styles.error}>{attachments.error}</p>}
+          {attachments.pending && <p role="status" className={styles.notice}>Leyendo el archivo; los escaneos pueden tardar unos segundos…</p>}
+          {!!attachments.selected.length && <div className={styles.fileList} aria-label="Archivos listos para enviar">{attachments.selected.map(file => <div key={file.id} className={styles.fileItem}><FileText size={16} /><div><a href={`/api/jarvis/files/${file.id}`} download>{file.name}</a><small>{file.status === "needs_ocr" ? "Sin texto legible" : `${file.references} referencias leídas`}</small>{file.warnings.map(warning => <small key={warning}>{warning}</small>)}</div>{(file.status === "needs_ocr" || file.warnings.some(warning => /OCR|texto extraíble/.test(warning))) && <button type="button" disabled={isLoading || attachments.pending} onClick={() => void attachments.reprocess(file.id)} aria-label={`Leer ${file.name} con OCR`}>Leer con OCR</button>}<button type="button" disabled={isLoading || attachments.pending} onClick={() => void attachments.remove(file.id)} aria-label={`Eliminar ${file.name}`}><X size={15} /></button></div>)}</div>}
+          {!!attachments.files.length && <details className={styles.conversationFiles}><summary>{attachments.files.length} archivos en esta conversación</summary><div className={styles.fileList}>{attachments.files.map(file => <div key={file.id} className={styles.fileItem}><FileText size={16} /><div><a href={`/api/jarvis/files/${file.id}`} download>{file.name}</a><small>{file.status === "needs_ocr" ? "Sin texto legible" : `${file.references} referencias disponibles`}</small>{file.warnings.map(warning => <small key={warning}>{warning}</small>)}</div>{(file.status === "needs_ocr" || file.warnings.some(warning => /OCR|texto extraíble/.test(warning))) && <button type="button" disabled={isLoading || attachments.pending} onClick={() => void attachments.reprocess(file.id)} aria-label={`Leer ${file.name} con OCR`}>Leer con OCR</button>}<button type="button" disabled={isLoading || attachments.pending} onClick={() => void attachments.remove(file.id)} aria-label={`Eliminar ${file.name}`}><Trash2 size={15} /></button></div>)}</div></details>}
+          {!!attachments.library.length && <details className={styles.conversationFiles}><summary>Mis otros archivos ({attachments.library.length})</summary><div className={styles.fileList}>{attachments.library.map(file => <div key={file.id} className={styles.fileItem}><FileText size={16} /><div><a href={`/api/jarvis/files/${file.id}`} download>{file.name}</a><small>{file.sessionId ? "Guardado en otra conversación" : "Subido, pendiente de enviar"}</small>{file.warnings.map(warning => <small key={warning}>{warning}</small>)}</div>{(file.status === "needs_ocr" || file.warnings.some(warning => /OCR|texto extraíble/.test(warning))) && <button type="button" disabled={isLoading || attachments.pending} onClick={() => void attachments.reprocess(file.id)} aria-label={`Leer ${file.name} con OCR`}>Leer con OCR</button>}{!file.sessionId && <button type="button" disabled={isLoading || attachments.pending} onClick={() => attachments.select(file)} aria-label={`Adjuntar ${file.name}`}><Paperclip size={15} /></button>}<button type="button" disabled={isLoading || attachments.pending} onClick={() => void attachments.remove(file.id)} aria-label={`Eliminar ${file.name}`}><Trash2 size={15} /></button></div>)}</div></details>}
           {readyToPlay && <button type="button" onClick={() => { claps.stop(); pauseMicrophone(); resume(); }} className={styles.playVoice}>Reproducir voz</button>}
           <div className={styles.reply}>
             {latest ? <>
@@ -266,14 +296,17 @@ function JarvisFullscreenInner({
             </> : <p className={styles.greeting}>{commandNotice}</p>}
           </div>
           <form onSubmit={handleFormSubmit} className={styles.composer}>
+            <input ref={fileInputRef} type="file" multiple accept={FILE_ACCEPT} hidden onChange={event => { if (event.target.files) void attachments.upload(event.target.files); event.target.value = ""; }} />
+            <button type="button" disabled={!userId || isLoading || attachments.pending} onClick={() => fileInputRef.current?.click()} aria-label="Adjuntar archivos" title="PDF, fotos PNG/JPG/WebP, Excel, Word o texto · hasta 3 MB" className={styles.micButton}><Paperclip size={19} /></button>
             {speechSupported && <button type="button" onClick={toggleRecording} aria-label={microphoneArmed ? "Pausar escucha continua" : isPoweredOn ? "Activar escucha continua" : "Activar comando de voz"} aria-pressed={microphoneArmed} className={styles.micButton} data-recording={isRecording}>{microphoneArmed ? <MicOff size={20} /> : <Mic size={20} />}</button>}
             <input value={input} onChange={e => { if (isPoweredOn) handleInputChange(e); else setInput(e.target.value); }} aria-label="Mensaje o comando para Jarvis" placeholder={isRecording ? "Te escucho…" : "O escribe aquí…"} className={styles.input} autoComplete="off" />
-            {isLoading ? <button type="button" onClick={() => { cancelResponse(); stopVoice(); }} aria-label="Detener respuesta" className={styles.sendButton}><Square size={16} /></button> : <button type="submit" disabled={!input.trim()} aria-label="Enviar mensaje" className={styles.sendButton}><Send size={18} /></button>}
+            {(isLoading || voiceBusy) && <button type="button" onClick={() => { stopSpokenTurn(); cancelResponse(); }} aria-label="Detener respuesta y voz" className={styles.sendButton}><Square size={16} /></button>}
+            <button type="submit" disabled={(!input.trim() && !attachments.selected.length) || isLoading || attachments.pending} aria-label="Enviar mensaje" className={styles.sendButton}><Send size={18} /></button>
           </form>
           <div className={styles.dockFooter}>
             <span>{isRecording ? "Escucha continua activa" : microphoneArmed ? "Escucha en pausa temporal" : claps.pending ? "Solicitando micrófono" : claps.listening ? "Aplausos: escucha activa" : "Micrófono apagado"}</span>
             <div>
-              <button type="button" onClick={() => { claps.stop(); stopVoice(); setIsVoiceOutputEnabled(value => !value); }} aria-label={isVoiceOutputEnabled ? "Silenciar voz de Jarvis" : "Activar voz de Jarvis"} aria-pressed={isVoiceOutputEnabled}>{isVoiceOutputEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}</button>
+              <button type="button" onClick={() => { claps.stop(); stopSpokenTurn(); setIsVoiceOutputEnabled(value => !value); }} aria-label={isVoiceOutputEnabled ? "Silenciar voz de Jarvis" : "Activar voz de Jarvis"} aria-pressed={isVoiceOutputEnabled}>{isVoiceOutputEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}</button>
               <button type="button" onClick={() => openPanel("history")} aria-label="Abrir historial"><MessageSquare size={15} /></button>
             </div>
           </div>
@@ -295,7 +328,7 @@ function JarvisFullscreenInner({
             <p className={styles.help}>Al encender Jarvis se activa la escucha continua con permiso del micrófono. Espera a que termine de hablar y dile tu siguiente instrucción: no necesitas pulsar el micrófono en cada turno. Puedes pausar la escucha con su botón o decir «Jarvis, apágate» o «Jarvis, abre el CRM». Mientras hablo, abres un panel o cambias de pestaña, la escucha queda en pausa.</p>
           </div>}
           {panel === "history" && <div ref={chatScrollRef} className={styles.history}>
-            {messages.length ? messages.map(message => <article key={message.id} data-role={message.role}><span>{message.role === "user" ? "Tú" : initialConfig.name || "Jarvis"}</span><p>{message.content || "Preparando respuesta…"}</p></article>) : <p className={styles.help}>Tu conversación aparecerá aquí cuando envíes tu primera instrucción.</p>}
+            {messages.length ? messages.map(message => <article key={message.id} data-role={message.role}><span>{message.role === "user" ? "Tú" : initialConfig.name || "Jarvis"}</span><p>{message.content || "Preparando respuesta…"}</p>{Array.isArray(message.metadata?.attachments) && <div className={styles.fileList}>{(message.metadata.attachments as FileSummary[]).map(file => <a key={file.id} href={`/api/jarvis/files/${file.id}`} download className={styles.fileItem}><FileText size={15} />{file.name}</a>)}</div>}</article>) : <p className={styles.help}>Tu conversación aparecerá aquí cuando envíes tu primera instrucción.</p>}
           </div>}
         </>}
       </dialog>

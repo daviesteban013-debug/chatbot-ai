@@ -95,17 +95,19 @@ export function HandoffClient(props: Props) {
 
   const router = useRouter();
   const [messages, setMessages] = useState<ThreadMessage[]>(props.messages);
+  const [prevServerMessages, setPrevServerMessages] = useState(props.messages);
+  // Sincroniza con los datos frescos del servidor tras un refresh
+  // (patrón "ajustar estado durante el render" para evitar setState en efecto).
+  if (props.messages !== prevServerMessages) {
+    setPrevServerMessages(props.messages);
+    setMessages(props.messages);
+  }
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [confirmingResolve, setConfirmingResolve] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  // Sincroniza con los datos frescos del servidor tras un refresh.
-  useEffect(() => {
-    setMessages(props.messages);
-  }, [props.messages]);
 
   // Auto-scroll al final del hilo cuando cambian los mensajes.
   useEffect(() => {

@@ -11,6 +11,9 @@
     "test:mcp": "node --test tools/mcp/*.test.mjs",
     "test:jarvis": "node --test tools/jarvis/*.test.mjs",
     "test:pwa": "node --test tools/pwa/*.test.mjs",
+    "test:credits": "node --test tools/credits/*.test.mjs",
+    "test:files": "node --test tools/files/*.test.mjs",
+    "test:files:runtime": "node tools/files/runtime-smoke.mjs",
     "test:mcp:live": "node tools/mcp/smoke.mjs",
     "mcp:env:watch": "node tools/mcp/env-cli.mjs watch"
   },
@@ -21,20 +24,39 @@
     "@stripe/stripe-js": "^10.0.0",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.2",
+    "@tesseract.js-data/eng": "1.0.0",
+    "@tesseract.js-data/spa": "1.0.0",
     "@types/three": "^0.186.0",
+    "decimal.js": "10.6.0",
     "dotenv": "^18.0.5",
+    "exceljs": "4.4.0",
     "framer-motion": "^13.4.6",
     "lucide-react": "^1.48.0",
+    "mammoth": "1.13.0",
     "next": "16.3.7",
     "openai": "^7.26.0",
+    "papaparse": "5.7.0",
+    "pdf-parse": "2.4.5",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "sharp": "0.35.5",
     "stripe": "^23.0.0",
     "tailwind-merge": "^3.7.0",
+    "tesseract.js": "7.0.0",
     "three": "^0.186.1",
     "zod": "^4.6.5"
   },
+  "overrides": {
+    "@napi-rs/canvas": "1.0.10",
+    "exceljs": {
+      "uuid": "11.1.1"
+    },
+    "mammoth": {
+      "argparse": "2.0.1"
+    }
+  },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

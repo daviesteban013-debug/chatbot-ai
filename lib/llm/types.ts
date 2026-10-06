@@ -48,6 +48,10 @@ export interface LLMResponse {
 }
 
 export interface ChatOptions {
+  signal?: AbortSignal;
+  /** Internal hook: a request may consume tokens after reaching the provider. */
+  onAccepted?: () => void;
+  onRejected?: () => void;
   model?: string
   /** default 0.2 (la especificación exige ≤ 0.3) */
   temperature?: number

@@ -1,14 +1,22 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { readAgentStream } from "@/lib/agent-stream";
 import { useJarvisAvatar } from "@/context/JarvisAvatarContext";
-import type { ChatMessage, AgentStreamPayload } from "@/types/jarvis";
+import type { ChatMessage } from "@/types/jarvis";
 import type { JarvisPersonalization } from "@/lib/jarvis-personalization";
+import type { FileSummary } from "@/lib/files/types";
 
 export interface UseJarvisAgentOptions {
   initialSessionId?: string;
   tenantId?: string;
   onResponseComplete?: (message: ChatMessage) => void;
+  onResponseStart?: () => void;
+  onResponseDelta?: (delta: string) => void;
+  onResponseError?: () => void;
+  spokenResponse?: boolean;
+  attachments?: FileSummary[];
+  onFilesSubmitted?: () => void;
   onPersonalizationChange?: (profile: JarvisPersonalization) => void;
   sessionScope?: string;
 }
@@ -28,9 +36,9 @@ export interface UseJarvisAgentReturn {
 }
 
 export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAgentReturn {
-  const { initialSessionId, tenantId, onResponseComplete, onPersonalizationChange, sessionScope = "public" } = options;
+  const { initialSessionId, tenantId, onResponseComplete, onResponseStart, onResponseDelta, onResponseError, spokenResponse = false, onPersonalizationChange, attachments = [], onFilesSubmitted, sessionScope = "public" } = options;
   const sessionKey = `jarvis_chat_session_id:${sessionScope}`;
-  const { setState, setAudioLevel, triggerListening } = useJarvisAvatar();
+  const { setState, triggerListening } = useJarvisAvatar();
 
   const [sessionId, setSessionId] = useState<string>(() => {
     if (initialSessionId) return initialSessionId;
@@ -50,27 +58,7 @@ export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAg
   const [error, setError] = useState<string | null>(null);
   const [input, setInput] = useState("");
 
-  const speechPulseIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
-
-  // Iniciar modulación de audio/onda al hablar
-  const startSpeechPulse = useCallback(() => {
-    if (speechPulseIntervalRef.current) return;
-    speechPulseIntervalRef.current = setInterval(() => {
-      // Modulación orgánica pseudo-armónica de amplitud de voz
-      const wave = Math.sin(Date.now() * 0.015) * 0.4 + Math.sin(Date.now() * 0.035) * 0.3 + 0.3;
-      setAudioLevel(Math.max(0.1, Math.min(1.0, wave)));
-    }, 50);
-  }, [setAudioLevel]);
-
-  // Detener modulación al terminar de hablar
-  const stopSpeechPulse = useCallback(() => {
-    if (speechPulseIntervalRef.current) {
-      clearInterval(speechPulseIntervalRef.current);
-      speechPulseIntervalRef.current = null;
-    }
-    setAudioLevel(0);
-  }, [setAudioLevel]);
 
   // Cargar historial de la sesión
   const reloadHistory = useCallback(async () => {
@@ -80,12 +68,13 @@ export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAg
         const data = await res.json();
         if (Array.isArray(data.messages)) {
           setMessages(
-            data.messages.map((m: { id?: string; role: string; content: string; createdAt?: string }) => ({
+            data.messages.map((m: { id?: string; role: string; content: string; createdAt?: string; metadata?: Record<string, unknown> }) => ({
               id: m.id || Math.random().toString(),
               role: m.role as ChatMessage["role"],
               content: m.content,
               createdAt: m.createdAt || new Date().toISOString(),
               status: "completed",
+              metadata: m.metadata,
             }))
           );
         }
@@ -102,12 +91,13 @@ export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAg
       .then((data) => {
         if (active && data && Array.isArray(data.messages)) {
           setMessages(
-            data.messages.map((m: { id?: string; role: string; content: string; createdAt?: string }) => ({
+            data.messages.map((m: { id?: string; role: string; content: string; createdAt?: string; metadata?: Record<string, unknown> }) => ({
               id: m.id || Math.random().toString(),
               role: m.role as ChatMessage["role"],
               content: m.content,
               createdAt: m.createdAt || new Date().toISOString(),
               status: "completed",
+              metadata: m.metadata,
             }))
           );
         }
@@ -118,12 +108,11 @@ export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAg
 
     return () => {
       active = false;
-      stopSpeechPulse();
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
     };
-  }, [sessionId, stopSpeechPulse]);
+  }, [sessionId]);
 
   // Manejo de cambio en el input: reacciona en el avatar como LISTENING
   const handleInputChange = useCallback(
@@ -140,7 +129,7 @@ export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAg
   // Enviar mensaje al agente
   const sendMessage = useCallback(
     async (customText?: string) => {
-      const messageText = (customText ?? input).trim();
+      const messageText = (customText ?? input).trim() || (attachments.length ? "Analiza los archivos adjuntos." : "");
       if (!messageText || isLoading) return;
 
       setInput("");
@@ -158,6 +147,7 @@ export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAg
         content: messageText,
         createdAt: new Date().toISOString(),
         status: "completed",
+        metadata: { attachments },
       };
 
       // ID temporal para la respuesta del asistente
@@ -174,6 +164,7 @@ export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAg
 
       const abortController = new AbortController();
       abortControllerRef.current = abortController;
+      onResponseStart?.();
 
       try {
         const response = await fetch("/api/chat", {
@@ -185,6 +176,8 @@ export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAg
             sessionId,
             userMessage: messageText,
             tenantId,
+            spokenResponse,
+            attachmentIds: attachments.map(file => file.id),
           }),
           signal: abortController.signal,
         });
@@ -197,41 +190,18 @@ export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAg
         if (!response.body) {
           throw new Error("El cuerpo de la respuesta en streaming es nulo");
         }
+        if (attachments.length) onFilesSubmitted?.();
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
         let accumulatedText = "";
-        let hasStartedSpeaking = false;
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() || "";
-
-          for (const line of lines) {
-            if (abortController.signal.aborted) break;
-            const trimmed = line.trim();
-            if (!trimmed.startsWith("data:")) continue;
-
-            const jsonStr = trimmed.replace(/^data:\s*/, "");
-            try {
-              const payload: AgentStreamPayload = JSON.parse(jsonStr);
+        let terminal = false;
+        for await (const payload of readAgentStream(response.body, abortController.signal)) {
               if (payload.personalization) onPersonalizationChange?.(payload.personalization);
 
               if (payload.status === "processing") {
                 setState("PROCESSING");
               } else if (payload.status === "streaming" && payload.delta) {
-                if (!hasStartedSpeaking) {
-                  hasStartedSpeaking = true;
-                  setState("SPEAKING");
-                  startSpeechPulse();
-                }
-
                 accumulatedText += payload.delta;
+                onResponseDelta?.(payload.delta);
 
                 setMessages((prev) =>
                   prev.map((msg) =>
@@ -245,8 +215,8 @@ export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAg
                   )
                 );
               } else if (payload.status === "completed") {
-                stopSpeechPulse();
-                setState("IDLE");
+                terminal = true;
+                if (!onResponseComplete) setState("IDLE");
 
                 const finalContent = payload.content || accumulatedText;
                 const finalMsg: ChatMessage = {
@@ -267,7 +237,8 @@ export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAg
                   onResponseComplete(finalMsg);
                 }
               } else if (payload.status === "error") {
-                stopSpeechPulse();
+                terminal = true;
+                onResponseError?.();
                 setState("ERROR");
                 setError(payload.error || "Error desconocido");
 
@@ -276,13 +247,12 @@ export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAg
                   setState("IDLE");
                 }, 3500);
               }
-            } catch (parseError) {
-              console.warn("[useJarvisAgent] Línea no parseable:", jsonStr, parseError);
-            }
-          }
+          if (terminal) break;
         }
+        if (!terminal) throw new Error("La respuesta se interrumpió. Vuelve a intentarlo.");
       } catch (err: unknown) {
         if (err instanceof Error && err.name === "AbortError") {
+          onResponseError?.();
           console.log("[useJarvisAgent] Solicitud cancelada por el usuario");
           return;
         }
@@ -290,7 +260,7 @@ export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAg
         const message = err instanceof Error ? err.message : String(err);
         console.error("[useJarvisAgent] Error:", message);
         setError(message);
-        stopSpeechPulse();
+        onResponseError?.();
         setState("ERROR");
 
         setMessages((prev) =>
@@ -309,8 +279,8 @@ export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAg
           setState("IDLE");
         }, 3500);
       } finally {
+        window.dispatchEvent(new Event("jarvis:credits"));
         setIsLoading(false);
-        stopSpeechPulse();
         abortControllerRef.current = null;
       }
     },
@@ -320,15 +290,20 @@ export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAg
       sessionId,
       tenantId,
       setState,
-      startSpeechPulse,
-      stopSpeechPulse,
       onResponseComplete,
+      onResponseStart,
+      onResponseDelta,
+      onResponseError,
+      spokenResponse,
       onPersonalizationChange,
+      attachments,
+      onFilesSubmitted,
     ]
   );
 
   const clearChat = useCallback(() => {
     abortControllerRef.current?.abort();
+    onResponseError?.();
     const newSession = `session_${crypto.randomUUID()}`;
     setSessionId(newSession);
     if (typeof window !== "undefined") {
@@ -337,17 +312,17 @@ export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAg
     setMessages([]);
     setError(null);
     setState("IDLE");
-  }, [setState, sessionKey]);
+  }, [setState, sessionKey, onResponseError]);
 
   const cancelResponse = useCallback(() => {
     abortControllerRef.current?.abort();
-    stopSpeechPulse();
+    onResponseError?.();
     setState("IDLE");
     setMessages(previous => previous.flatMap(message =>
       message.status === "processing" && !message.content ? [] :
       message.status === "streaming" ? [{ ...message, status: "completed" as const }] : [message]
     ));
-  }, [stopSpeechPulse, setState]);
+  }, [onResponseError, setState]);
 
   return {
     messages,

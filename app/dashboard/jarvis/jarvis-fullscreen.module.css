@@ -41,6 +41,14 @@
 .dockFooter button { padding: 3px; }
 .error { padding: 10px 15px; margin-bottom: 12px; border-radius: 12px; background: #ff597c10; color: #ffbacb; font-size: 12px; text-align: center; }
 .notice { color: color-mix(in srgb, var(--jarvis-accent) 40%, white); text-align: center; font-size: 12px; margin-bottom: 10px; }
+.fileList { display: flex; flex-direction: column; gap: 7px; max-height: 150px; overflow-y: auto; margin-bottom: 10px; }
+.fileItem { display: flex; align-items: flex-start; gap: 9px; padding: 9px 12px; background: #ffffff07; border-radius: 10px; color: #d4d4d8; font-size: 12px; }
+.fileItem > div { min-width: 0; flex: 1; }
+.fileItem a { overflow-wrap: anywhere; text-decoration: underline; text-underline-offset: 3px; }
+.fileItem small { display: block; color: #9598ac; font-size: 10px; line-height: 1.5; margin-top: 3px; }
+.fileItem button { padding: 2px; }
+.conversationFiles { color: #9598ac; font-size: 11px; margin-bottom: 12px; }
+.conversationFiles summary { cursor: pointer; padding: 4px 0; }
 .playVoice { display: block; margin: 0 auto 12px; color: var(--jarvis-accent); border: 1px solid color-mix(in srgb, var(--jarvis-accent) 28%, transparent); border-radius: 20px; padding: 8px 16px; font-size: 12px; }
 .dialog { color: white; background: #111113; border: 1px solid #ffffff1a; border-radius: 24px; padding: 0; width: min(760px, calc(100vw - 28px)); max-height: 85dvh; margin: auto; overscroll-behavior: contain; }
 .dialog::backdrop { background: #09090bd9; backdrop-filter: blur(12px); }

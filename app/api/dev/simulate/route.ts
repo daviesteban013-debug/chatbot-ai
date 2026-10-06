@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { runAgent } from "@/lib/agent/loop";
+import { getCurrentTenant } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -9,12 +10,16 @@ export const dynamic = "force-dynamic";
  * ejecutar el bucle del agente vendedor de Fase 1 sin depender de Meta.
  */
 export async function POST(req: NextRequest) {
+  if (process.env.NODE_ENV === "production") return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+  const account = await getCurrentTenant();
+  if (!account || account.role === "viewer") return NextResponse.json({ error: "Acceso no autorizado" }, { status: 403 });
   try {
     const body = await req.json().catch(() => ({}));
     const message = body.message || "Hola Vale, ¿qué bolsos tienes disponibles en cuero y cuánto cuesta el envío a Bogotá?";
     const phone = body.phone || "+573001234567";
     const customerName = body.customerName || "David Cliente";
-    const tenantSlug = body.tenantSlug || "bellisima";
+    if (typeof message !== "string" || !message.trim() || message.length > 8000)
+      return NextResponse.json({ error: "Mensaje no válido" }, { status: 400 });
 
     const supabase = createAdminClient();
 
@@ -22,7 +27,7 @@ export async function POST(req: NextRequest) {
     const { data: tenant, error: tErr } = await supabase
       .from("tenants")
       .select("id, name, slug")
-      .eq("slug", tenantSlug)
+      .eq("id", account.tenantId)
       .single();
 
     if (tErr || !tenant) {

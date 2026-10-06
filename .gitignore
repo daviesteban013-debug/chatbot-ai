@@ -41,7 +41,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 cloudflared.exe
-/.codex/mcp-programador/
+/.codex/
 
-.vercel
-.env*
+# local tooling / logs (never commit, never deploy)
+.vercel-tmp/
+.codex/

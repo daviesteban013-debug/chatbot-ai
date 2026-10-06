@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { getStripe } from "@/lib/stripe/server";
-import { activatePlanFromSubscription } from "@/lib/stripe/activate-plan";
+import { synchronizeSubscription } from "@/lib/stripe/activate-plan";
 
 export const runtime = "nodejs";
 
@@ -24,17 +24,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Firma inválida." }, { status: 400 });
   }
 
-  if (event.type === "customer.subscription.created" || event.type === "customer.subscription.updated") {
+  if (event.type === "customer.subscription.created" || event.type === "customer.subscription.updated" || event.type === "customer.subscription.deleted") {
     const subscription = event.data.object as Stripe.Subscription;
-    const tenantId = subscription.metadata.tenant_id;
-    
-    // Si la suscripción ya fue pagada y está activa
-    if (tenantId && subscription.status === "active") {
-      const result = await activatePlanFromSubscription(subscription, tenantId);
-      if (!result.ok) {
-        console.error("[stripe-webhook] no se activó el plan:", result.reason);
-        // Devolvemos 200 en fallos de negocio (ej. "ya activada") para que Stripe no reintente.
-      }
+    try {
+      const current = await getStripe().subscriptions.retrieve(subscription.id);
+      const result = await synchronizeSubscription(current);
+      if (result && !result.ok) return NextResponse.json({ error: "No se pudo sincronizar la suscripción." }, { status: 503 });
+    } catch {
+      return NextResponse.json({ error: "No se pudo sincronizar la suscripción." }, { status: 503 });
     }
   }
 

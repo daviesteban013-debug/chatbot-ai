@@ -26,6 +26,7 @@ const { POST } = await import(await load("../../app/api/jarvis/voice/route.ts", 
 
 const originalFetch = globalThis.fetch;
 const originalAudio = globalThis.Audio;
+const originalMediaSource = globalThis.MediaSource;
 const originalCreate = URL.createObjectURL;
 const originalRevoke = URL.revokeObjectURL;
 const originalEnv = Object.fromEntries(["ELEVENLABS_API_KEY", "ELEVENLABS_VOICE_ID", "ELEVENLABS_MODEL"].map(key => [key, process.env[key]]));
@@ -39,6 +40,7 @@ function playback() {
 }
 beforeEach(() => {
   calls = []; players = []; revoked = [];
+  globalThis.MediaSource = originalMediaSource;
   globalThis.__voiceUser = { data: { user: { id: `voice-user-${++sequence}` } }, error: null };
   process.env.ELEVENLABS_API_KEY = "test-private-key";
   process.env.ELEVENLABS_VOICE_ID = "voice_id_123";
@@ -55,7 +57,7 @@ beforeEach(() => {
   };
 });
 after(() => {
-  globalThis.fetch = originalFetch; globalThis.Audio = originalAudio;
+  globalThis.fetch = originalFetch; globalThis.Audio = originalAudio; globalThis.MediaSource = originalMediaSource;
   URL.createObjectURL = originalCreate; URL.revokeObjectURL = originalRevoke;
   for (const [key, value] of Object.entries(originalEnv)) if (value === undefined) delete process.env[key]; else process.env[key] = value;
   delete globalThis.__voiceUser;
@@ -76,14 +78,19 @@ test("older profiles keep voice preferences and default to auto; neural settings
   assert.deepEqual(elevenLabsSettings(p, "profesional", "Primero, $50"), { speed: 1, stability: 0.5, similarity_boost: 1 });
 });
 
-test("budget bounds concurrency, cooldown and character consumption and recovers after expiry", () => {
+test("budget bounds concurrency, short sentence bursts and characters and recovers after expiry", () => {
   const reserve = createSpeechBudget();
   const release = reserve("user", 4000, 10000);
   assert.ok(release); assert.equal(reserve("user", 1, 13000), null);
-  release(); assert.equal(reserve("user", 1, 11000), null);
-  reserve("user", 16000, 13000)();
+  release(); reserve("user", 1, 11000)();
+  reserve("user", 15999, 13000)();
   assert.equal(reserve("user", 1, 16000), null);
   assert.ok(reserve("user", 1, 620000));
+  for (let i = 0; i < 3; i++) reserve("burst", 10, 10000)();
+  assert.equal(reserve("burst", 10, 10001), null);
+  const replenished = reserve("burst", 10, 12000);
+  assert.ok(replenished); assert.equal(reserve("burst", 10, 16000), null);
+  replenished(); assert.ok(reserve("burst", 10, 16000));
 });
 
 test("foreign origins, missing sessions and anonymous accounts cannot spend provider credits", async () => {
@@ -199,4 +206,64 @@ test("a newer utterance supersedes a slow older generation", async () => {
   resolveFirst(mp3()); await first;
   assert.equal(players.length, 1); assert.equal(calls[0].options.signal.aborted, true);
   player.stop();
+});
+
+function streamingMedia({ delayedAppend = false } = {}) {
+  const sources = [];
+  class Buffer extends EventTarget {
+    appendBuffer(bytes) { this.bytes = bytes; if (!delayedAppend) queueMicrotask(() => this.dispatchEvent(new Event("updateend"))); }
+  }
+  globalThis.MediaSource = class extends EventTarget {
+    static isTypeSupported(mime) { return mime === "audio/mpeg"; }
+    constructor() { super(); this.readyState = "closed"; sources.push(this); }
+    addSourceBuffer() { this.buffer = new Buffer(); return this.buffer; }
+    endOfStream() { this.readyState = "ended"; }
+  };
+  URL.createObjectURL = () => { queueMicrotask(() => { const current = sources.at(-1); current.readyState = "open"; current.dispatchEvent(new Event("sourceopen")); }); return "blob:stream"; };
+  return () => sources.at(-1);
+}
+const nextTick = () => new Promise(resolve => setImmediate(resolve));
+
+test("MSE starts playback with the first audio bytes while the provider stream is still open", async () => {
+  const source = streamingMedia(); let upstream;
+  globalThis.fetch = async () => new Response(new ReadableStream({ start(controller) { upstream = controller; } }), { headers: { "Content-Type": "audio/mpeg" } });
+  const player = playback(), finishes = [];
+  const generating = player.speak({ text: "Primera frase" }, success => finishes.push(success));
+  await nextTick(); upstream.enqueue(Uint8Array.of(1, 2, 3)); await nextTick();
+  assert.equal(players[0].playCalls, 1); assert.equal(source().readyState, "open");
+  assert.equal(player.events.activities.at(-1), true); assert.deepEqual(finishes, []);
+  upstream.enqueue(Uint8Array.of(4, 5)); upstream.close(); await generating;
+  assert.equal(source().readyState, "ended"); players[0].onended();
+  assert.deepEqual(finishes, [true]); assert.equal(revoked.length, 1);
+});
+
+test("stopping during an MSE append releases waits and late updates cannot play canceled audio", async () => {
+  const source = streamingMedia({ delayedAppend: true });
+  globalThis.fetch = async () => mp3();
+  const player = playback(), finishes = [];
+  const generating = player.speak({ text: "Hola" }, success => finishes.push(success));
+  await nextTick(); assert.ok(source().buffer);
+  player.stop(); await generating;
+  source().buffer.dispatchEvent(new Event("updateend")); await nextTick();
+  assert.equal(players[0].playCalls, 0); assert.deepEqual(finishes, [false]);
+  assert.deepEqual(player.events.errors, []); assert.equal(revoked.length, 1);
+});
+
+test("MSE autoplay can resume on a click without regenerating audio or completing the queue early", async () => {
+  streamingMedia();
+  globalThis.Audio.prototype.play = async function () { this.playCalls++; if (this.playCalls === 1) throw new DOMException("blocked", "NotAllowedError"); this.onplaying?.(); };
+  const player = playback(), finishes = [];
+  await player.speak({ text: "Hola" }, success => finishes.push(success));
+  await nextTick(); assert.equal(player.events.ready.at(-1), true); assert.deepEqual(finishes, []);
+  await player.play(); assert.equal(calls.length, 1); assert.equal(player.events.activities.at(-1), true);
+  players[0].onended(); assert.deepEqual(finishes, [true]);
+});
+
+test("MSE decode failures finish once and do not leave the next phrase waiting forever", async () => {
+  const source = streamingMedia({ delayedAppend: true });
+  const player = playback(), finishes = [];
+  const generating = player.speak({ text: "Hola" }, success => finishes.push(success));
+  await nextTick(); source().buffer.dispatchEvent(new Event("error")); await generating;
+  assert.deepEqual(finishes, [false]); assert.equal(revoked.length, 1);
+  assert.equal(player.events.activities.at(-1), false); assert.equal(player.events.errors.length, 1);
 });

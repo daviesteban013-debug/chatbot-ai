@@ -3,6 +3,7 @@
 node_modules/
 .env*
 .codex/
+.vercel-tmp/
 .vscode/
 cloudflared.exe
 *.tsbuildinfo

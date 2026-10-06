@@ -72,7 +72,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
               </span>
             </div>
             <p className="mt-1 text-xs font-mono uppercase tracking-widest text-zinc-400">
-              // Tu asistente de ventas por WhatsApp
+              {"// Tu asistente de ventas por WhatsApp"}
             </p>
           </div>
         </header>

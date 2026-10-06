@@ -9,7 +9,6 @@ import { singleJoin } from "@/lib/labels";
 
 type CustomerJoin = { id: string; name: string | null; phone: string } | null;
 type ConversationJoin = { id: string; customer_id: string; customers: CustomerJoin | CustomerJoin[] } | null;
-type TriggerMessageJoin = { id: string; body: string | null } | null;
 type OrderItemSingle = { name_snapshot: string; qty: number; unit_price: number };
 
 export default async function ApprovalPage() {

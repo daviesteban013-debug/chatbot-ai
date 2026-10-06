@@ -21,6 +21,16 @@ const DEFAULT_MODEL = 'gpt-4o-mini'
 const DEFAULT_TEMPERATURE = 0.2
 const DEFAULT_MAX_TOKENS = 2048
 
+function readUsage(value: unknown): { tokensIn: number; tokensOut: number } {
+  const usage = value as { prompt_tokens?: unknown; completion_tokens?: unknown } | null;
+  if (!usage || typeof usage.prompt_tokens !== 'number' || typeof usage.completion_tokens !== 'number'
+    || !Number.isSafeInteger(usage.prompt_tokens) || !Number.isSafeInteger(usage.completion_tokens)
+    || usage.prompt_tokens < 0 || usage.completion_tokens < 0) {
+    throw new Error('El proveedor no informó un consumo de tokens válido. La reserva queda pendiente de revisión.');
+  }
+  return { tokensIn: usage.prompt_tokens, tokensOut: usage.completion_tokens };
+}
+
 /**
  * Chat completion agnóstico del proveedor compatible con el formato de OpenAI.
  * Soporta cualquier endpoint que implemente /chat/completions.
@@ -55,10 +65,13 @@ export async function chatCompletion(
   }
 
   const startTime = Date.now()
+  const signal = options?.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(45_000)]) : AbortSignal.timeout(45_000)
   let lastError: Error | null = null
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
+      signal.throwIfAborted()
+      options?.onAccepted?.()
       const response = await fetch(`${baseUrl}/chat/completions`, {
         method: 'POST',
         headers: {
@@ -66,7 +79,10 @@ export async function chatCompletion(
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(body),
+        signal,
       })
+
+      if (!response.ok) options?.onRejected?.()
 
       // Reintentar en 429 o 5xx
       if (response.status === 429 || response.status >= 500) {
@@ -75,7 +91,8 @@ export async function chatCompletion(
           ? parseInt(retryAfter, 10) * 1000
           : BASE_DELAY_MS * Math.pow(2, attempt)
 
-        if (attempt < MAX_RETRIES) {
+        if (attempt < MAX_RETRIES - 1) {
+          await response.body?.cancel()
           await sleep(delay)
           continue
         }
@@ -91,6 +108,7 @@ export async function chatCompletion(
       }
 
       const data = await response.json()
+      const usage = readUsage(data.usage)
       const latencyMs = Date.now() - startTime
       const choice = data.choices?.[0]
 
@@ -112,15 +130,15 @@ export async function chatCompletion(
       return {
         content: message.content || null,
         toolCalls,
-        tokensIn: data.usage?.prompt_tokens ?? 0,
-        tokensOut: data.usage?.completion_tokens ?? 0,
+        tokensIn: usage.tokensIn,
+        tokensOut: usage.tokensOut,
         latencyMs,
         model: data.model || model,
       }
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error))
       // No reintentar errores que no sean de red/estado
-      if (attempt < MAX_RETRIES && isRetryable(lastError)) {
+      if (!options?.onAccepted && !signal.aborted && attempt < MAX_RETRIES - 1 && isRetryable(lastError)) {
         await sleep(BASE_DELAY_MS * Math.pow(2, attempt))
         continue
       }
@@ -169,6 +187,7 @@ function sleep(ms: number): Promise<void> {
 export type LLMStreamEvent =
   | { type: "delta"; content: string }
   | { type: "tool_calls"; toolCalls: LLMToolCall[] }
+  | { type: "usage"; model: string; tokensIn: number; tokensOut: number }
   | { type: "done"; model: string; tokensIn: number; tokensOut: number };
 
 /**
@@ -197,6 +216,7 @@ export async function* chatCompletionStream(
     temperature,
     max_tokens: maxTokens,
     stream: true,
+    stream_options: { include_usage: true },
   };
 
   if (tools && tools.length > 0) {
@@ -204,6 +224,9 @@ export async function* chatCompletionStream(
     body.tool_choice = toolChoice;
   }
 
+  const signal = options?.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(45_000)]) : AbortSignal.timeout(45_000);
+  signal.throwIfAborted();
+  options?.onAccepted?.();
   const response = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
     headers: {
@@ -211,9 +234,11 @@ export async function* chatCompletionStream(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
+    signal,
   });
 
   if (!response.ok) {
+    options?.onRejected?.();
     const errorText = await response.text().catch(() => '');
     throw new Error(`LLM stream error ${response.status}: ${errorText}`);
   }
@@ -234,13 +259,14 @@ export async function* chatCompletionStream(
   let tokensIn = 0;
   let tokensOut = 0;
   let responseModel = model;
+  let hasUsage = false;
+  let finishReceived = false;
+  let sawDone = false;
 
   try {
     while (true) {
       const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
+      buffer += done ? decoder.decode() + '\n' : decoder.decode(value, { stream: true });
       const lines = buffer.split('\n');
       buffer = lines.pop() || '';
 
@@ -250,48 +276,61 @@ export async function* chatCompletionStream(
 
         const dataStr = trimmed.slice(5).trim();
         if (dataStr === '[DONE]') {
+          sawDone = true;
           continue;
         }
 
-        try {
-          const parsed = JSON.parse(dataStr);
-          if (parsed.model) responseModel = parsed.model;
-          if (parsed.usage) {
-            tokensIn = parsed.usage.prompt_tokens ?? tokensIn;
-            tokensOut = parsed.usage.completion_tokens ?? tokensOut;
+        const parsed = JSON.parse(dataStr);
+        if (parsed.error) throw new Error('El proveedor interrumpió la respuesta.');
+        if (parsed.model) responseModel = parsed.model;
+        if (parsed.choices?.some((c: { finish_reason?: string | null }) => c.finish_reason)) finishReceived = true;
+        // Some compatible providers emit provisional usage on text chunks.
+        // Groq may repeat identical totals on the finish chunk and final usage chunk.
+        // Validate all final reports before emitting one authoritative usage event.
+        if (parsed.usage && finishReceived) {
+          const usage = readUsage(parsed.usage);
+          if (hasUsage && (tokensIn !== usage.tokensIn || tokensOut !== usage.tokensOut)) {
+            throw new Error('El proveedor informó un consumo final inconsistente. La reserva queda pendiente de revisión.');
           }
+          tokensIn = usage.tokensIn;
+          tokensOut = usage.tokensOut;
+          hasUsage = true;
+        }
 
-          const choice = parsed.choices?.[0];
-          if (!choice) continue;
+        const choice = parsed.choices?.[0];
+        if (!choice) continue;
 
-          const delta = choice.delta;
-          if (delta?.content) {
-            tokensOut += 1;
-            yield { type: 'delta', content: delta.content };
+        const delta = choice.delta;
+        if (delta?.content) {
+          yield { type: 'delta', content: delta.content };
+        }
+
+        if (delta?.tool_calls && Array.isArray(delta.tool_calls)) {
+          for (const tc of delta.tool_calls) {
+            const idx = tc.index ?? 0;
+            const existing = accumulatedToolCalls.get(idx) || {
+              id: tc.id || '',
+              name: '',
+              arguments: '',
+            };
+            if (tc.id) existing.id = tc.id;
+            if (tc.function?.name) existing.name += tc.function.name;
+            if (tc.function?.arguments) existing.arguments += tc.function.arguments;
+            accumulatedToolCalls.set(idx, existing);
           }
-
-          if (delta?.tool_calls && Array.isArray(delta.tool_calls)) {
-            for (const tc of delta.tool_calls) {
-              const idx = tc.index ?? 0;
-              const existing = accumulatedToolCalls.get(idx) || {
-                id: tc.id || '',
-                name: '',
-                arguments: '',
-              };
-              if (tc.id) existing.id = tc.id;
-              if (tc.function?.name) existing.name += tc.function.name;
-              if (tc.function?.arguments) existing.arguments += tc.function.arguments;
-              accumulatedToolCalls.set(idx, existing);
-            }
-          }
-        } catch {
-          // Fragmento no parseable, omitir
         }
       }
+      if (done || sawDone) break;
     }
   } finally {
+    await reader.cancel().catch(() => {});
     reader.releaseLock();
   }
+
+  if (!hasUsage) throw new Error('El proveedor no informó el consumo de tokens. La reserva queda pendiente de revisión.');
+  if (!sawDone) throw new Error('La respuesta del proveedor se interrumpió.');
+
+  yield { type: 'usage', model: responseModel, tokensIn, tokensOut };
 
   if (accumulatedToolCalls.size > 0) {
     const toolCalls: LLMToolCall[] = Array.from(accumulatedToolCalls.values()).map(

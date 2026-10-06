@@ -3,6 +3,8 @@ import { createAgentExecutor } from "@/lib/agent/executor";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { explicitMemory, MAX_MEMORIES, sanitizePersonalization } from "@/lib/jarvis-personalization";
+import { FileAccessError, loadChatFiles } from "@/lib/files/server";
+import { MAX_ATTACHMENTS, validFileId } from "@/lib/files/types";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -71,6 +73,9 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { sessionId, userMessage, tenantId: bodyTenantId } = body;
+    const attachmentIds = body.attachmentIds ?? [];
+    if (!Array.isArray(attachmentIds) || attachmentIds.length > MAX_ATTACHMENTS || attachmentIds.some(id => !validFileId(id)) || new Set(attachmentIds).size !== attachmentIds.length)
+      return NextResponse.json({ error: "Selecciona hasta tres adjuntos válidos." }, { status: 400 });
 
     if (!sessionId || typeof sessionId !== "string" || sessionId.length > 160 || !/^[a-zA-Z0-9_-]+$/.test(sessionId)) {
       return NextResponse.json(
@@ -89,6 +94,7 @@ export async function POST(request: NextRequest) {
     const supabaseServer = await createClient();
     const { data: { user } } = await supabaseServer.auth.getUser();
     const userId = user?.id ?? null;
+    if (attachmentIds.length && (!user || user.is_anonymous)) return NextResponse.json({ error: "Inicia sesión para usar adjuntos." }, { status: 401 });
     let resolvedTenantId: string | null = null;
     if (user) {
       let memberQuery = supabaseServer.from("tenant_members").select("tenant_id").eq("user_id", user.id);
@@ -116,6 +122,9 @@ export async function POST(request: NextRequest) {
     if (sessionError || !session) return NextResponse.json({ error: "No se pudo verificar la conversación" }, { status: 503 });
     if (session.user_id !== userId || session.tenant_id !== resolvedTenantId)
       return NextResponse.json({ error: "Esta conversación pertenece a otra sesión. Inicia una nueva." }, { status: 403 });
+    let files;
+    try { files = user && !user.is_anonymous ? await loadChatFiles(user.id, sessionId, attachmentIds) : []; }
+    catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "No se pudieron leer los adjuntos." }, { status: error instanceof FileAccessError ? error.status : 503 }); }
 
     let personalization = sanitizePersonalization(user?.user_metadata?.jarvis_personalization);
     let memoryReply: string | undefined;
@@ -133,6 +142,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const streamAbort = new AbortController();
+    const signal = request.signal ? AbortSignal.any([request.signal, streamAbort.signal]) : streamAbort.signal;
     // Iniciar el generador del agente
     const agentStream = createAgentExecutor({
       sessionId,
@@ -140,7 +151,11 @@ export async function POST(request: NextRequest) {
       tenantId: resolvedTenantId,
       userId,
       personalization,
+      spokenResponse: body.spokenResponse === true,
       memoryReply,
+      signal,
+      files,
+      attachmentIds,
     });
 
     const encoder = new TextEncoder();
@@ -149,11 +164,13 @@ export async function POST(request: NextRequest) {
       async start(controller) {
         try {
           for await (const chunk of agentStream) {
+            if (signal.aborted) break;
             const dataString = `data: ${JSON.stringify(chunk)}\n\n`;
             controller.enqueue(encoder.encode(dataString));
           }
-          controller.close();
+          if (!signal.aborted) controller.close();
         } catch (streamError) {
+          if (signal.aborted) return;
           const errorMsg =
             streamError instanceof Error
               ? streamError.message
@@ -167,6 +184,7 @@ export async function POST(request: NextRequest) {
           controller.close();
         }
       },
+      cancel() { streamAbort.abort(); },
     });
 
     return new Response(stream, {

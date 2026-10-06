@@ -5,7 +5,8 @@
  */
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { chatCompletion, calculateCost } from "@/lib/llm";
+import { calculateCost } from "@/lib/llm";
+import { meteredChatCompletion } from "@/lib/llm/metered";
 import type { LLMMessage, LLMResponse } from "@/lib/llm";
 import { AGENT_TOOLS, executeToolCall, type ToolContext, type ToolResult } from "./tools";
 import { sendText, markAsRead, type SendOptions } from "@/lib/whatsapp/send";
@@ -58,7 +59,7 @@ const HISTORY_LIMIT = 20;
  * Nunca lanza: los errores se capturan y persisten en agent_runs.
  */
 export async function runAgent(params: RunAgentParams): Promise<void> {
-  const { tenantId, conversationId, customerId, customerPhone, triggerMessageId } = params;
+  const { tenantId, conversationId, customerId, triggerMessageId } = params;
 
   const supabase = createAdminClient();
   const startTime = Date.now();
@@ -185,7 +186,7 @@ async function runAgentInner(
   while (iterations < MAX_TOOL_ITERATIONS) {
     iterations++;
 
-    const response: LLMResponse = await chatCompletion(messages, AGENT_TOOLS, {
+    const response: LLMResponse = await meteredChatCompletion({ tenantId, channel: "whatsapp" }, messages, AGENT_TOOLS, {
       model: process.env.LLM_MODEL || agent.model || undefined,
       temperature: 0.2,
     });

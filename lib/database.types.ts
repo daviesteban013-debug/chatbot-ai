@@ -260,6 +260,12 @@ export type EvalResult = {
 export type Database = {
   public: {
     Tables: {
+      jarvis_files: {
+        Row: { id: string; user_id: string; session_id: string | null; filename: string; object_path: string; mime_type: string; byte_size: number; status: string; sections: Json; section_count: number; warnings: Json; truncated: boolean; created_at: string };
+        Insert: { id?: string; user_id: string; session_id?: string | null; filename: string; object_path: string; mime_type: string; byte_size: number; status: string; sections: Json; warnings: Json; truncated?: boolean; created_at?: string };
+        Update: { session_id?: string | null; status?: string; sections?: Json; warnings?: Json; truncated?: boolean };
+        Relationships: [];
+      };
       tenants: {
         Row: Tenant;
         Insert: {
@@ -996,6 +1002,22 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      credit_balance: {
+        Args: { p_tenant_id: string | null; p_user_id: string | null };
+        Returns: Json;
+      };
+      reserve_credits: {
+        Args: { p_id: string; p_tenant_id: string | null; p_user_id: string | null; p_requested: number; p_minimum: number; p_channel: string };
+        Returns: Json;
+      };
+      settle_credits: {
+        Args: { p_id: string; p_tokens_in: number; p_tokens_out: number; p_model: string };
+        Returns: undefined;
+      };
+      release_credits: {
+        Args: { p_id: string };
+        Returns: undefined;
+      };
       is_tenant_member: {
         Args: { t: string };
         Returns: boolean;

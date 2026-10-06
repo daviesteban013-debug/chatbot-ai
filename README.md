@@ -1,5 +1,9 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+El sistema de créditos de IA y su puesta en marcha están documentados en [docs/credits.md](docs/credits.md).
+
+Los adjuntos PDF, Excel, CSV, Word y texto de Jarvis, sus límites y la migración necesaria están documentados en [docs/jarvis-files.md](docs/jarvis-files.md).
+
 ## Getting Started
 
 First, run the development server:

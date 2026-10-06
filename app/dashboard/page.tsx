@@ -12,6 +12,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentTenant, getCurrentUser } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/dashboard/empty-state";
+import { CreditBalancePanel } from "@/components/dashboard/credit-balance";
 import {
   orderStatusLabel,
   orderStatusVariant,
@@ -129,6 +130,7 @@ export default async function DashboardPage() {
       </header>
 
       {/* Métricas */}
+      <CreditBalancePanel />
       <section className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         {metrics.map(({ label, value, icon: Icon, href, tint }) => (
           <Link
