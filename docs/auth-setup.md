@@ -10,7 +10,7 @@ La plantilla de correo está en `supabase/templates/confirmation.html`. No se ac
 3. Origen autorizado: `https://chatbot-ai-gold-two.vercel.app`.
 4. URI de redirección de Google: `https://hdrjzcxlhpzpayhrjafk.supabase.co/auth/v1/callback`.
 5. En Supabase → Authentication → Sign In / Providers → Google, introduce Client ID y Client Secret, activa Google y guarda. No actives “Skip nonce checks” ni “Allow users without an email”.
-6. En modo Testing, añade las cuentas de prueba autorizadas. Para otros usuarios, publica el consentimiento según lo que Google pida.
+6. El proyecto creado es **Nexo Jarvis** (`nexo-jarvis`) y el cliente web es **Nexo Jarvis Web Production**. Para este inicio de sesión, que solo solicita identidad (`openid`, `email`, `profile`), Google permite usuarios sin añadirlos a la lista de prueba incluso en modo Testing. Si en el futuro añades otros permisos, revisa los usuarios de prueba, la publicación y la verificación que Google requiera.
 
 No pegues secretos en Git, en capturas ni en el chat. No se necesita una clave de Google en el navegador ni en `.env.local` para este flujo.
 
@@ -37,4 +37,4 @@ La nueva plantilla abre `/auth/confirm` y verifica el token solo al pulsar el bo
 
 Un Gmail personal no equivale a tener un proveedor SMTP configurado. Si eliges Gmail SMTP, requiere verificación en dos pasos y una contraseña de aplicación, introducida por el propietario directamente en Supabase. No uses tu contraseña normal; sus cuotas y límites no son adecuados para un volumen grande de registros.
 
-Documentación: [Google](https://supabase.com/docs/guides/auth/social-login/auth-google), [SMTP](https://supabase.com/docs/guides/auth/auth-smtp), [plantillas](https://supabase.com/docs/guides/auth/auth-email-templates).
+Documentación: [Google en Supabase](https://supabase.com/docs/guides/auth/social-login/auth-google), [audiencia de Google y excepción para identidad básica](https://support.google.com/cloud/answer/15549945?hl=en), [SMTP](https://supabase.com/docs/guides/auth/auth-smtp), [plantillas](https://supabase.com/docs/guides/auth/auth-email-templates).
