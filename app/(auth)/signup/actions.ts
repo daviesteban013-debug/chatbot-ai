@@ -1,6 +1,7 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 
 type ProvisionResult = {
   ok: boolean;
@@ -12,53 +13,37 @@ type ProvisionResult = {
  *
  * La tabla `tenants` solo tiene política RLS de SELECT y no existe un trigger
  * `handle_new_user`, por lo que la creación debe hacerse con el cliente
- * service-role (admin) desde el servidor. Se valida que el `userId` exista en
- * Auth y que el correo coincida con el enviado por el formulario para evitar
- * aprovisionar tenants a cuenta de terceros.
+ * service-role desde el servidor, exclusivamente para el dueño de una sesión
+ * verificada. El nombre del negocio es descriptivo, nunca una autorización.
  */
-export async function provisionTenant(input: {
-  userId: string;
-  email: string;
-  businessName: string;
-}): Promise<ProvisionResult> {
+export async function provisionTenant(): Promise<ProvisionResult> {
+  // The caller's verified session owns the business. Client-supplied IDs and
+  // emails must never authorize a service-role write, including before signup confirmation.
+  const supabase = await createClient();
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user || !user.email_confirmed_at) return { ok: false };
+  const businessName = typeof user.user_metadata?.business_name === "string"
+    ? user.user_metadata.business_name.trim().slice(0, 60) : "Mi negocio";
+  const name = businessName.length >= 2 ? businessName : "Mi negocio";
   const admin = createAdminClient();
 
-  // 1) Verificar que el usuario existe y que el correo coincide.
-  const { data: found, error: foundError } =
-    await admin.auth.admin.getUserById(input.userId);
-  if (foundError || !found?.user) {
-    return { ok: false };
-  }
-  if (
-    (found.user.email ?? "").toLowerCase() !== input.email.trim().toLowerCase()
-  ) {
-    return { ok: false };
-  }
-
-  // 1.5) Verificar que el usuario fue creado hace menos de 10 minutos
-  //      para evitar aprovisionamiento tardío por actores malintencionados.
-  const createdAt = new Date(found.user.created_at);
-  const ageMs = Date.now() - createdAt.getTime();
-  if (ageMs > 10 * 60 * 1000) {
-    return { ok: false };
-  }
-
   // 2) Idempotencia: si ya pertenece a un tenant, no crear otro.
-  const { data: existing } = await admin
+  const { data: existing, error: existingError } = await admin
     .from("tenant_members")
     .select("tenant_id")
-    .eq("user_id", input.userId)
+    .eq("user_id", user.id)
     .limit(1)
     .maybeSingle();
+  if (existingError) return { ok: false };
   if (existing) {
     return { ok: true, tenantId: existing.tenant_id };
   }
 
   // 3) Crear el tenant y la membresía owner.
-  const slug = buildSlug(input.businessName);
+  const slug = buildSlug(name);
   const { data: tenant, error: tenantError } = await admin
     .from("tenants")
-    .insert({ name: input.businessName.trim(), slug, plan: "pilot" })
+    .insert({ name, slug, plan: "pilot" })
     .select("id")
     .single();
   if (tenantError || !tenant) {
@@ -69,10 +54,12 @@ export async function provisionTenant(input: {
     .from("tenant_members")
     .insert({
       tenant_id: tenant.id,
-      user_id: input.userId,
+      user_id: user.id,
       role: "owner",
     });
   if (memberError) {
+    // Do not leave an orphan business if the membership write fails.
+    await admin.from("tenants").delete().eq("id", tenant.id);
     return { ok: false };
   }
 

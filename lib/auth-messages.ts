@@ -7,6 +7,9 @@
 /** Convierte el mensaje técnico de Supabase Auth en un mensaje legible (es). */
 export function authErrorMessage(message: string): string {
   const m = message.toLowerCase();
+  if (m.includes("business_provision_failed")) {
+    return "Tu cuenta está verificada, pero no pudimos preparar tu negocio. Intenta entrar de nuevo.";
+  }
 
   if (m.includes("invalid login credentials")) {
     return "Correo o contraseña incorrectos.";
@@ -23,11 +26,20 @@ export function authErrorMessage(message: string): string {
   if (m.includes("unable to validate email")) {
     return "El correo no es válido.";
   }
+  if (m.includes("email rate limit")) {
+    return "Se alcanzó el límite de correos enviados. Intenta más tarde.";
+  }
+  if (m.includes("email address not authorized")) {
+    return "El envío de correos aún no está disponible para esta dirección. Contacta con soporte.";
+  }
+  if (m.includes("provider is not enabled") || m.includes("unsupported provider")) {
+    return "El acceso con Google todavía no está disponible. Puedes entrar con tu correo.";
+  }
   if (m.includes("rate limit") || m.includes("too many requests")) {
     return "Demasiados intentos. Espera un momento y vuelve a probar.";
   }
-  if (m.includes("email rate limit")) {
-    return "Se alcanzó el límite de correos enviados. Intenta más tarde.";
+  if (m.includes("fetch") || m.includes("network")) {
+    return "No pudimos conectar. Revisa tu conexión e intenta de nuevo.";
   }
 
   return "No pudimos completar la operación. Intenta de nuevo.";
@@ -39,10 +51,10 @@ export function callbackErrorMessage(code: string): string {
     return "No pudimos verificar tu sesión. Intenta iniciar de nuevo.";
   }
   if (code === "otp_expired") {
-    return "El enlace de confirmación expiró o ya fue usado. Inicia sesión con tu correo y contraseña, o vuelve a registrarte.";
+    return "El enlace expiró o ya se usó. Intenta entrar con tu contraseña o solicita otro correo de confirmación.";
   }
   if (code === "access_denied") {
-    return "No pudimos completar la verificación del correo. Intenta iniciar sesión de nuevo.";
+    return "El acceso se canceló. Puedes intentarlo de nuevo o entrar con tu correo.";
   }
   return authErrorMessage(code);
 }

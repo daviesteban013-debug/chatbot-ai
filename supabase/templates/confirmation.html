@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Confirma tu correo — Nexo.ai</title></head>
+<body style="margin:0;padding:0;background:#09090b;font-family:Arial,Helvetica,sans-serif;color:#fafafa">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0">Tu agente Jarvis te espera. Confirma tu correo para empezar.</div>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#09090b;padding:40px 16px"><tr><td align="center">
+    <table role="presentation" width="480" cellspacing="0" cellpadding="0" style="width:100%;max-width:480px">
+      <tr><td style="padding:0 0 28px;font-size:25px;font-weight:bold;letter-spacing:-1px;color:#fafafa">Nexo<span style="color:#facc15">.ai</span></td></tr>
+      <tr><td style="background:#151517;border:1px solid #29292d;border-radius:20px;padding:36px 28px">
+        <p style="margin:0 0 22px;color:#facc15;font-size:11px;letter-spacing:2px;font-weight:bold">TU AGENTE TE ESPERA</p>
+        <h1 style="margin:0 0 16px;color:#fafafa;font-size:32px;line-height:1.15;letter-spacing:-1px">Hola. Soy Jarvis.</h1>
+        <p style="margin:0 0 28px;color:#b4b4bd;font-size:15px;line-height:1.7">Un último paso antes de empezar: confirma tu correo y entra a tu espacio. Vamos a hacer que tu negocio avance.</p>
+        <table role="presentation" cellspacing="0" cellpadding="0"><tr><td bgcolor="#facc15" style="border-radius:10px;text-align:center"><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email" style="display:inline-block;padding:16px 24px;font-size:14px;font-weight:bold;text-decoration:none;color:#161300">Confirmar mi correo &rarr;</a></td></tr></table>
+        <p style="margin:28px 0 0;padding-top:24px;border-top:1px solid #29292d;color:#86868f;font-size:12px;line-height:1.8">Si no creaste esta cuenta, puedes ignorar este mensaje. El enlace es de un solo uso; si expiró, solicita otro desde el inicio de sesión.</p>
+      </td></tr>
+      <tr><td style="padding:24px 4px;color:#686871;font-size:11px;line-height:1.8">Nexo.ai · Tu negocio, acompañado.<br>Si el botón no funciona, copia este enlace en tu navegador:<br><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email" style="color:#a1a1aa;word-break:break-all">{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email</a></td></tr>
+    </table>
+  </td></tr></table>
+</body></html>

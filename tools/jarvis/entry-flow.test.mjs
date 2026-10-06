@@ -182,7 +182,9 @@ const nextUrl = moduleUrl(`
  export const NextResponse = { redirect: url => ({ location: String(url), cookies: cookies() }), next: () => ({ cookies: cookies() }) };
 `);
 const server = moduleUrl("export const createClient = async () => globalThis.__entryClient();");
-const { GET } = await load("../../app/auth/callback/route.ts", { "next/server": nextUrl, "@/lib/supabase/server": server });
+const provision = moduleUrl("export const provisionTenant = async () => ({ ok: true });");
+const redirects = moduleUrl(ts.transpileModule(await readFile(new URL("../../lib/auth-redirect.ts", import.meta.url), "utf8"), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } }).outputText);
+const { GET } = await load("../../app/auth/callback/route.ts", { "next/server": nextUrl, "@/lib/supabase/server": server, "@/app/(auth)/signup/actions": provision, "@/lib/auth-redirect": redirects });
 const { proxy } = await load("../../proxy.ts", { "next/server": nextUrl, "@supabase/ssr": moduleUrl("export const createServerClient = () => globalThis.__entryClient();") });
 test("email confirmation lands in Jarvis, honors internal destinations, and rejects external redirects", async () => {
   authState = {};
