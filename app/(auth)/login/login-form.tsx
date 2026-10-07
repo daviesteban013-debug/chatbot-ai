@@ -52,7 +52,7 @@ export function LoginForm({ callbackError }: { callbackError?: string }) {
   return <div>
     <span className={styles.eyebrow}>BIENVENIDO DE NUEVO</span>
     <h1 className={styles.heading}>Tu agente te espera.</h1>
-    <p className={styles.description}>Entra a tu cuenta y continúa con Jarvis.</p>
+    <p className={styles.description}>Entra a tu cuenta y continúa con NEXO.</p>
     <GoogleSignIn disabled={busy} onBusy={setGoogleBusy} onError={setFormError} />
     <div className={styles.divider}>o entra con tu correo</div>
     <form onSubmit={handleSubmit} noValidate className={styles.form}>
@@ -60,7 +60,7 @@ export function LoginForm({ callbackError }: { callbackError?: string }) {
       <AuthField id="password" name="password" label="Contraseña" type="password" autoComplete="current-password" placeholder="Tu contraseña" value={password} onChange={event => setPassword(event.target.value)} error={fieldErrors.password} disabled={busy} />
       <AuthError message={formError} />
       {needsConfirmation && <ResendConfirmation email={email} />}
-      <button type="submit" className={styles.primary} disabled={busy}>{loading ? <><Loader2 size={16} className={styles.spin} /> Entrando…</> : <>Entrar a Jarvis <ArrowRight size={16} /></>}</button>
+      <button type="submit" className={styles.primary} disabled={busy}>{loading ? <><Loader2 size={16} className={styles.spin} /> Entrando…</> : <>Entrar a NEXO <ArrowRight size={16} /></>}</button>
     </form>
     <p className={styles.bottom}>¿Primera vez aquí? <Link href="/signup" className={styles.link}>Crea tu cuenta</Link></p>
   </div>;

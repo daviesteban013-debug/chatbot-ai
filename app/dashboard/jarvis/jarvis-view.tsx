@@ -54,7 +54,7 @@ export function JarvisView({
           className="flex items-center gap-2 rounded-2xl border border-yellow-400/40 bg-zinc-950/90 px-5 py-3 text-xs font-bold text-yellow-300 shadow-[0_0_30px_rgba(250,204,21,0.25)] backdrop-blur-xl transition hover:scale-105 hover:bg-yellow-400 hover:text-zinc-950"
         >
           <Sparkles className="size-4 animate-pulse" />
-          <span>Abrir Jarvis 3D con Voz (Pantalla Completa)</span>
+          <span>Abrir NEXO 3D con Voz (Pantalla Completa)</span>
         </button>
       </div>
 

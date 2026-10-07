@@ -74,7 +74,7 @@ const QUESTIONS: Question[] = [
   {
     key: "businessName",
     kind: "text",
-    text: "¡Hola! Soy Jarvis, tu asistente de configuración 🤖 Empecemos: ¿cómo se llama tu negocio?",
+    text: "¡Hola! Soy NEXO, tu asistente de configuración 🤖 Empecemos: ¿cómo se llama tu negocio?",
     placeholder: "Ej. Bellisima, Barbería El Fade…",
     icon: Store,
   },
@@ -299,7 +299,7 @@ export function OnboardingChat() {
               </p>
               <p className="flex items-center gap-1.5 text-[11px] text-slate-500">
                 <span className="size-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,.9)]" />
-                Jarvis está en línea
+                NEXO está en línea
               </p>
             </div>
           </div>
@@ -388,7 +388,7 @@ export function OnboardingChat() {
               <Loader2 className="size-4 animate-spin" />
               {phase === "saving"
                 ? "Guardando tu configuración…"
-                : "Jarvis está escribiendo…"}
+                : "NEXO está escribiendo…"}
             </motion.div>
           )}
         </AnimatePresence>
@@ -684,7 +684,7 @@ function Bubble({ message }: { message: Message }) {
 
       <div className={cn("max-w-[82%] sm:max-w-[75%]", isJarvis ? "" : "order-1")}>
         {isJarvis ? (
-          <p className="mb-1 ml-1 text-[11px] font-semibold text-slate-400">Jarvis</p>
+          <p className="mb-1 ml-1 text-[11px] font-semibold text-slate-400">NEXO</p>
         ) : null}
         <div
           className={cn(

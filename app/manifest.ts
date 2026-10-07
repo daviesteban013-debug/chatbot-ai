@@ -3,8 +3,8 @@ import type { MetadataRoute } from "next";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: "/",
-    name: "Jarvis · Tu centro de mando",
-    short_name: "Jarvis",
+    name: "NEXO · Tu centro de mando",
+    short_name: "NEXO",
     description: "Tu agente de voz y tu CRM, en un mismo lugar.",
     lang: "es-CO",
     start_url: "/dashboard/jarvis",
@@ -19,7 +19,7 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: "/icons/jarvis-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
     shortcuts: [
-      { name: "Abrir Jarvis", url: "/dashboard/jarvis" },
+      { name: "Abrir NEXO", url: "/dashboard/jarvis" },
       { name: "Abrir CRM", url: "/dashboard" },
     ],
   };

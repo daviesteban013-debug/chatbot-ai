@@ -21,6 +21,60 @@ const DEFAULT_MODEL = 'gpt-4o-mini'
 const DEFAULT_TEMPERATURE = 0.2
 const DEFAULT_MAX_TOKENS = 2048
 
+const OPENAI_MODEL = 'gpt-6-luna'
+
+/** Server-only selection: an OpenAI key must never reach a legacy provider URL. */
+function connection(modelOverride?: string) {
+  const openaiKey = process.env.OPENAI_API_KEY?.trim()
+  if (openaiKey) return {
+    provider: 'openai' as const, apiKey: openaiKey,
+    baseUrl: DEFAULT_BASE_URL, model: OPENAI_MODEL,
+  }
+  return {
+    provider: 'compatible' as const,
+    apiKey: process.env.LLM_API_KEY?.trim(),
+    baseUrl: (process.env.LLM_BASE_URL?.trim() || DEFAULT_BASE_URL).replace(/\/+$/, ''),
+    model: modelOverride || process.env.LLM_MODEL?.trim() || DEFAULT_MODEL,
+  }
+}
+
+export function configuredModel(fallback?: string): string {
+  return connection(process.env.LLM_MODEL?.trim() || fallback).model
+}
+
+/** Contains no credentials or custom endpoints; safe for local diagnostics. */
+export function llmStatus() {
+  const config = connection()
+  return { provider: config.provider, model: config.model, ready: Boolean(config.apiKey),
+    keyVariable: config.provider === 'openai' ? 'OPENAI_API_KEY' : 'LLM_API_KEY' }
+}
+
+function completionBody(messages: LLMMessage[], tools: LLMTool[] | undefined, options: ChatOptions | undefined) {
+  const config = connection(options?.model)
+  if (!config.apiKey) throw new Error('OPENAI_API_KEY o LLM_API_KEY environment variable is required')
+  const body: Record<string, unknown> = {
+    model: config.model, messages, temperature: options?.temperature ?? DEFAULT_TEMPERATURE,
+    ...(config.provider === 'openai'
+      // Luna supports Chat Completions function calls with reasoning disabled.
+      ? { reasoning_effort: 'none', max_completion_tokens: options?.maxTokens ?? DEFAULT_MAX_TOKENS }
+      : { max_tokens: options?.maxTokens ?? DEFAULT_MAX_TOKENS }),
+  }
+  if (tools?.length) {
+    body.tools = tools
+    body.tool_choice = options?.toolChoice ?? 'auto'
+  }
+  return { ...config, body }
+}
+
+async function providerError(response: Response): Promise<Error> {
+  // Provider bodies can echo credentials, prompts or records. Never forward them.
+  await response.body?.cancel().catch(() => {})
+  const help = response.status === 401 ? 'Revisa la clave API del proveedor.'
+    : response.status === 429 ? 'Revisa el saldo, la cuota y los límites del proveedor.'
+    : 'No se pudo completar la solicitud al proveedor.'
+  return new Error(`LLM API error ${response.status}: ${help}`)
+}
+
 function readUsage(value: unknown): { tokensIn: number; tokensOut: number } {
   const usage = value as { prompt_tokens?: unknown; completion_tokens?: unknown } | null;
   if (!usage || typeof usage.prompt_tokens !== 'number' || typeof usage.completion_tokens !== 'number'
@@ -41,28 +95,7 @@ export async function chatCompletion(
   tools?: LLMTool[],
   options?: ChatOptions
 ): Promise<LLMResponse> {
-  const baseUrl = process.env.LLM_BASE_URL || DEFAULT_BASE_URL
-  const apiKey = process.env.LLM_API_KEY
-  const model = options?.model || process.env.LLM_MODEL || DEFAULT_MODEL
-  const temperature = options?.temperature ?? DEFAULT_TEMPERATURE
-  const maxTokens = options?.maxTokens ?? DEFAULT_MAX_TOKENS
-  const toolChoice = options?.toolChoice ?? 'auto'
-
-  if (!apiKey) {
-    throw new Error('LLM_API_KEY environment variable is required')
-  }
-
-  const body: Record<string, unknown> = {
-    model,
-    messages,
-    temperature,
-    max_tokens: maxTokens,
-  }
-
-  if (tools && tools.length > 0) {
-    body.tools = tools
-    body.tool_choice = toolChoice
-  }
+  const { baseUrl, apiKey, model, body } = completionBody(messages, tools, options)
 
   const startTime = Date.now()
   const signal = options?.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(45_000)]) : AbortSignal.timeout(45_000)
@@ -96,15 +129,11 @@ export async function chatCompletion(
           await sleep(delay)
           continue
         }
-        throw new Error(
-          `LLM API error ${response.status}: ${await response.text()}`
-        )
+        throw await providerError(response)
       }
 
       if (!response.ok) {
-        throw new Error(
-          `LLM API error ${response.status}: ${await response.text()}`
-        )
+        throw await providerError(response)
       }
 
       const data = await response.json()
@@ -199,30 +228,9 @@ export async function* chatCompletionStream(
   tools?: LLMTool[],
   options?: ChatOptions
 ): AsyncGenerator<LLMStreamEvent, void, unknown> {
-  const baseUrl = process.env.LLM_BASE_URL || DEFAULT_BASE_URL;
-  const apiKey = process.env.LLM_API_KEY;
-  const model = options?.model || process.env.LLM_MODEL || DEFAULT_MODEL;
-  const temperature = options?.temperature ?? DEFAULT_TEMPERATURE;
-  const maxTokens = options?.maxTokens ?? DEFAULT_MAX_TOKENS;
-  const toolChoice = options?.toolChoice ?? 'auto';
-
-  if (!apiKey) {
-    throw new Error('LLM_API_KEY environment variable is required');
-  }
-
-  const body: Record<string, unknown> = {
-    model,
-    messages,
-    temperature,
-    max_tokens: maxTokens,
-    stream: true,
-    stream_options: { include_usage: true },
-  };
-
-  if (tools && tools.length > 0) {
-    body.tools = tools;
-    body.tool_choice = toolChoice;
-  }
+  const { baseUrl, apiKey, model, body } = completionBody(messages, tools, options);
+  body.stream = true;
+  body.stream_options = { include_usage: true };
 
   const signal = options?.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(45_000)]) : AbortSignal.timeout(45_000);
   signal.throwIfAborted();
@@ -239,8 +247,7 @@ export async function* chatCompletionStream(
 
   if (!response.ok) {
     options?.onRejected?.();
-    const errorText = await response.text().catch(() => '');
-    throw new Error(`LLM stream error ${response.status}: ${errorText}`);
+    throw await providerError(response);
   }
 
   if (!response.body) {

@@ -6,7 +6,7 @@ import { OnboardingChat } from "./onboarding-chat";
 export const metadata: Metadata = {
   title: "Configura tu asistente — Chatbot.ai",
   description:
-    "Jarvis te guía paso a paso para dejar tu agente de ventas listo.",
+    "NEXO te guía paso a paso para dejar tu agente de ventas listo.",
 };
 
 /**

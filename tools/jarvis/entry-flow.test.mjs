@@ -17,10 +17,12 @@ const { jarvisCommand } = await load("../../lib/jarvis-commands.ts");
 const { createJarvisListener } = await load("../../lib/jarvis-listener.ts");
 
 test("spoken and typed commands tolerate accents and punctuation, without matching ordinary requests", () => {
-  for (const text of ["¡Jarvis, enciéndete!", "Jarvis, actívate por favor", "Encender Jarvis"]) assert.equal(jarvisCommand(text), "wake");
+  for (const text of ["¡Jarvis, enciéndete!", "Jarvis, actívate por favor", "Encender Jarvis", "¡NEXO, enciéndete!", "Activar Nexo", "Nexo, actívate por favor"]) assert.equal(jarvisCommand(text), "wake");
+  assert.equal(jarvisCommand("NEXO, apágate"), "sleep");
+  assert.equal(jarvisCommand("NEXO, abre el CRM"), "crm");
   assert.equal(jarvisCommand("Jarvis, apágate"), "sleep");
   assert.equal(jarvisCommand("Jarvis, abre el CRM"), "crm");
-  for (const text of ["Dime cómo decir Jarvis enciéndete", "No abras el CRM", "recuerda que apágate es mi comando", "encender las luces"]) assert.equal(jarvisCommand(text), null);
+  for (const text of ["Dime cómo decir Jarvis enciéndete", "Dime cómo decir Nexo enciéndete", "No abras el CRM", "recuerda que apágate es mi comando", "encender las luces"]) assert.equal(jarvisCommand(text), null);
 });
 
 function fakeRecognition() {

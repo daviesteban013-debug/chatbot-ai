@@ -15,10 +15,10 @@ export function FinalCta() {
           {"// Tu próximo cliente no quiere esperar"}
         </p>
         <h2 id="final-title" className="relative mx-auto mt-5 max-w-3xl text-balance text-4xl font-semibold leading-[1.05] tracking-[-0.05em] sm:text-6xl text-zinc-950">
-          El próximo mensaje<br />puede ser tu próxima venta.
+          Tu siguiente paso<br />empieza con NEXO.
         </h2>
         <p className="relative mx-auto mt-6 max-w-lg text-sm font-medium leading-7 text-zinc-800">
-          Dale a tu negocio un asistente inteligente que atienda mientras tú haces lo que mejor sabes. Empieza hoy, a tu ritmo.
+          Habla con tu agente, conoce tu negocio y conecta con tus clientes. Todo empieza con una conversación.
         </p>
         <Link
           href="/signup"

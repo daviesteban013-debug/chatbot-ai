@@ -79,7 +79,7 @@ export function createJarvisListener(recognition: Recognition, callbacks: {
     if (!mode || event.error === "no-speech" || (abortExpected && event.error === "aborted")) return;
     stop();
     const message = event.error === "not-allowed" || event.error === "service-not-allowed"
-      ? "Permite el micrófono en tu navegador o usa Encender Jarvis y el chat."
+      ? "Permite el micrófono en tu navegador o usa Encender NEXO y el chat."
       : event.error === "audio-capture"
         ? "El navegador no puede captar el micrófono. Comprueba que esté conectado y disponible."
         : event.error === "network"

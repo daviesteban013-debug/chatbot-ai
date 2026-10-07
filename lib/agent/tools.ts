@@ -603,9 +603,9 @@ function resolveLines(
 // ---------- Implementaciones de tools ----------
 
 /** 1. search_catalog — búsqueda de productos por texto libre. */
-async function searchCatalog(
+export async function searchCatalog(
   args: Record<string, unknown>,
-  ctx: ToolContext
+  ctx: Pick<ToolContext, "supabase" | "tenantId"> & { signal?: AbortSignal }
 ): Promise<ToolResult> {
   const parsed = searchCatalogSchema.safeParse(args);
   if (!parsed.success) return { ok: false, error: formatZodError(parsed.error) };
@@ -629,7 +629,8 @@ async function searchCatalog(
     builder = builder.eq("category", category);
   }
 
-  const { data: products, error } = await builder.order("name").limit(max_results);
+  const signal = ctx.signal ?? AbortSignal.timeout(10000);
+  const { data: products, error } = await builder.order("name").limit(max_results).abortSignal(signal);
   if (error) {
     return { ok: false, error: `Error consultando catálogo: ${error.message}` };
   }
@@ -642,12 +643,13 @@ async function searchCatalog(
   }
 
   const productIds = products.map((p) => p.id);
-  const { data: variantRows } = await ctx.supabase
+  const { data: variantRows, error: variantError } = await ctx.supabase
     .from("product_variants")
     .select("product_id, sku, color, size, stock_qty, reserved_qty, image_url")
     .eq("tenant_id", ctx.tenantId)
     .eq("active", true)
-    .in("product_id", productIds);
+    .in("product_id", productIds).abortSignal(signal);
+  if (variantError) return { ok: false, error: "No se pudo comprobar la disponibilidad de los productos." };
 
   const variantsByProduct = new Map<string, typeof variantRows>();
   for (const v of variantRows ?? []) {

@@ -24,7 +24,7 @@ export function DashboardSidebar({ tenantName }: { tenantName?: string }) {
             <Bot className="size-5" strokeWidth={2.4} />
           </span>
           <span className="min-w-0">
-            <span className="block font-semibold tracking-tight">Jarvis</span>
+            <span className="block font-semibold tracking-tight">NEXO</span>
             {tenantName ? (
               <span className="block max-w-[9rem] truncate text-[11px] text-slate-500">
                 {tenantName}

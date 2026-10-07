@@ -1,6 +1,6 @@
 /* Cache only this explicit set of public files. Never cache auth, CRM or API data. */
 const CACHE_PREFIX = "jarvis-public-";
-const CACHE_NAME = `${CACHE_PREFIX}v1`;
+const CACHE_NAME = `${CACHE_PREFIX}v2`;
 const PUBLIC_FILES = ["/offline.html", "/icons/jarvis-192.png", "/icons/jarvis-512.png", "/icons/jarvis-maskable-512.png"];
 
 self.addEventListener("install", event => {

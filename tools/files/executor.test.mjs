@@ -12,7 +12,7 @@ let state;
 beforeEach(() => { state = { calls: [], rows: [], foreign: false }; });
 globalThis.__filesExecutorDB = () => ({ from() {
   let inserted;
-  const q = { insert(row) { inserted = row; state.rows.push(row); return q; }, select() { return q; }, eq() { return q; }, order() { return q; }, limit() { return q; }, single: async () => ({ data: { id: "saved" } }), then(resolve, reject) { return Promise.resolve({ data: inserted ?? [], error: null }).then(resolve, reject); } };
+  const q = { insert(row) { inserted = row; state.rows.push(row); return q; }, select() { return q; }, eq() { return q; }, order() { return q; }, limit() { return q; }, abortSignal() { return q; }, single: async () => ({ data: { id: "saved" } }), then(resolve, reject) { return Promise.resolve({ data: inserted ?? [], error: null }).then(resolve, reject); } };
   return q;
 } });
 globalThis.__filesExecutorStream = async function* (account, messages, tools) {
@@ -25,9 +25,9 @@ globalThis.__filesExecutorStream = async function* (account, messages, tools) {
 const files = await load("../../lib/files/tools.ts", { "decimal.js": import.meta.resolve("decimal.js") });
 const { createAgentExecutor } = await import(await load("../../lib/agent/executor.ts", {
   "@/lib/supabase/admin": url("export const createAdminClient = () => globalThis.__filesExecutorDB();"),
-  "@/lib/llm": url("export const calculateCost = () => 0;"),
+  "@/lib/llm": url("export const calculateCost = () => 0; export const configuredModel = () => 'test-model';"),
   "@/lib/llm/metered": url("export const meteredChatCompletionStream = (...args) => globalThis.__filesExecutorStream(...args);"),
-  "./tools": url("export const AGENT_TOOLS = []; export const executeToolCall = () => { throw new Error('Business tool should not run'); };"),
+  "./web-tools": url("export const webCrmTools = () => []; export const executeWebToolCall = () => { throw new Error('Business tool should not run'); };"),
   "@/lib/jarvis": await load("../../lib/jarvis.ts"),
   "@/lib/jarvis-personalization": await load("../../lib/jarvis-personalization.ts"),
   "@/lib/files/tools": files,

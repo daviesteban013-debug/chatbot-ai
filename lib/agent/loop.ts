@@ -5,7 +5,7 @@
  */
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { calculateCost } from "@/lib/llm";
+import { calculateCost, configuredModel } from "@/lib/llm";
 import { meteredChatCompletion } from "@/lib/llm/metered";
 import type { LLMMessage, LLMResponse } from "@/lib/llm";
 import { AGENT_TOOLS, executeToolCall, type ToolContext, type ToolResult } from "./tools";
@@ -179,7 +179,7 @@ async function runAgentInner(
   let totalTokensOut = 0;
   const allToolCalls: ToolCallLog[] = [];
   let finalReply: string | null = null;
-  let modelUsed = agent.model;
+  let modelUsed = configuredModel(agent.model ?? undefined);
   let iterations = 0;
   let exhaustedIterations = false;
 
@@ -187,7 +187,7 @@ async function runAgentInner(
     iterations++;
 
     const response: LLMResponse = await meteredChatCompletion({ tenantId, channel: "whatsapp" }, messages, AGENT_TOOLS, {
-      model: process.env.LLM_MODEL || agent.model || undefined,
+      model: configuredModel(agent.model ?? undefined),
       temperature: 0.2,
     });
     totalTokensIn += response.tokensIn;

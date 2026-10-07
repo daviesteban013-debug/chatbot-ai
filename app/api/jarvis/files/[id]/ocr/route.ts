@@ -10,7 +10,7 @@ export const maxDuration = 60;
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   const headers = { "Cache-Control": "private, no-store", Vary: "Cookie", "X-Content-Type-Options": "nosniff" };
   const fail = (status: number, error: string) => Response.json({ error }, { status, headers });
-  if (request.headers.get("origin") && request.headers.get("origin") !== new URL(request.url).origin) return fail(403, "Lee el archivo desde Jarvis.");
+  if (request.headers.get("origin") && request.headers.get("origin") !== new URL(request.url).origin) return fail(403, "Lee el archivo desde NEXO.");
   try {
     const { id } = await context.params; if (!validFileId(id)) return fail(400, "Archivo no válido.");
     const { data, error: authError } = await (await createClient()).auth.getUser();

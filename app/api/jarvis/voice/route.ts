@@ -32,7 +32,7 @@ async function readBody(request: Request) {
 
 export async function POST(request: Request) {
   const origin = request.headers.get("origin");
-  if (origin && origin !== new URL(request.url).origin) return fail(403, "La solicitud de voz debe venir de Jarvis.");
+  if (origin && origin !== new URL(request.url).origin) return fail(403, "La solicitud de voz debe venir de NEXO.");
   let user;
   try {
     const supabase = await createClient();

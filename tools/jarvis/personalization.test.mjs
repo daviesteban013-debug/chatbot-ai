@@ -10,7 +10,14 @@ async function load(relative, replacements = {}) {
   return moduleUrl(ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } }).outputText);
 }
 const profileUrl = await load("../../lib/jarvis-personalization.ts");
+const { sanitizeJarvisConfig } = await import(await load("../../lib/jarvis.ts"));
 const { sanitizePersonalization, explicitMemory, speechSettings, selectVoice, spokenText, personalizationPrompt, MAX_MEMORIES } = await import(profileUrl);
+
+test("the default and legacy assistant become NEXO while custom business names survive", () => {
+  assert.equal(sanitizeJarvisConfig({}).name, "NEXO");
+  assert.equal(sanitizeJarvisConfig({ name: "Jarvis" }).name, "NEXO");
+  assert.equal(sanitizeJarvisConfig({ name: "Laura" }).name, "Laura");
+});
 
 test("old profiles get safe defaults; malformed values and unbounded memories are normalized", () => {
   const p = sanitizePersonalization({ voice: { rate: Infinity, pitch: -50, locale: "javascript:bad" }, memories: [null, " a ", "a", ...Array.from({ length: 40 }, (_, i) => `${i}`)] });
@@ -24,6 +31,7 @@ test("old profiles get safe defaults; malformed values and unbounded memories ar
 
 test("memory requires an explicit command rather than guessing personal information", () => {
   assert.equal(explicitMemory("Jarvis, recuerda que prefiero ejemplos"), "prefiero ejemplos");
+  assert.equal(explicitMemory("NEXO, recuerda que prefiero ejemplos"), "prefiero ejemplos");
   assert.equal(explicitMemory("RECUERDA QUE soy vegetariano"), "soy vegetariano");
   assert.equal(explicitMemory("me gustan los ejemplos"), null);
   assert.equal(explicitMemory("¿Qué significa recuerda que?"), null);
@@ -156,6 +164,13 @@ test("forged tenant and session IDs cannot use another user's tools or history",
   assert.equal(state.sessions.get("session_1").user_id, "someone-else");
   assert.equal(globalThis.__jarvisTestParams, null);
   assert.deepEqual(await (await GET({ nextUrl: new URL("https://example.com/api/chat?sessionId=session_1") })).json(), { messages: [] });
+});
+
+test("web tool permissions use the database membership role, never a role sent by the browser", async () => {
+  reset(); state.member.role = "viewer";
+  await (await POST(request("consulta mis pedidos", { role: "owner" }))).text();
+  assert.equal(globalThis.__jarvisTestParams.role, "viewer");
+  assert.equal(globalThis.__jarvisTestParams.tenantId, "tenant-1");
 });
 
 test("saving the personal panel persists voice controls and removes memories only for the authenticated account", async () => {

@@ -75,7 +75,7 @@ function worker() {
   const self = { location: { origin: "https://app.example" }, addEventListener: (name, fn) => { handlers[name] = fn; }, skipWaiting: async () => {}, clients: { claim: async () => {} } };
   const caches = {
     open: async () => ({ addAll: async files => { writes.push(...files); } }),
-    keys: async () => ["jarvis-public-v0", "jarvis-public-v1", "another-app-cache"],
+    keys: async () => ["jarvis-public-v0", "jarvis-public-v1", "jarvis-public-v2", "another-app-cache"],
     delete: async key => { deleted.push(key); return true; },
     match: async path => path === "/offline.html" ? offline : new Response("Public icon"),
   };
@@ -99,7 +99,7 @@ test("service worker precaches only public files and only deletes its own outdat
   }
   let activated;
   w.handlers.activate({ waitUntil: promise => { activated = promise; } }); await activated;
-  assert.deepEqual(w.deleted, ["jarvis-public-v0"]);
+  assert.deepEqual(w.deleted, ["jarvis-public-v0", "jarvis-public-v1"]);
 });
 test("private navigation remains network-only, never replaying account responses or session cookies offline", async () => {
   const w = worker();

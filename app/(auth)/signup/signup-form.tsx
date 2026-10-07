@@ -65,7 +65,7 @@ export function SignupForm() {
     <div className={styles.envelope}><Mail size={28} /></div>
     <span className={styles.eyebrow}>UN ÚLTIMO PASO</span>
     <h1 className={styles.heading}>Confirma tu correo.</h1>
-    <p className={styles.description}>Revisa <strong className={styles.email}>{values.email}</strong> y abre el enlace para entrar a Jarvis. Si ya tienes una cuenta, inicia sesión.</p>
+    <p className={styles.description}>Revisa <strong className={styles.email}>{values.email}</strong> y abre el enlace para entrar a NEXO. Si ya tienes una cuenta, inicia sesión.</p>
     <p className={styles.description}>¿No aparece? Revisa spam o solicita otro correo.</p>
     <ResendConfirmation email={values.email} initiallySent />
     <Link href="/login" className={styles.primary} style={{ marginTop: 24 }}>Ir a iniciar sesión <ArrowRight size={16} /></Link>
@@ -74,7 +74,7 @@ export function SignupForm() {
 
   return <div>
     <span className={styles.eyebrow}>EMPECEMOS ALGO GRANDE</span>
-    <h1 className={styles.heading}>Conoce a tu Jarvis.</h1>
+    <h1 className={styles.heading}>Conoce a tu NEXO.</h1>
     <p className={styles.description}>Crea tu cuenta. Tu agente será lo primero que verás.</p>
     <GoogleSignIn disabled={busy} onBusy={setGoogleBusy} onError={setFormError} />
     <div className={styles.divider}>o regístrate con tu correo</div>

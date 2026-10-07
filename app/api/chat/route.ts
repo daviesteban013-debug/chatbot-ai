@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { explicitMemory, MAX_MEMORIES, sanitizePersonalization } from "@/lib/jarvis-personalization";
 import { FileAccessError, loadChatFiles } from "@/lib/files/server";
 import { MAX_ATTACHMENTS, validFileId } from "@/lib/files/types";
+import type { TenantMemberRole } from "@/lib/database.types";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -96,8 +97,9 @@ export async function POST(request: NextRequest) {
     const userId = user?.id ?? null;
     if (attachmentIds.length && (!user || user.is_anonymous)) return NextResponse.json({ error: "Inicia sesión para usar adjuntos." }, { status: 401 });
     let resolvedTenantId: string | null = null;
+    let resolvedRole: TenantMemberRole | null = null;
     if (user) {
-      let memberQuery = supabaseServer.from("tenant_members").select("tenant_id").eq("user_id", user.id);
+      let memberQuery = supabaseServer.from("tenant_members").select("tenant_id, role").eq("user_id", user.id);
       if (bodyTenantId) {
         if (typeof bodyTenantId !== "string") return NextResponse.json({ error: "Negocio no válido" }, { status: 400 });
         memberQuery = memberQuery.eq("tenant_id", bodyTenantId);
@@ -106,6 +108,7 @@ export async function POST(request: NextRequest) {
       if (memberError) return NextResponse.json({ error: "No se pudo verificar tu negocio" }, { status: 503 });
       if (bodyTenantId && !member) return NextResponse.json({ error: "No tienes acceso a este negocio" }, { status: 403 });
       resolvedTenantId = member?.tenant_id ?? null;
+      resolvedRole = member?.role ?? null;
     } else if (bodyTenantId) {
       return NextResponse.json({ error: "Inicia sesión para acceder a tu negocio" }, { status: 401 });
     }
@@ -149,6 +152,7 @@ export async function POST(request: NextRequest) {
       sessionId,
       userMessage: userMessage.trim(),
       tenantId: resolvedTenantId,
+      role: resolvedRole,
       userId,
       personalization,
       spokenResponse: body.spokenResponse === true,

@@ -36,7 +36,9 @@ const metered = await import(await load("../../lib/llm/metered.ts", { "./client"
 const originalFetch = globalThis.fetch;
 const originalKey = process.env.LLM_API_KEY;
 const originalUrl = process.env.LLM_BASE_URL;
+const originalOpenaiKey = process.env.OPENAI_API_KEY;
 beforeEach(() => {
+  delete process.env.OPENAI_API_KEY;
   process.env.LLM_API_KEY = "test-placeholder"; process.env.LLM_BASE_URL = "https://provider.invalid";
   state = {quota:100000,used:0,reserved:0,settlements:0,releases:0,calls:0,requests:new Map()};
 });
@@ -44,6 +46,7 @@ after(() => {
   globalThis.fetch = originalFetch;
   if (originalKey === undefined) delete process.env.LLM_API_KEY; else process.env.LLM_API_KEY = originalKey;
   if (originalUrl === undefined) delete process.env.LLM_BASE_URL; else process.env.LLM_BASE_URL = originalUrl;
+  if (originalOpenaiKey === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = originalOpenaiKey;
 });
 const messages = [{role:"user",content:"Hola"}];
 const account = {tenantId:"tenant-1",channel:"web"};
@@ -162,4 +165,87 @@ test("a pre-aborted request never reaches the provider and releases its reservat
   globalThis.fetch = async () => { state.calls++; return streamResponse(); };
   await assert.rejects(collect(metered.meteredChatCompletionStream(account,messages,undefined,{signal:controller.signal})),error=>error.name==="AbortError");
   assert.equal(state.calls,0); assert.equal(state.reserved,0);
+});
+
+const crmTools = [{ type: "function", function: { name: "search_customers", description: "Buscar clientes", parameters: { type: "object", properties: { query: { type: "string" } } } } }];
+const toolCall = { id: "call_crm", type: "function", function: { name: "search_customers", arguments: '{"query":"Ana"}' } };
+
+test("OpenAI key selects Luna at the official endpoint despite legacy URL and model overrides", async () => {
+  process.env.OPENAI_API_KEY = " openai-test-placeholder ";
+  globalThis.fetch = async (endpoint, options) => {
+    assert.equal(endpoint, "https://api.openai.com/v1/chat/completions");
+    assert.equal(options.headers.Authorization, "Bearer openai-test-placeholder");
+    const body = JSON.parse(options.body);
+    assert.equal(body.model, "gpt-6-luna");
+    assert.equal(body.reasoning_effort, "none");
+    assert.equal(body.max_completion_tokens, 700);
+    assert.ok(!("max_tokens" in body));
+    assert.deepEqual(body.tools, crmTools);
+    assert.equal(body.tool_choice, "auto");
+    return Response.json({ model: "gpt-6-luna", choices: [{ message: { content: null, tool_calls: [toolCall] } }], usage: { prompt_tokens: 100, completion_tokens: 50 } });
+  };
+  const result = await metered.meteredChatCompletion(account, messages, crmTools, { model: "old-business-model", maxTokens: 700 });
+  assert.deepEqual(result.toolCalls, [toolCall]);
+  assert.equal(result.model, "gpt-6-luna");
+  assert.equal(state.used, 150); assert.equal(state.settlements, 1); assert.equal(state.reserved, 0);
+  assert.equal(raw.configuredModel("old-business-model"), "gpt-6-luna");
+  assert.deepEqual(raw.llmStatus(), { provider: "openai", model: "gpt-6-luna", ready: true, keyVariable: "OPENAI_API_KEY" });
+});
+
+test("Luna streams CRM tool fragments and uses the reduced credit output budget", async () => {
+  process.env.OPENAI_API_KEY = "openai-test-placeholder";
+  const { inputReservation } = await import(serverUrl);
+  state.quota = inputReservation(messages, crmTools) + 100;
+  globalThis.fetch = async (endpoint, options) => {
+    assert.equal(endpoint, "https://api.openai.com/v1/chat/completions");
+    const body = JSON.parse(options.body);
+    assert.equal(body.max_completion_tokens, 100);
+    assert.equal(body.reasoning_effort, "none");
+    assert.deepEqual(body.stream_options, { include_usage: true });
+    assert.deepEqual(body.tools, crmTools);
+    const rows = [
+      { model: "gpt-6-luna", choices: [{ delta: { tool_calls: [{ index: 0, id: "call_crm", function: { name: "search_customers", arguments: '{"query":' } }] } }] },
+      { choices: [{ delta: { tool_calls: [{ index: 0, function: { arguments: '"Ana"}' } }] }, finish_reason: "tool_calls" }] },
+      { choices: [], usage: { prompt_tokens: 25, completion_tokens: 50 } },
+    ];
+    return streamResponse(rows.map(row => `data: ${JSON.stringify(row)}\n\n`).join("") + "data: [DONE]\n", true);
+  };
+  const events = await collect(metered.meteredChatCompletionStream(account, messages, crmTools));
+  assert.deepEqual(events.find(event => event.type === "tool_calls").toolCalls, [toolCall]);
+  assert.equal(events.at(-1).model, "gpt-6-luna");
+  assert.equal(state.used, 75); assert.equal(state.settlements, 1); assert.equal(state.reserved, 0);
+});
+
+test("blank or missing OpenAI key retains the compatible provider", async () => {
+  for (const key of [undefined, "   "]) {
+    if (key === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = key;
+    globalThis.fetch = async (endpoint, options) => {
+      assert.equal(endpoint, "https://provider.invalid/chat/completions");
+      assert.equal(options.headers.Authorization, "Bearer test-placeholder");
+      const body = JSON.parse(options.body);
+      assert.equal(body.model, "legacy-model");
+      assert.equal(body.max_tokens, 500);
+      assert.ok(!("reasoning_effort" in body));
+      return streamResponse();
+    };
+    await collect(raw.chatCompletionStream(messages, undefined, { model: "legacy-model", maxTokens: 500 }));
+    assert.equal(raw.llmStatus().provider, "compatible");
+  }
+});
+
+test("OpenAI 401/429 never expose provider bodies or fall back to the compatible key", async () => {
+  process.env.OPENAI_API_KEY = "openai-test-placeholder";
+  for (const streaming of [false, true]) for (const status of [401, 429]) {
+    const before = state.calls;
+    globalThis.fetch = async endpoint => {
+      state.calls++;
+      assert.equal(endpoint, "https://api.openai.com/v1/chat/completions");
+      return new Response("sensitive-provider-body", { status, headers: { "retry-after": "0" } });
+    };
+    const call = streaming ? collect(metered.meteredChatCompletionStream(account, messages)) : metered.meteredChatCompletion(account, messages);
+    await assert.rejects(call, error => error.message.includes(String(status)) && !error.message.includes("sensitive-provider-body"));
+    assert.equal(state.calls - before, !streaming && status === 429 ? 3 : 1);
+    assert.equal(state.reserved, 0); assert.equal(state.used, 0);
+  }
+  assert.equal(state.releases, 4);
 });

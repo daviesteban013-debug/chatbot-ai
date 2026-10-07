@@ -19,6 +19,6 @@ export default async function FinishPage({ searchParams }: { searchParams: Promi
     <h1 className={styles.heading}>Preparar tu espacio.</h1>
     <p className={styles.description}>No pudimos completar la preparación de tu negocio. Puedes volver a intentarlo sin crear otra cuenta.</p>
     {error && <p role="alert" className={styles.error}>Todavía no pudimos conectar tu negocio. Intenta de nuevo en unos momentos.</p>}
-    <form action={retry} style={{ marginTop: 24 }}><button type="submit" className={styles.primary}>Preparar y entrar a Jarvis</button></form>
+    <form action={retry} style={{ marginTop: 24 }}><button type="submit" className={styles.primary}>Preparar y entrar a NEXO</button></form>
   </div>;
 }

@@ -6,7 +6,7 @@ import { jarvisDefaults, sanitizeJarvisConfig } from "@/lib/jarvis";
 import { JarvisView } from "./jarvis-view";
 import { voiceAvailability } from "@/lib/voice/elevenlabs";
 
-export const metadata = { title: "Jarvis · Asistente IA 3D" };
+export const metadata = { title: "NEXO · Asistente IA 3D" };
 
 export default async function JarvisPage() {
   const tenantContext = await getCurrentTenant();

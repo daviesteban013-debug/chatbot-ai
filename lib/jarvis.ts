@@ -10,7 +10,7 @@ export interface JarvisConfig {
 }
 
 export const jarvisDefaults: JarvisConfig = {
-  name: "Jarvis",
+  name: "NEXO",
   business: "",
   tone: "cercano",
   accent: "#facc15",
@@ -31,7 +31,7 @@ export function sanitizeJarvisConfig(input: unknown): JarvisConfig {
     typeof v === "string" ? v.slice(0, max) : fallback;
   const d = jarvisDefaults;
   return {
-    name: str(o.name, 24, d.name),
+    name: typeof o.name === "string" && o.name.trim().toLowerCase() === "jarvis" ? d.name : str(o.name, 24, d.name),
     business: str(o.business, 48, d.business),
     tone: jarvisTones.includes(o.tone as string) ? (o.tone as string) : d.tone,
     accent: jarvisAccents.includes(o.accent as string) ? (o.accent as string) : d.accent,

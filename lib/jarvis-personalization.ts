@@ -60,7 +60,7 @@ export function sanitizePersonalization(input: unknown): JarvisPersonalization {
 
 /** Only an explicit command at the start of a message creates lasting memory. */
 export function explicitMemory(message: string): string | null {
-  const match = message.trim().match(/^(?:jarvis[,\s]+)?recuerda\s+que\s+([\s\S]+)$/i);
+  const match = message.trim().match(/^(?:(?:nexo|jarvis)[,\s]+)?recuerda\s+que\s+([\s\S]+)$/i);
   return match?.[1]?.trim() || null;
 }
 

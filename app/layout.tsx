@@ -10,11 +10,11 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Nexo — Tu asistente de ventas con IA",
+  title: "NEXO — Una voz. Todo tu negocio.",
   description:
-    "Automatiza conversaciones, citas y ventas por WhatsApp con un asistente de inteligencia artificial.",
-  applicationName: "Jarvis",
-  appleWebApp: { capable: true, title: "Jarvis", statusBarStyle: "black-translucent" },
+    "Conoce a NEXO, tu agente de IA. Habla con él, consulta tu CRM y conecta con tus clientes por WhatsApp.",
+  applicationName: "NEXO",
+  appleWebApp: { capable: true, title: "NEXO", statusBarStyle: "black-translucent" },
   icons: { icon: "/icons/jarvis-192.png", apple: "/icons/jarvis-apple-180.png" },
 };
 

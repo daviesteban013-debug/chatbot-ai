@@ -76,7 +76,7 @@ export function JarvisLiveChat({
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold text-zinc-100">
-                Jarvis Neural Core
+                NEXO Neural Core
               </span>
               <span className="rounded-full bg-yellow-400/10 px-1.5 py-0.2 text-[9px] font-mono font-medium text-yellow-300 border border-yellow-400/20">
                 LIVE
@@ -153,7 +153,7 @@ export function JarvisLiveChat({
         {state === "PROCESSING" && (
           <div className="flex items-center gap-2 text-zinc-400 text-[11px] font-mono py-1">
             <Zap className="size-3 text-sky-400 animate-spin" />
-            <span>Jarvis procesando respuesta en streaming...</span>
+            <span>NEXO procesando respuesta en streaming...</span>
           </div>
         )}
 
@@ -197,8 +197,8 @@ export function JarvisLiveChat({
             state === "PROCESSING"
               ? "Procesando..."
               : state === "SPEAKING"
-              ? "Jarvis respondiendo..."
-              : "Habla con Jarvis..."
+              ? "NEXO respondiendo..."
+              : "Habla con NEXO..."
           }
           disabled={isLoading}
           className="min-w-0 flex-1 rounded-xl border border-white/10 bg-zinc-900/90 px-3.5 py-2.5 text-xs text-zinc-100 outline-none transition placeholder:text-zinc-500 focus:border-yellow-400/40 focus:ring-1 focus:ring-yellow-400/30 disabled:opacity-60"

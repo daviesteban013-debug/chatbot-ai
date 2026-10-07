@@ -30,7 +30,7 @@ export function LandingNavbar() {
           <span className="flex size-9 items-center justify-center rounded-xl bg-yellow-400 text-zinc-950 shadow-lg shadow-yellow-400/20">
             <Bot className="size-5" strokeWidth={2.4} />
           </span>
-          <span className="text-sm font-semibold tracking-tight text-white">Nexo</span>
+          <span className="text-lg font-semibold tracking-tight text-white">Nexo<span className="text-yellow-300">.ai</span></span>
         </Link>
 
         <div className="hidden items-center gap-6 text-xs text-zinc-400 lg:flex">

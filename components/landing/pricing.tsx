@@ -17,7 +17,7 @@ export function Pricing() {
           <button type="button" aria-pressed={annual} onClick={() => setAnnual(true)} className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-xs font-medium ${annual ? "bg-zinc-700 text-white" : "text-zinc-400"}`}>Anual <span className="text-[10px] text-yellow-300">−20%</span></button>
         </div>
       </div>
-      <p className="mt-6 text-xs leading-relaxed text-zinc-500">1 crédito = 1.000 tokens de entrada y salida. Jarvis y WhatsApp comparten el cupo, que se renueva cada mes incluso con pago anual. Tarifas en USD; impuestos y cargos de Meta no incluidos.</p>
+      <p className="mt-6 text-xs leading-relaxed text-zinc-500">NEXO y WhatsApp comparten tus créditos. El cupo se renueva cada mes, incluso con pago anual. Consulta el porcentaje disponible desde tu panel. Tarifas en USD; impuestos y cargos de Meta no incluidos.</p>
       <div className="mt-8 grid gap-5 lg:grid-cols-3">{plans.map((plan) => {
         const monthly = annual ? plan.price * 0.8 : plan.price;
         return <article key={plan.name} className={`cyber-card relative flex flex-col overflow-hidden rounded-3xl border p-6 backdrop-blur-xl sm:p-8 ${plan.featured ? "border-yellow-300/60 bg-[linear-gradient(160deg,#facc1518,#18181b_60%)] shadow-[0_0_70px_rgba(250,204,21,0.16)] ring-1 ring-yellow-400/30" : "border-white/10 bg-zinc-900/40"}`}>

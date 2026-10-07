@@ -50,7 +50,7 @@ export function JarvisStudio({ initial, plan, justPaid, claimError, onSaved }: {
   }
 
   const tone = tones.find((t) => t.id === cfg.tone) ?? tones[0];
-  const welcome = cfg.welcome.replaceAll("{agente}", cfg.name || "Jarvis").replaceAll("{negocio}", cfg.business || "tu negocio");
+  const welcome = cfg.welcome.replaceAll("{agente}", cfg.name || "NEXO").replaceAll("{negocio}", cfg.business || "tu negocio");
 
   return (
     <div className="landing-root cyber-grid-pattern min-h-svh px-4 py-8 sm:px-8">
@@ -69,7 +69,7 @@ export function JarvisStudio({ initial, plan, justPaid, claimError, onSaved }: {
         )}
 
         <header>
-          <p className="landing-eyebrow">Jarvis · Estudio del agente</p>
+          <p className="landing-eyebrow">NEXO · Estudio del agente</p>
           <h1 className="landing-title">Diseña el asistente de tu negocio.</h1>
           <p className="landing-copy">Define su nombre, tono y reglas. Mira en vivo cómo respondería en WhatsApp.</p>
         </header>
@@ -138,7 +138,7 @@ export function JarvisStudio({ initial, plan, justPaid, claimError, onSaved }: {
             <div className="overflow-hidden rounded-3xl border border-white/10 bg-zinc-900/60 backdrop-blur-xl" style={{ boxShadow: `0 0 60px ${cfg.accent}22` }}>
               <div className="flex items-center gap-3 border-b border-white/10 bg-zinc-900 px-5 py-4">
                 <span className="flex size-10 items-center justify-center rounded-full text-zinc-950" style={{ background: cfg.accent }}><Bot className="size-5" /></span>
-                <div><p className="text-sm font-medium text-white">{cfg.name || "Jarvis"}</p><p className="text-[11px] text-emerald-400">en línea</p></div>
+                <div><p className="text-sm font-medium text-white">{cfg.name || "NEXO"}</p><p className="text-[11px] text-emerald-400">en línea</p></div>
                 <MessageCircle className="ml-auto size-4 text-zinc-600" />
               </div>
               <div className="space-y-3 p-5 text-sm">

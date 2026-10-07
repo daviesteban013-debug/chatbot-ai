@@ -230,7 +230,7 @@ export function JarvisLiquidAvatar({ powered, state, accent, onActivate }: Liqui
   return (
     <button ref={hostRef} type="button" className={styles.avatar} data-powered={powered} data-state={state}
       style={{ "--liquid-accent": accent } as CSSProperties}
-      aria-label={powered ? "Tocar a Jarvis" : "Encender Jarvis desde el avatar"}
+      aria-label={powered ? "Tocar a NEXO" : "Encender NEXO desde el avatar"}
       onClick={() => { touch.current(); if (!powered) onActivate(); }}>
       <span aria-hidden="true" className={styles.halo} />
       <span aria-hidden="true" className={styles.shadow} />
