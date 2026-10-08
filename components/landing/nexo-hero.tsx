@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { useState } from "react";
 import { ArrowDown, ArrowRight, AudioLines, Check, MessageCircle, Package, Users } from "lucide-react";
 import styles from "./nexo-hero.module.css";
+import { DesktopDownloadLink } from "@/components/desktop/download-link";
 
 const LiquidAvatar = dynamic(() => import("@/components/jarvis/liquid-avatar").then(module => module.JarvisLiquidAvatar), {
   ssr: false,
@@ -28,6 +29,7 @@ export function NexoHero() {
         <p className={styles.description}>Una voz. Todo tu negocio.<br /><span>Conoce a tu agente de IA: habla con él, consulta tu CRM y encuentra tu siguiente paso.</span></p>
         <div className={styles.actions}>
           <Link href="/signup" className="landing-primary">Conoce a NEXO <ArrowRight size={17} /></Link>
+          <DesktopDownloadLink />
           <a href="#demo" className={styles.secondary}>Explora la demo <ArrowDown size={15} /></a>
         </div>
         <p className={styles.note}><Check size={13} /> Empieza gratis <span>·</span> Sin tarjeta</p>

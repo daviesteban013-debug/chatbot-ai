@@ -7,6 +7,7 @@ import { signOut } from "@/app/dashboard/actions";
 import { navItems } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 import { InstallJarvisButton } from "@/components/pwa/app-provider";
+import { DesktopDownloadLink } from "@/components/desktop/download-link";
 
 export function DashboardSidebar({ tenantName }: { tenantName?: string }) {
   const pathname = usePathname();
@@ -55,7 +56,7 @@ export function DashboardSidebar({ tenantName }: { tenantName?: string }) {
         ))}
       </nav>
 
-      <div className="px-4 pb-3"><InstallJarvisButton className="w-full" /></div>
+      <div className="space-y-2 px-4 pb-3"><DesktopDownloadLink className="w-full" /><InstallJarvisButton className="w-full" /></div>
       <div className="mt-auto hidden p-4 lg:block">
         <Link
           href="/dashboard/agent"

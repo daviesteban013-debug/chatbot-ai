@@ -96,7 +96,7 @@ export function JarvisAppProvider({ children }: { children: ReactNode }) {
             {/* Static native app asset, not remote content. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/icons/jarvis-192.png" width="48" height="48" alt="" className="rounded-xl" />
-            <h2 id="jarvis-install-title" className="text-lg font-semibold">Instala NEXO</h2>
+            <h2 id="jarvis-install-title" className="text-lg font-semibold">Instala la app web de NEXO</h2>
           </div>
           <button type="button" onClick={() => setInstructionsOpen(false)} aria-label="Cerrar instrucciones de instalación" className="rounded-lg p-2 text-zinc-400 hover:bg-white/10 hover:text-white"><X className="size-5" /></button>
         </div>
@@ -120,5 +120,5 @@ export function JarvisAppProvider({ children }: { children: ReactNode }) {
 export function InstallJarvisButton({ className = "", compact = false }: { className?: string; compact?: boolean }) {
   const { installed, pending, install } = useContext(AppInstallContext);
   if (installed) return null;
-  return <button data-pwa-install type="button" disabled={pending} onClick={install} title="Instalar NEXO como app" className={`inline-flex items-center justify-center gap-2 rounded-xl border border-yellow-300/25 bg-yellow-300/10 px-3 py-2 text-xs font-medium text-yellow-200 transition hover:bg-yellow-300/20 disabled:opacity-50 ${className}`}><Download className="size-4" /><span className={compact ? "sr-only sm:not-sr-only" : ""}>{pending ? "Abriendo…" : "Instalar app"}</span></button>;
+  return <button data-pwa-install type="button" disabled={pending} onClick={install} title="Instalar la app web de NEXO" className={`inline-flex items-center justify-center gap-2 rounded-xl border border-yellow-300/25 bg-yellow-300/10 px-3 py-2 text-xs font-medium text-yellow-200 transition hover:bg-yellow-300/20 disabled:opacity-50 ${className}`}><Download className="size-4" /><span className={compact ? "sr-only sm:not-sr-only" : ""}>{pending ? "Abriendo…" : "Instalar app web"}</span></button>;
 }

@@ -18,6 +18,7 @@ import { jarvisCommand, jarvisCommandPanel } from "@/lib/jarvis-commands";
 import { DesktopBubble, useDesktopMode } from "@/components/jarvis/desktop-bubble";
 import { JarvisPersonalizationPanel } from "./jarvis-personalization";
 import { InstallJarvisButton } from "@/components/pwa/app-provider";
+import { DesktopDownloadLink } from "@/components/desktop/download-link";
 import { CreditBalancePanel } from "@/components/dashboard/credit-balance";
 import { useJarvisFiles } from "@/hooks/useJarvisFiles";
 import { FILE_ACCEPT } from "@/lib/files/types";
@@ -341,6 +342,7 @@ function JarvisFullscreenInner({
             {onSwitchToStudio && <button type="button" onClick={() => { exit(); onSwitchToStudio(); }}><Sliders size={18} />Configuración del agente</button>}
             <Link href="/dashboard" onClick={exit}><LayoutDashboard size={18} />Abrir CRM</Link>
             <Link href="/dashboard/billing" onClick={exit}><LayoutDashboard size={18} />Planes y pagos</Link>
+            <DesktopDownloadLink />
             <InstallJarvisButton />
             <p className={styles.help}>Para los aplausos, pulsa «Activar 2 aplausos» y permite el micrófono. Deja esta pantalla abierta y da dos aplausos separados por medio segundo. La escucha se apaga al encender, cambiar de pestaña o salir.</p>
             <p className={styles.help}>Al encender NEXO se activa la escucha continua con permiso del micrófono. Espera a que termine de hablar y dile tu siguiente instrucción: no necesitas pulsar el micrófono en cada turno. Puedes pausar la escucha con su botón o decir «NEXO, apágate» o «NEXO, abre el CRM». Mientras hablo, abres un panel o cambias de pestaña, la escucha queda en pausa.</p>

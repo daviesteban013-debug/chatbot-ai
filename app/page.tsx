@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { NexoConstellation } from "@/components/landing/nexo-constellation";
 import { NexoHero } from "@/components/landing/nexo-hero";
+import { DesktopDownloadSection } from "@/components/landing/desktop-download";
 import { LandingNavbar } from "@/components/landing/navbar";
 import { SocialProof } from "@/components/landing/social-proof";
 import { DemoSection } from "@/components/landing/demo-section";
@@ -36,6 +37,7 @@ export default async function HomePage({
       <LandingNavbar />
       <main id="contenido" className="relative z-10">
         <NexoHero />
+        <DesktopDownloadSection />
         <SocialProof />
         <DemoSection />
         <ProblemSolution />
