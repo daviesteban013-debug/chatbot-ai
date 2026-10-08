@@ -21,6 +21,7 @@
     "win": { "target": "nsis", "icon": "icon.png", "signExecutable": false },
     "mac": {
       "target": "dmg",
+      "icon": "icon-mac.png",
       "category": "public.app-category.productivity",
       "minimumSystemVersion": "13.0",
       "identity": "-",

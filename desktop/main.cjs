@@ -92,7 +92,8 @@ else {
     });
     ipcMain.handle('nexo:quit', event => { guard(event); app.quit(); });
     if (!selfTest) {
-      tray = new Tray(nativeImage.createFromPath(path.join(__dirname, 'icon.png')));
+      const trayIcon = nativeImage.createFromPath(path.join(__dirname, 'icon.png'));
+      tray = new Tray(process.platform === 'darwin' ? trayIcon.resize({ width: 18, height: 18 }) : trayIcon);
       tray.setToolTip('NEXO · Tu agente');
       tray.setContextMenu(Menu.buildFromTemplate([{ label: 'Mostrar NEXO', click: () => { expand(true); bubble.show(); bubble.focus(); } }, { label: 'Abrir CRM', click: () => openPanel('/dashboard') }, { type: 'separator' }, { label: 'Salir y apagar micrófono', click: () => app.quit() }]));
       tray.on('click', () => { bubble.show(); bubble.focus(); });
