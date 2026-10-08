@@ -1,12 +1,12 @@
-# NEXO en Windows
+# NEXO en Windows y Mac
 
 La aplicación carga la misma cuenta y backend de Nexo.ai. Su burbuja permanece encima de las ventanas, conserva la conversación y abre el CRM en una ventana aparte.
 
 ## Instalar y usar
 
-1. Ejecuta `desktop/dist/NEXO-Setup-0.1.0.exe`. El instalador crea un acceso directo **NEXO**.
+1. Windows: ejecuta el instalador `.exe` de la página. Mac: abre el `.dmg` universal y arrastra **NEXO** a **Aplicaciones**; requiere macOS 13 o posterior y funciona con Apple Silicon e Intel.
 2. Inicia sesión. Google se abre en el navegador normal; al finalizar, pulsa **Abrir NEXO en mi computadora**. También puedes entrar con correo y contraseña.
-3. Pulsa **Encender NEXO** y permite el micrófono. No se activa al iniciar Windows ni al abrir la aplicación. Después queda escuchando entre respuestas aunque trabajes en otra ventana.
+3. Pulsa **Encender NEXO** y permite el micrófono. No se activa al iniciar el sistema ni al abrir la aplicación. Después queda escuchando entre respuestas aunque trabajes en otra ventana. En macOS el permiso corresponde a NEXO; si lo denegaste, revísalo en Ajustes del Sistema → Privacidad y seguridad → Micrófono y reinicia NEXO.
 4. Arrastra la barra superior para moverlo. La flecha y **Alt + Shift + N** contraen o expanden la burbuja.
 5. En **Personalizar burbuja**, elige un color o usa el selector. Se guarda en tu computadora.
 
@@ -28,6 +28,10 @@ npm start --prefix desktop
 npm test --prefix desktop
 npm run package --prefix desktop
 ```
+
+En un Mac, `npm run package:mac --prefix desktop` genera `NEXO-0.1.1-mac-universal.dmg`. El workflow **NEXO · macOS beta** permite construirlo manualmente en GitHub Actions y comprobar el arranque del mismo DMG en máquinas Intel y Apple Silicon. Solo empaqueta los archivos declarados en `build.files`; nunca requiere las claves del backend.
+
+La beta de macOS usa firma ad hoc, sin certificado Developer ID ni notarización de Apple. Gatekeeper puede bloquear su apertura. La distribución sin ese aviso requiere el certificado del editor y notarización, pendientes de configurar. No desactives las protecciones del sistema. La web sigue disponible para usar el CRM sin instalar la beta.
 
 Electron usa contexto aislado, sandbox y una sesión local separada del navegador. Solo la ventana de NEXO puede solicitar micrófono; cámara y captura de pantalla están bloqueadas. El puente nativo admite únicamente preferencias, paneles permitidos, el acceso Google por PKCE y salir. No incorpora claves de OpenAI, ElevenLabs ni Supabase privadas.
 

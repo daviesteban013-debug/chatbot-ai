@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, session, screen, globalShortcut, shell, Tray, Menu, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, session, screen, globalShortcut, shell, Tray, Menu, nativeImage, systemPreferences } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const policy = require('./policy.cjs');
@@ -55,6 +55,7 @@ else {
     else { bubble?.show(); bubble?.focus(); }
   });
   app.on('open-url', (event, url) => { event.preventDefault(); deepLink(url); });
+  app.on('activate', () => { bubble?.show(); bubble?.focus(); });
   app.whenReady().then(() => {
     try {
       const saved = JSON.parse(fs.readFileSync(path.join(app.getPath('userData'), 'preferences.json'), 'utf8'));
@@ -69,13 +70,16 @@ else {
     shared.setPermissionCheckHandler((contents, permission, origin, details) => contents === bubble?.webContents && permission === 'media' && details.mediaType === 'audio' && policy.trustedUrl(origin));
     shared.setPermissionRequestHandler((contents, permission, callback, details) => {
       const allowed = contents === bubble?.webContents && permission === 'media' && details.isMainFrame && policy.trustedUrl(details.requestingUrl) && details.mediaTypes?.length === 1 && details.mediaTypes[0] === 'audio';
-      callback(Boolean(allowed));
+      if (!allowed) { callback(false); return; }
+      // macOS consent is requested only after the trusted voice UI requests audio.
+      policy.microphoneConsent(process.platform, systemPreferences).then(callback, () => callback(false));
     });
     shared.setDisplayMediaRequestHandler((_request, callback) => callback({}));
     const area = screen.getPrimaryDisplay().workArea;
     bubble = new BrowserWindow({ x: area.x + Math.max(0, area.width - 440), y: area.y + 20, width: 420, height: Math.min(680, area.height), frame: false, transparent: true, backgroundColor: '#00000000', alwaysOnTop: true, resizable: false, title: 'NEXO', show: !selfTest,
       webPreferences: { preload: path.join(__dirname, 'preload.cjs'), partition, nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true, backgroundThrottling: false } });
     secure(bubble);
+    if (process.platform === 'darwin') bubble.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
     bubble.on('closed', () => { bubble = null; app.quit(); });
     ipcMain.handle('nexo:preferences', event => { guard(event); return preferences; });
     ipcMain.handle('nexo:color', (event, value) => { guard(event); preferences.color = policy.color(value); return save(); });
@@ -97,7 +101,7 @@ else {
     if (selfTest) {
       // Hidden, bounded startup validation; never operates the user's UI or microphone.
       bubble.loadURL(policy.APP_ORIGIN + '/login').then(() => {
-        console.log(JSON.stringify({ startup: 'ok', sandbox: bubble.webContents.getLastWebPreferences().sandbox, nodeIntegration: bubble.webContents.getLastWebPreferences().nodeIntegration, alwaysOnTop: bubble.isAlwaysOnTop() })); app.quit();
+        console.log(JSON.stringify({ startup: 'ok', platform: process.platform, arch: process.arch, sandbox: bubble.webContents.getLastWebPreferences().sandbox, nodeIntegration: bubble.webContents.getLastWebPreferences().nodeIntegration, alwaysOnTop: bubble.isAlwaysOnTop(), allWorkspaces: bubble.isVisibleOnAllWorkspaces() })); app.quit();
       }).catch(() => { console.error('NEXO startup check failed'); app.exit(1); });
       setTimeout(() => app.exit(1), 30_000).unref();
     } else bubble.loadURL(policy.APP_ORIGIN + '/dashboard/jarvis').catch(() => {});

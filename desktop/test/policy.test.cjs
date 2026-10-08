@@ -1,6 +1,25 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { APP_ORIGIN, trustedUrl, panelUrl, color, googleUrl, callbackUrl } = require('../policy.cjs');
+const { microphoneConsent } = require('../policy.cjs');
+test('macOS asks for microphone consent once, only when undetermined', async () => {
+  let requests = 0;
+  const preferences = { getMediaAccessStatus: type => { assert.equal(type, 'microphone'); return 'not-determined'; }, askForMediaAccess: async type => { assert.equal(type, 'microphone'); requests++; return true; } };
+  assert.equal(await microphoneConsent('darwin', preferences), true);
+  assert.equal(requests, 1);
+  preferences.getMediaAccessStatus = () => 'granted';
+  assert.equal(await microphoneConsent('darwin', preferences), true);
+  assert.equal(requests, 1);
+});
+test('macOS respects denied, restricted, unknown and rejected consent', async () => {
+  for (const status of ['denied', 'restricted', 'unknown']) {
+    assert.equal(await microphoneConsent('darwin', { getMediaAccessStatus: () => status, askForMediaAccess: () => assert.fail('Must not prompt again') }), false);
+  }
+  assert.equal(await microphoneConsent('darwin', { getMediaAccessStatus: () => 'not-determined', askForMediaAccess: async () => false }), false);
+});
+test('Windows does not invoke macOS permission APIs', async () => {
+  assert.equal(await microphoneConsent('win32', undefined), true);
+});
 test('CRM routes reject external URLs, traversal and arbitrary paths', () => {
   assert.equal(panelUrl('/dashboard/orders'), APP_ORIGIN + '/dashboard/orders');
   for (const value of ['https://evil.test', '//evil.test', '/dashboard/../admin', '/dashboard/orders?next=evil', '/admin', null]) assert.throws(() => panelUrl(value));

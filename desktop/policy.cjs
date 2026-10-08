@@ -37,4 +37,11 @@ function callbackUrl(value, pendingUntil, now = Date.now()) {
     return destination.href;
   } catch { return null; }
 }
-module.exports = { APP_ORIGIN, trustedUrl, panelUrl, color, googleUrl, callbackUrl };
+async function microphoneConsent(platform, systemPreferences) {
+  if (platform !== 'darwin') return true;
+  const status = systemPreferences.getMediaAccessStatus('microphone');
+  if (status === 'granted') return true;
+  if (status !== 'not-determined') return false;
+  return systemPreferences.askForMediaAccess('microphone');
+}
+module.exports = { APP_ORIGIN, trustedUrl, panelUrl, color, googleUrl, callbackUrl, microphoneConsent };

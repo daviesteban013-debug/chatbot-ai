@@ -1,14 +1,15 @@
 {
   "name": "nexo-desktop",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
-  "description": "NEXO flotante para Windows",
+  "description": "NEXO flotante para Windows y macOS",
   "author": "Nexo.ai",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
     "test": "node --test test/*.test.cjs",
-    "package": "electron-builder --win nsis --x64"
+    "package": "electron-builder --win nsis --x64",
+    "package:mac": "electron-builder --mac dmg --universal --publish never"
   },
   "devDependencies": { "electron": "44.7.0", "electron-builder": "26.15.3" },
   "build": {
@@ -18,6 +19,16 @@
     "files": ["main.cjs", "preload.cjs", "policy.cjs", "icon.png"],
     "protocols": [{ "name": "NEXO login", "schemes": ["nexo-desktop"] }],
     "win": { "target": "nsis", "icon": "icon.png", "signExecutable": false },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.productivity",
+      "minimumSystemVersion": "13.0",
+      "identity": "-",
+      "hardenedRuntime": false,
+      "notarize": false,
+      "artifactName": "NEXO-${version}-mac-${arch}.${ext}",
+      "extendInfo": { "NSMicrophoneUsageDescription": "NEXO usa el micrófono cuando activas la escucha para conversar y ejecutar tus comandos del CRM." }
+    },
     "nsis": { "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true, "createDesktopShortcut": true },
     "artifactName": "NEXO-Setup-${version}.${ext}"
   }
