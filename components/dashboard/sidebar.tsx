@@ -56,7 +56,7 @@ export function DashboardSidebar({ tenantName }: { tenantName?: string }) {
         ))}
       </nav>
 
-      <div className="space-y-2 px-4 pb-3"><DesktopDownloadLink className="w-full" /><InstallJarvisButton className="w-full" /></div>
+      <div className="space-y-2 px-4 pb-3"><DesktopDownloadLink className="w-full" /><DesktopDownloadLink platform="mac" className="w-full" /><InstallJarvisButton className="w-full" /></div>
       <div className="mt-auto hidden p-4 lg:block">
         <Link
           href="/dashboard/agent"

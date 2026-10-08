@@ -5,3 +5,10 @@ export const desktopRelease = {
   url: "https://github.com/daviesteban013-debug/chatbot-ai/releases/download/nexo-desktop-v0.1.0/NEXO-Setup-0.1.0.exe",
   sizeLabel: "107 MB",
 } as const;
+
+export const macDesktopRelease = {
+  version: "0.1.1",
+  filename: "NEXO-0.1.1-mac-universal.dmg",
+  url: "https://github.com/daviesteban013-debug/chatbot-ai/releases/download/nexo-desktop-v0.1.1/NEXO-0.1.1-mac-universal.dmg",
+  systemLabel: "macOS 13+ · Apple Silicon e Intel",
+} as const;

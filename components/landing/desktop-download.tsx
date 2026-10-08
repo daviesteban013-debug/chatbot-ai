@@ -1,6 +1,6 @@
 import { ArrowUpRight, Mic, Monitor, Palette } from "lucide-react";
 import { DesktopDownloadLink } from "@/components/pwa/desktop-download-link";
-import { desktopRelease } from "@/lib/desktop-release";
+import { desktopRelease, macDesktopRelease } from "@/lib/desktop-release";
 
 export function DesktopDownloadSection() {
   return <section id="descargar" aria-labelledby="desktop-title" className="mx-auto max-w-6xl px-5 pb-12 pt-4 sm:px-8">
@@ -10,9 +10,13 @@ export function DesktopDownloadSection() {
           <p className="landing-eyebrow inline-flex items-center gap-2"><Monitor size={14} /> NEXO EN TU ESCRITORIO</p>
           <h2 id="desktop-title" className="mt-4 text-3xl font-medium leading-tight tracking-tight text-white sm:text-4xl">Tu agente, siempre a mano.</h2>
           <p className="mt-4 max-w-lg text-sm leading-7 text-zinc-400">Una burbuja que te acompaña encima de tus ventanas. Habla con NEXO, abre los paneles de tu CRM y dale tu color.</p>
-          <div className="mt-6"><DesktopDownloadLink className="min-h-12 border-yellow-300! bg-yellow-300! px-5! text-zinc-950! hover:bg-yellow-200!" /></div>
-          <p className="mt-3 text-[11px] leading-5 text-zinc-500">Beta {desktopRelease.version} · Windows 10/11 de 64 bits · {desktopRelease.sizeLabel}</p>
+          <div className="mt-6 flex flex-wrap gap-4">
+            <div><DesktopDownloadLink className="min-h-12 border-yellow-300! bg-yellow-300! px-5! text-zinc-950! hover:bg-yellow-200!" /><p className="mt-2 text-[11px] leading-5 text-zinc-500">Beta {desktopRelease.version} · Windows 10/11 · {desktopRelease.sizeLabel}</p></div>
+            <div><DesktopDownloadLink platform="mac" className="min-h-12 px-5!" /><p className="mt-2 text-[11px] leading-5 text-zinc-500">Beta {macDesktopRelease.version} · {macDesktopRelease.systemLabel}</p></div>
+          </div>
           <p className="mt-2 max-w-lg text-xs leading-6 text-zinc-400">Descarga, instala e inicia sesión con tu cuenta. Después pulsa <span className="text-zinc-200">Encender NEXO</span> y permite el micrófono. Necesita internet.</p>
+          <p className="mt-2 max-w-lg text-xs leading-6 text-zinc-400">En Mac, abre el archivo .dmg y arrastra NEXO a Aplicaciones.</p>
+          <p className="mt-3 max-w-lg text-[11px] leading-5 text-yellow-200/70">La beta para Mac aún no está notarizada por Apple; macOS puede bloquear su apertura. También puedes usar NEXO desde la web.</p>
         </div>
         <div className="rounded-3xl border border-white/10 bg-zinc-950/70 p-6">
           <div aria-hidden="true" className="relative mx-auto mb-6 flex h-28 w-28 items-center justify-center gap-4 rounded-[48%_52%_46%_54%] bg-[radial-gradient(ellipse_at_28%_18%,#fffbd2_0%,#facc15_25%,#a37b09_55%,#171309_95%)] shadow-[0_12px_55px_#facc1518,inset_-7px_-8px_12px_#0008]">

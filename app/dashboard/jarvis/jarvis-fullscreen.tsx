@@ -343,6 +343,7 @@ function JarvisFullscreenInner({
             <Link href="/dashboard" onClick={exit}><LayoutDashboard size={18} />Abrir CRM</Link>
             <Link href="/dashboard/billing" onClick={exit}><LayoutDashboard size={18} />Planes y pagos</Link>
             <DesktopDownloadLink />
+            <DesktopDownloadLink platform="mac" />
             <InstallJarvisButton />
             <p className={styles.help}>Para los aplausos, pulsa «Activar 2 aplausos» y permite el micrófono. Deja esta pantalla abierta y da dos aplausos separados por medio segundo. La escucha se apaga al encender, cambiar de pestaña o salir.</p>
             <p className={styles.help}>Al encender NEXO se activa la escucha continua con permiso del micrófono. Espera a que termine de hablar y dile tu siguiente instrucción: no necesitas pulsar el micrófono en cada turno. Puedes pausar la escucha con su botón o decir «NEXO, apágate» o «NEXO, abre el CRM». Mientras hablo, abres un panel o cambias de pestaña, la escucha queda en pausa.</p>

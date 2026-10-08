@@ -30,6 +30,7 @@ export function NexoHero() {
         <div className={styles.actions}>
           <Link href="/signup" className="landing-primary">Conoce a NEXO <ArrowRight size={17} /></Link>
           <DesktopDownloadLink />
+          <DesktopDownloadLink platform="mac" />
           <a href="#demo" className={styles.secondary}>Explora la demo <ArrowDown size={15} /></a>
         </div>
         <p className={styles.note}><Check size={13} /> Empieza gratis <span>·</span> Sin tarjeta</p>
