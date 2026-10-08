@@ -23,7 +23,7 @@ jobs:
       - name: Verify universal app and microphone declaration
         run: |
           app=desktop/dist/mac-universal/NEXO.app
-          lipo -verify_arch x86_64 arm64 "$app/Contents/MacOS/NEXO"
+          lipo "$app/Contents/MacOS/NEXO" -verify_arch x86_64 arm64
           codesign --verify --deep --strict "$app"
           /usr/libexec/PlistBuddy -c 'Print :NSMicrophoneUsageDescription' "$app/Contents/Info.plist"
           /usr/libexec/PlistBuddy -c 'Print :CFBundleURLTypes:0:CFBundleURLSchemes:0' "$app/Contents/Info.plist" | grep -Fx nexo-desktop
