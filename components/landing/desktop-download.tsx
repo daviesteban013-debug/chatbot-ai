@@ -1,5 +1,5 @@
 import { ArrowUpRight, Mic, Monitor, Palette } from "lucide-react";
-import { DesktopDownloadLink } from "@/components/desktop/download-link";
+import { DesktopDownloadLink } from "@/components/pwa/desktop-download-link";
 import { desktopRelease } from "@/lib/desktop-release";
 
 export function DesktopDownloadSection() {

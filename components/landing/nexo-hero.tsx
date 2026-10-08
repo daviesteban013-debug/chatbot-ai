@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { useState } from "react";
 import { ArrowDown, ArrowRight, AudioLines, Check, MessageCircle, Package, Users } from "lucide-react";
 import styles from "./nexo-hero.module.css";
-import { DesktopDownloadLink } from "@/components/desktop/download-link";
+import { DesktopDownloadLink } from "@/components/pwa/desktop-download-link";
 
 const LiquidAvatar = dynamic(() => import("@/components/jarvis/liquid-avatar").then(module => module.JarvisLiquidAvatar), {
   ssr: false,

@@ -18,7 +18,7 @@ import { jarvisCommand, jarvisCommandPanel } from "@/lib/jarvis-commands";
 import { DesktopBubble, useDesktopMode } from "@/components/jarvis/desktop-bubble";
 import { JarvisPersonalizationPanel } from "./jarvis-personalization";
 import { InstallJarvisButton } from "@/components/pwa/app-provider";
-import { DesktopDownloadLink } from "@/components/desktop/download-link";
+import { DesktopDownloadLink } from "@/components/pwa/desktop-download-link";
 import { CreditBalancePanel } from "@/components/dashboard/credit-balance";
 import { useJarvisFiles } from "@/hooks/useJarvisFiles";
 import { FILE_ACCEPT } from "@/lib/files/types";

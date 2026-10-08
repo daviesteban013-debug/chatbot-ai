@@ -7,7 +7,7 @@ import { signOut } from "@/app/dashboard/actions";
 import { navItems } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 import { InstallJarvisButton } from "@/components/pwa/app-provider";
-import { DesktopDownloadLink } from "@/components/desktop/download-link";
+import { DesktopDownloadLink } from "@/components/pwa/desktop-download-link";
 
 export function DashboardSidebar({ tenantName }: { tenantName?: string }) {
   const pathname = usePathname();

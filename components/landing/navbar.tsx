@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Bot, Menu, X } from "lucide-react";
-import { DesktopDownloadLink } from "@/components/desktop/download-link";
+import { DesktopDownloadLink } from "@/components/pwa/desktop-download-link";
 
 const links = [
   ["Producto", "#producto"],
