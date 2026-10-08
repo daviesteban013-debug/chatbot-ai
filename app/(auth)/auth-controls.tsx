@@ -30,8 +30,17 @@ export function GoogleSignIn({ disabled, onError, onBusy }: { disabled: boolean;
       const response = await fetch("/api/auth/providers", { cache: "no-store", signal: AbortSignal.timeout(7000) });
       if (!response.ok) throw new Error("Network unavailable");
       if (!(await response.json()).google) throw new Error("Provider is not enabled");
-      const { error } = await createClient().auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${window.location.origin}/auth/callback` } });
+      const desktop = window.nexoDesktop;
+      const { data, error } = await createClient().auth.signInWithOAuth({ provider: "google", options: {
+        redirectTo: `${window.location.origin}/auth/callback${desktop ? "?desktop=1" : ""}`,
+        ...(desktop ? { skipBrowserRedirect: true } : {}),
+      } });
       if (error) throw error;
+      if (desktop) {
+        if (!data.url) throw new Error("No se pudo abrir Google");
+        await desktop.startGoogleSignIn(data.url);
+        setLoading(false); onBusy(false);
+      }
     } catch (error) {
       onError(authErrorMessage(error instanceof Error ? error.message : ""));
       setLoading(false); onBusy(false);

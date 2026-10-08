@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { provisionTenant } from "@/app/(auth)/signup/actions";
 import { safeAuthDestination } from "@/lib/auth-redirect";
+import { desktopAuthResponse } from "@/lib/desktop-auth";
 
 /**
  * Callback de autenticación (OAuth / magic link / confirmación de correo).
@@ -10,6 +11,7 @@ import { safeAuthDestination } from "@/lib/auth-redirect";
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
+  if (searchParams.get("desktop") === "1" && code) return desktopAuthResponse(code);
   const next = searchParams.get("next") ?? "/dashboard/jarvis";
   const redirectTo = safeAuthDestination(next, origin);
 

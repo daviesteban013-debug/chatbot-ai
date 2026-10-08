@@ -1,0 +1,24 @@
+{
+  "name": "nexo-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "NEXO flotante para Windows",
+  "author": "Nexo.ai",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/*.test.cjs",
+    "package": "electron-builder --win nsis --x64"
+  },
+  "devDependencies": { "electron": "44.7.0", "electron-builder": "26.15.3" },
+  "build": {
+    "appId": "ai.nexo.desktop",
+    "productName": "NEXO",
+    "directories": { "output": "dist" },
+    "files": ["main.cjs", "preload.cjs", "policy.cjs", "icon.png"],
+    "protocols": [{ "name": "NEXO login", "schemes": ["nexo-desktop"] }],
+    "win": { "target": "nsis", "icon": "icon.png", "signExecutable": false },
+    "nsis": { "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true, "createDesktopShortcut": true },
+    "artifactName": "NEXO-Setup-${version}.${ext}"
+  }
+}

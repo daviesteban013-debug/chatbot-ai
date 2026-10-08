@@ -1,6 +1,7 @@
 .git/
 .next/
 node_modules/
+desktop/
 .env*
 .codex/
 .vercel-tmp/

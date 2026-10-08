@@ -14,7 +14,8 @@ import type { JarvisPersonalization } from "@/lib/jarvis-personalization";
 import type { VoiceAvailability } from "@/lib/jarvis-voice";
 import { useJarvisVoice } from "@/hooks/useJarvisVoice";
 import { useJarvisMicrophone } from "@/hooks/useJarvisMicrophone";
-import { jarvisCommand } from "@/lib/jarvis-commands";
+import { jarvisCommand, jarvisCommandPanel } from "@/lib/jarvis-commands";
+import { DesktopBubble, useDesktopMode } from "@/components/jarvis/desktop-bubble";
 import { JarvisPersonalizationPanel } from "./jarvis-personalization";
 import { InstallJarvisButton } from "@/components/pwa/app-provider";
 import { CreditBalancePanel } from "@/components/dashboard/credit-balance";
@@ -72,6 +73,7 @@ function JarvisFullscreenInner({
   onSwitchToStudio,
 }: FullscreenProps) {
   const router = useRouter();
+  const desktopMode = useDesktopMode();
   const { state, setAudioLevel, setState } = useJarvisAvatar();
   const [isPoweredOn, setIsPoweredOn] = useState(false);
   const poweredRef = useRef(false);
@@ -155,13 +157,23 @@ function JarvisFullscreenInner({
     if (wakeOnly && command !== "wake") return false;
     if (command === "wake") { setInput(""); powerOn(); return true; }
     if (command === "sleep") { setInput(""); powerOff(); return true; }
-    if (command === "crm") {
+    const destination = jarvisCommandPanel(command);
+    if (destination) {
+      setInput("");
+      setTurnStart(null);
+      if (window.nexoDesktop) {
+        void window.nexoDesktop.openPanel(destination.path).then(() => {
+          setCommandNotice(`Abrí ${destination.label}. Sigo aquí contigo.`);
+        }).catch(() => setCommandNotice("No se pudo abrir el panel. Inténtalo de nuevo."));
+        // A panel command keeps the continuous listener armed without an AI turn.
+        return false;
+      }
       clapStopRef.current();
       microphoneStopRef.current();
       stopVoice();
       cancelResponse();
       setInput("");
-      router.push("/dashboard");
+      router.push(destination.path);
       return true;
     }
     if (!poweredRef.current) {
@@ -226,7 +238,6 @@ function JarvisFullscreenInner({
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() && !attachments.selected.length) return;
-    pauseMicrophone();
     claps.stop();
     submitInstruction(input);
   };
@@ -253,6 +264,12 @@ function JarvisFullscreenInner({
     window.addEventListener("keydown", interrupt);
     return () => window.removeEventListener("keydown", interrupt);
   }, [panel, isLoading, voiceBusy, stopSpokenTurn, cancelResponse]);
+
+  if (desktopMode) return <DesktopBubble powered={isPoweredOn} listening={isRecording} armed={microphoneArmed} busy={isLoading || voiceBusy} speaking={voiceSpeaking}
+    activity={activity} reply={latest?.content || commandNotice} error={error || voiceError || microphoneError} input={input} voice={isVoiceOutputEnabled} readyToPlay={readyToPlay}
+    onPower={isPoweredOn ? powerOff : powerOn} onMicrophone={toggleRecording} onVoice={() => { stopSpokenTurn(); setIsVoiceOutputEnabled(value => !value); }}
+    onStop={() => { stopSpokenTurn(); cancelResponse(); }} onResume={() => { pauseMicrophone(); resume(); }}
+    onInput={setInput} onSubmit={handleFormSubmit} />;
 
   return (
     <div className={styles.experience} style={{ "--jarvis-accent": pageAccent } as CSSProperties}>

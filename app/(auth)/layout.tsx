@@ -2,10 +2,12 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { NexoConstellation } from "@/components/landing/nexo-constellation";
+import { DesktopLoginControls } from "@/components/jarvis/desktop-login-controls";
 import styles from "./auth.module.css";
 
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return <div className={styles.shell}>
+    <DesktopLoginControls />
     <NexoConstellation />
     <nav className={styles.nav} aria-label="Navegación de acceso">
       <Link href="/" className={styles.brand}>Nexo<span>.ai</span></Link>

@@ -18,7 +18,7 @@ export interface Recognition {
 /** A user-armed recognition session. Pausing preserves intent; stopping revokes it. */
 export function createJarvisListener(recognition: Recognition, callbacks: {
   listening: (value: boolean) => void;
-  error: (message: string | null) => void;
+  error: (message: string | null, reason?: string) => void;
   transcript: (text: string, wakeOnly: boolean) => boolean;
 }) {
   let mode: "wake" | "conversation" | null = null;
@@ -85,7 +85,7 @@ export function createJarvisListener(recognition: Recognition, callbacks: {
         : event.error === "network"
           ? "El servicio de reconocimiento de voz no pudo conectarse. Prueba esta página en Chrome o Edge y revisa tu conexión."
           : "La escucha se detuvo. Puedes reactivarla o seguir por escrito.";
-    callbacks.error(message);
+    callbacks.error(message, event.error);
   };
   recognition.onend = () => {
     const intentional = abortExpected;
