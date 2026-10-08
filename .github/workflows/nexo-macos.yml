@@ -1,0 +1,62 @@
+name: NEXO · macOS beta
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: nexo-macos-beta
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: macos-15-intel
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - run: npm ci --prefix desktop
+      - run: npm test --prefix desktop
+      - run: npm run package:mac --prefix desktop
+      - name: Verify universal app and microphone declaration
+        run: |
+          app=desktop/dist/mac-universal/NEXO.app
+          lipo -verify_arch x86_64 arm64 "$app/Contents/MacOS/NEXO"
+          codesign --verify --deep --strict "$app"
+          /usr/libexec/PlistBuddy -c 'Print :NSMicrophoneUsageDescription' "$app/Contents/Info.plist"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleURLTypes:0:CFBundleURLSchemes:0' "$app/Contents/Info.plist" | grep -Fx nexo-desktop
+          shasum -a 256 desktop/dist/*.dmg > desktop/dist/SHA256SUMS.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: nexo-macos-universal
+          path: |
+            desktop/dist/*.dmg
+            desktop/dist/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 14
+  startup:
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-15-intel, macos-15]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 8
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: nexo-macos-universal
+          path: package
+      - name: Launch packaged beta without microphone or visible window
+        run: |
+          mount="$RUNNER_TEMP/nexo-volume"
+          mkdir -p "$mount"
+          hdiutil attach -nobrowse -readonly -mountpoint "$mount" package/*.dmg
+          trap 'hdiutil detach "$mount"' EXIT
+          app="$mount/NEXO.app"
+          codesign --verify --deep --strict "$app"
+          "$app/Contents/MacOS/NEXO" --startup-check > startup.json
+          cat startup.json
+          node -e 'const fs=require("node:fs"); const lines=fs.readFileSync("startup.json","utf8").trim().split("\n"); const s=JSON.parse(lines.at(-1)); if(s.startup!=="ok"||s.platform!=="darwin"||!s.sandbox||s.nodeIntegration||!s.alwaysOnTop||!s.allWorkspaces) process.exit(1)'
