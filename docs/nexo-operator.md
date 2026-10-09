@@ -27,7 +27,7 @@ El turno conserva los límites compartidos de llamadas al modelo y herramientas 
 
 El porcentaje de créditos es la capacidad restante del plan de NEXO. Iniciar cada llamada exige reservar su contexto y una respuesta; un saldo positivo puede no alcanzar para un turno con mucho contexto. Esa reserva no es un cobro: solo se descuentan los tokens reales informados por el proveedor. El saldo de OpenAI Platform y los créditos del plan de NEXO son independientes. Abrir paneles con comandos directos no llama al modelo. Al recargar una conversación se muestran sus cincuenta mensajes más recientes en orden cronológico.
 
-Los instaladores desktop 0.2.0 admiten paneles base; cuando rechazan un detalle nuevo, la web de NEXO pide abrir la lista y explica que hay que seleccionar el registro. La política del código desktop ya admite los detalles y WhatsApp; distribuirla requiere una siguiente versión del instalador. Las mejoras web de actividad llegan al cargar NEXO.
+Los instaladores desktop 0.2.1 admiten WhatsApp y las fichas de pedidos, conversaciones y handoffs en la ventana CRM existente. Instala la actualización sobre la versión anterior para recibir esta política nativa; las mejoras web de actividad llegan al cargar NEXO. La versión 0.2.0 conserva la alternativa de abrir la lista cuando rechaza un detalle nuevo. La beta no se actualiza automáticamente; en Mac, reemplaza NEXO en Aplicaciones sin borrar su perfil local.
 
 ## Verificación
 
