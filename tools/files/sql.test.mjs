@@ -2,10 +2,11 @@ import assert from "node:assert/strict";
 import { before, after, beforeEach, test } from "node:test";
 import { readFile, readdir } from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
+import { vector } from "@electric-sql/pglite-pgvector";
 const user = "33333333-3333-4333-8333-333333333333", other = "44444444-4444-4444-8444-444444444444";
 let db;
 before(async () => {
-  db = new PGlite();
+  db = new PGlite({ extensions: { vector } });
   await db.exec(`create role anon; create role authenticated; create role service_role bypassrls; create schema auth; create table auth.users(id uuid primary key);
     create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
     grant usage on schema auth to authenticated; grant execute on function auth.uid() to authenticated;

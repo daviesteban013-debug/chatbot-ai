@@ -20,6 +20,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { runAgent } from "@/lib/agent/loop";
 import { transcribeAudio } from "@/lib/llm";
 import { downloadMedia } from "./send";
+import { loadWhatsAppSendOptions } from "./credentials";
 import type { Json, MessageType } from "@/lib/database.types";
 import type {
   WhatsAppWebhookPayload,
@@ -57,7 +58,7 @@ export async function handleWebhookPayload(
         // Resolver tenant por phone_number_id (constraint único en whatsapp_accounts).
         const { data: waAccount } = await admin
           .from("whatsapp_accounts")
-          .select("tenant_id, access_token_enc")
+          .select("tenant_id")
           .eq("phone_number_id", phoneNumberId)
           .maybeSingle();
 
@@ -69,7 +70,12 @@ export async function handleWebhookPayload(
         }
 
         const tenantId = waAccount.tenant_id;
-        const waAccessToken = waAccount.access_token_enc || process.env.WHATSAPP_ACCESS_TOKEN || null;
+        const sendOptions = await loadWhatsAppSendOptions(admin,tenantId,phoneNumberId);
+        const waAccessToken = sendOptions?.accessToken ?? null;
+        if (value.messages?.length) {
+          await admin.from("whatsapp_accounts").update({last_webhook_at:new Date().toISOString()})
+            .eq("tenant_id",tenantId).eq("phone_number_id",phoneNumberId);
+        }
 
         // Contactos: crear/actualizar clientes con el nombre de perfil.
         if (value.contacts) {
@@ -252,9 +258,7 @@ async function processIncomingMessage(
             .from("messages")
             .update({ transcript })
             .eq("id", savedMessage.id);
-          console.log(
-            `[webhook] Audio transcrito para mensaje ${savedMessage.id}: "${transcript.slice(0, 60)}..."`
-          );
+          console.log(`[webhook] Audio transcrito para mensaje ${savedMessage.id}`);
         }
       } else {
         console.warn("[webhook] Sin access token para descargar audio, omitiendo transcripción.");
@@ -290,6 +294,7 @@ async function processIncomingMessage(
       customerPhone: message.from,
       triggerMessageId: savedMessage.id,
       waMessageId: message.id,
+      sourcePhoneNumberId: _value.metadata.phone_number_id,
     });
   } catch (error) {
     console.error("[webhook] Error ejecutando el agente:", error);
@@ -298,7 +303,7 @@ async function processIncomingMessage(
 
 /**
  * Devuelve la conversación abierta del cliente, o crea una nueva si no existe
- * (o todas están cerradas / en handoff).
+ * (o todas están cerradas). Un handoff conserva el mismo hilo y su historial.
  */
 async function resolveConversation(
   admin: AdminClient,
@@ -310,7 +315,8 @@ async function resolveConversation(
     .select("id")
     .eq("tenant_id", tenantId)
     .eq("customer_id", customerId)
-    .eq("status", "open")
+    .in("status", ["open", "handoff"])
+    .order("status", { ascending: false })
     .order("last_message_at", { ascending: false })
     .limit(1)
     .maybeSingle();

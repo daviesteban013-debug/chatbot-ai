@@ -1,10 +1,12 @@
 "use server";
+import { loadWhatsAppSendOptions } from "@/lib/whatsapp/credentials";
+
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentTenant, getCurrentUser } from "@/lib/auth";
-import { sendText, type SendOptions } from "@/lib/whatsapp/send";
+import { sendText } from "@/lib/whatsapp/send";
 
 /**
  * Resultado serializable de una Server Action de handoffs.
@@ -13,34 +15,7 @@ import { sendText, type SendOptions } from "@/lib/whatsapp/send";
  */
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
-/**
- * Resuelve las credenciales de envío de WhatsApp del tenant a partir de
- * `whatsapp_accounts` (mismo criterio que `lib/agent/loop.ts`): en V1 el
- * token cifrado se trata como texto plano y, si está vacío, se usa el env var
- * `WHATSAPP_ACCESS_TOKEN` como conveniencia de desarrollo.
- */
-async function loadSendOptions(
-  admin: ReturnType<typeof createAdminClient>,
-  tenantId: string
-): Promise<SendOptions | null> {
-  const { data } = await admin
-    .from("whatsapp_accounts")
-    .select("phone_number_id, access_token_enc")
-    .eq("tenant_id", tenantId)
-    .limit(1)
-    .maybeSingle();
-
-  if (!data?.phone_number_id) return null;
-
-  const accessToken =
-    data.access_token_enc?.trim() ||
-    process.env.WHATSAPP_ACCESS_TOKEN?.trim() ||
-    "";
-
-  if (!accessToken) return null;
-
-  return { phoneNumberId: data.phone_number_id, accessToken };
-}
+const loadSendOptions = loadWhatsAppSendOptions;
 
 /**
  * Toma un handoff abierto y lo asigna al usuario actual.

@@ -4,6 +4,10 @@ El sistema de créditos de IA y su puesta en marcha están documentados en [docs
 
 Los adjuntos PDF, Excel, CSV, Word y texto de Jarvis, sus límites y la migración necesaria están documentados en [docs/jarvis-files.md](docs/jarvis-files.md).
 
+La base de conocimiento RAG por negocio, sus permisos y el siguiente paso de ingesta están documentados en [docs/nexo-rag-foundation.md](docs/nexo-rag-foundation.md).
+
+La conexión de una SIM nueva por WhatsApp Cloud API está documentada en [docs/whatsapp-cloud.md](docs/whatsapp-cloud.md); el estado y los siguientes pasos de la memoria están en [docs/nexo-memory.md](docs/nexo-memory.md).
+
 ## Getting Started
 
 First, run the development server:

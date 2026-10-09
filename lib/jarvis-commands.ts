@@ -6,6 +6,7 @@ export const commandPanels = {
   handoffs: { path: "/dashboard/handoffs", label: "Handoffs" },
   approvals: { path: "/dashboard/approval", label: "Aprobaciones" },
   agent: { path: "/dashboard/agent", label: "Configuración del agente" },
+  whatsapp: { path: "/dashboard/whatsapp", label: "Conexión de WhatsApp" },
   billing: { path: "/dashboard/billing", label: "Planes y pagos" },
   nexo: { path: "/dashboard/jarvis", label: "NEXO" },
 } as const;
@@ -28,6 +29,7 @@ export function jarvisCommand(text: string): JarvisCommand | null {
     resumen: "crm", dashboard: "crm", pedidos: "orders", catalogo: "catalog", productos: "catalog",
     conversaciones: "conversations", chats: "conversations", handoffs: "handoffs", derivaciones: "handoffs",
     aprobaciones: "approvals", agente: "agent", configuracion: "agent", "configuracion del agente": "agent",
+    whatsapp: "whatsapp", wsp: "whatsapp", "conexion de whatsapp": "whatsapp",
     pagos: "billing", planes: "billing", facturacion: "billing", "planes y pagos": "billing", nexo: "nexo",
   };
   if (panel && aliases[panel]) return aliases[panel];

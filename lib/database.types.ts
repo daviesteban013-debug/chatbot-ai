@@ -84,6 +84,9 @@ export type WhatsappAccount = {
   waba_id: string | null;
   display_phone: string | null;
   access_token_enc: string | null;
+  connection_status: "pending" | "verified" | "needs_attention";
+  verified_at: string | null;
+  last_webhook_at: string | null;
   created_at: string;
 }
 
@@ -256,10 +259,72 @@ export type EvalResult = {
   created_at: string;
 }
 
+export type KnowledgeSource = {
+  id: string;
+  tenant_id: string;
+  name: string;
+  kind: "manual" | "file";
+  status: "draft" | "indexing" | "ready" | "failed" | "archived";
+  embedding_model: "text-embedding-3-small";
+  revision: number;
+  metadata: Json;
+  created_at: string;
+  updated_at: string;
+};
+
+export type KnowledgeChunk = {
+  id: string;
+  tenant_id: string;
+  source_id: string;
+  revision: number;
+  chunk_index: number;
+  content: string;
+  embedding: string;
+  page_number: number | null;
+  metadata: Json;
+  created_at: string;
+};
+
+export type KnowledgeMatch = Pick<KnowledgeChunk,
+  "id" | "source_id" | "revision" | "chunk_index" | "content" | "page_number" | "metadata"
+> & { source_name: string; similarity: number };
+
 // ---------- Database (tipado de clientes Supabase) ----------
 export type Database = {
   public: {
     Tables: {
+      knowledge_sources: {
+        Row: KnowledgeSource;
+        Insert: Pick<KnowledgeSource, "tenant_id" | "name" | "kind"> &
+          Partial<Omit<KnowledgeSource, "tenant_id" | "name" | "kind">>;
+        Update: Partial<Omit<KnowledgeSource, "id" | "tenant_id" | "created_at">>;
+        Relationships: [{
+          foreignKeyName: "knowledge_sources_tenant_id_fkey";
+          columns: ["tenant_id"];
+          isOneToOne: false;
+          referencedRelation: "tenants";
+          referencedColumns: ["id"];
+        }];
+      };
+      knowledge_chunks: {
+        Row: KnowledgeChunk;
+        Insert: Pick<KnowledgeChunk, "tenant_id" | "source_id" | "chunk_index" | "content" | "embedding"> &
+          Partial<Omit<KnowledgeChunk, "tenant_id" | "source_id" | "chunk_index" | "content" | "embedding">>;
+        Update: Partial<Pick<KnowledgeChunk, "content" | "embedding" | "page_number" | "metadata">>;
+        Relationships: [{
+          foreignKeyName: "knowledge_chunks_source_id_tenant_id_fkey";
+          columns: ["source_id", "tenant_id"];
+          isOneToOne: false;
+          referencedRelation: "knowledge_sources";
+          referencedColumns: ["id", "tenant_id"];
+        }, {
+          foreignKeyName: "knowledge_chunks_tenant_id_fkey";
+          columns: ["tenant_id"];
+          isOneToOne: false;
+          referencedRelation: "tenants";
+          referencedColumns: ["id"];
+        }];
+      };
       jarvis_files: {
         Row: { id: string; user_id: string; session_id: string | null; filename: string; object_path: string; mime_type: string; byte_size: number; status: string; sections: Json; section_count: number; warnings: Json; truncated: boolean; created_at: string };
         Insert: { id?: string; user_id: string; session_id?: string | null; filename: string; object_path: string; mime_type: string; byte_size: number; status: string; sections: Json; warnings: Json; truncated?: boolean; created_at?: string };
@@ -317,6 +382,9 @@ export type Database = {
           waba_id?: string | null;
           display_phone?: string | null;
           access_token_enc?: string | null;
+          connection_status?: "pending" | "verified" | "needs_attention";
+          verified_at?: string | null;
+          last_webhook_at?: string | null;
           created_at?: string;
         };
         Update: {
@@ -326,6 +394,9 @@ export type Database = {
           waba_id?: string | null;
           display_phone?: string | null;
           access_token_enc?: string | null;
+          connection_status?: "pending" | "verified" | "needs_attention";
+          verified_at?: string | null;
+          last_webhook_at?: string | null;
           created_at?: string;
         };
         Relationships: [
@@ -1008,6 +1079,14 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      configure_whatsapp_cloud: {
+        Args: { p_tenant: string; p_user: string; p_phone: string; p_waba: string; p_display: string; p_ciphertext: string };
+        Returns: string;
+      };
+      match_knowledge_chunks: {
+        Args: { p_tenant_id: string; p_embedding: string; p_limit?: number; p_min_similarity?: number };
+        Returns: KnowledgeMatch[];
+      };
       nexo_prepare_order: {
         Args: { p_tenant: string; p_user: string; p_session: string; p_customer: string; p_items: Json };
         Returns: Json;

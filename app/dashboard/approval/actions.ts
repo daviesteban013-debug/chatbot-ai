@@ -1,37 +1,16 @@
 "use server";
+import { loadWhatsAppSendOptions } from "@/lib/whatsapp/credentials";
+
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentTenant, getCurrentUser } from "@/lib/auth";
-import { sendText, isWithinServiceWindow, type SendOptions } from "@/lib/whatsapp/send";
+import { sendText, isWithinServiceWindow } from "@/lib/whatsapp/send";
 
 type ActionResult = { ok: boolean; error?: string };
 
-/**
- * Resuelve las credenciales de envío de WhatsApp del tenant.
- * Usa access_token_enc de la tabla o cae al env var de desarrollo.
- */
-async function loadSendOptions(tenantId: string): Promise<SendOptions | null> {
-  const admin = createAdminClient();
-  const { data } = await admin
-    .from("whatsapp_accounts")
-    .select("phone_number_id, access_token_enc")
-    .eq("tenant_id", tenantId)
-    .limit(1)
-    .maybeSingle();
-
-  if (!data?.phone_number_id) return null;
-
-  const accessToken =
-    data.access_token_enc?.trim() ||
-    process.env.WHATSAPP_ACCESS_TOKEN?.trim() ||
-    "";
-
-  if (!accessToken) return null;
-
-  return { phoneNumberId: data.phone_number_id, accessToken };
-}
+async function loadSendOptions(tenantId: string) { return loadWhatsAppSendOptions(createAdminClient(), tenantId); }
 
 /**
  * Aprueba una respuesta propuesta por el agente y la envía por WhatsApp.

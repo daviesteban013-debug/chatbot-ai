@@ -11,11 +11,11 @@ import type {
   WhatsAppSendResponse,
   WhatsAppErrorResponse,
 } from "./types";
+import { graphBaseUrl } from "./cloud";
 
 const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 1000;
-const GRAPH_API_VERSION = "v21.0";
-const GRAPH_BASE_URL = `https://graph.facebook.com/${GRAPH_API_VERSION}`;
+const GRAPH_BASE_URL = graphBaseUrl();
 
 /** Límite de caracteres de un mensaje de texto según Meta. */
 const TEXT_MAX_LENGTH = 4096;

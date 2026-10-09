@@ -1,3 +1,4 @@
+import { loadWhatsAppSendOptions } from "@/lib/whatsapp/credentials";
 /**
  * Orquestación del agente vendedor.
  * Recibe un mensaje, construye contexto, llama al LLM con tools en bucle,
@@ -9,7 +10,7 @@ import { calculateCost, configuredModel } from "@/lib/llm";
 import { meteredChatCompletion } from "@/lib/llm/metered";
 import type { LLMMessage, LLMResponse } from "@/lib/llm";
 import { AGENT_TOOLS, executeToolCall, type ToolContext, type ToolResult } from "./tools";
-import { sendText, markAsRead, type SendOptions } from "@/lib/whatsapp/send";
+import { sendText, markAsRead } from "@/lib/whatsapp/send";
 import type { Json } from "@/lib/database.types";
 
 // ---------- Tipos ----------
@@ -22,6 +23,7 @@ export type RunAgentParams = {
   triggerMessageId: string;
   /** ID original del mensaje de WhatsApp (wamid.*), usado para markAsRead. */
   waMessageId: string;
+  sourcePhoneNumberId?: string;
 };
 
 type AgentConfig = {
@@ -96,7 +98,7 @@ export async function runAgent(params: RunAgentParams): Promise<void> {
     // If mode is autonomous, escalate to human so the customer isn't left hanging
     if (mode === "autonomous") {
       try {
-        const sendOpts = await loadSendOptions(supabase, tenantId);
+        const sendOpts = await loadSendOptions(supabase, tenantId, params.sourcePhoneNumberId);
         const ctx: ToolContext = {
           supabase,
           tenantId,
@@ -140,7 +142,7 @@ async function runAgentInner(
 
 
   // 2. Resolver credenciales de envío de WhatsApp del tenant (multi-tenant).
-  const sendOpts = await loadSendOptions(supabase, tenantId);
+  const sendOpts = await loadSendOptions(supabase, tenantId, params.sourcePhoneNumberId);
 
   // 3. Marcar mensaje como leído (feedback visual al cliente)
   if (sendOpts) {
@@ -399,38 +401,7 @@ async function loadAgentConfig(
   };
 }
 
-/**
- * Resuelve las credenciales de envío de WhatsApp del tenant a partir de
- * `whatsapp_accounts`. En V1 el token cifrado (`access_token_enc`) se trata
- * como texto plano; si está vacío se usa el env var `WHATSAPP_ACCESS_TOKEN`
- * como conveniencia de desarrollo.
- *
- * Devuelve `null` si no hay cuenta configurada o no se puede resolver un token.
- */
-async function loadSendOptions(
-  supabase: ReturnType<typeof createAdminClient>,
-  tenantId: string
-): Promise<SendOptions | null> {
-  const { data } = await supabase
-    .from("whatsapp_accounts")
-    .select("phone_number_id, access_token_enc")
-    .eq("tenant_id", tenantId)
-    .limit(1)
-    .maybeSingle();
-
-  if (!data?.phone_number_id) {
-    return null;
-  }
-
-  const accessToken =
-    (data.access_token_enc?.trim() || process.env.WHATSAPP_ACCESS_TOKEN?.trim() || "");
-
-  if (!accessToken) {
-    return null;
-  }
-
-  return { phoneNumberId: data.phone_number_id, accessToken };
-}
+const loadSendOptions = loadWhatsAppSendOptions;
 
 /**
  * Carga el historial de la conversación incluyendo mensajes de audio transcritos

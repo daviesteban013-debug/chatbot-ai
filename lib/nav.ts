@@ -1,6 +1,7 @@
 import {
   LayoutDashboard,
   MessageSquare,
+  MessageCircle,
   ShoppingBag,
   Package,
   UserPlus,
@@ -25,6 +26,7 @@ export const navItems: NavItem[] = [
   { label: "NEXO · Centro de mando", href: "/dashboard/jarvis", icon: Sparkles },
   { label: "Resumen", href: "/dashboard", icon: LayoutDashboard },
   { label: "Conversaciones", href: "/dashboard/conversations", icon: MessageSquare },
+  { label: "WhatsApp", href: "/dashboard/whatsapp", icon: MessageCircle },
   { label: "Pedidos", href: "/dashboard/orders", icon: ShoppingBag },
   { label: "Catálogo", href: "/dashboard/catalog", icon: Package },
   { label: "Handoffs", href: "/dashboard/handoffs", icon: UserPlus },
