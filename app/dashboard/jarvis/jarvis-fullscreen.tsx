@@ -23,6 +23,8 @@ import { CreditBalancePanel } from "@/components/dashboard/credit-balance";
 import { useJarvisFiles } from "@/hooks/useJarvisFiles";
 import { FILE_ACCEPT } from "@/lib/files/types";
 import type { FileSummary } from "@/lib/files/types";
+import { useOrderProposals } from "@/hooks/useOrderProposals";
+import { OrderProposals } from "@/components/jarvis/order-proposals";
 
 const pageAccent = "#facc15";
 
@@ -114,6 +116,7 @@ function JarvisFullscreenInner({
     messages,
     sessionId,
     isLoading,
+    activity: agentActivity,
     error,
     input,
     handleInputChange,
@@ -122,6 +125,7 @@ function JarvisFullscreenInner({
     cancelResponse,
     setInput,
   } = useJarvisAgent({ sessionScope: userId ?? "public", onResponseStart, onResponseDelta, onResponseComplete, onResponseError: stopSpokenTurn, spokenResponse: isVoiceOutputEnabled, onPersonalizationChange: onProfileChange, attachments: attachments.selected, onFilesSubmitted: attachments.submitted });
+  const orderProposals = useOrderProposals(sessionId, messages, Boolean(userId));
   useEffect(() => { const sync = () => setFileSession(sessionId); sync(); }, [sessionId]);
 
   const hasWelcomedRef = useRef(false);
@@ -253,7 +257,7 @@ function JarvisFullscreenInner({
   const latest = turnStart === null ? undefined : messages.slice(turnStart).reverse().find(message => message.role === "assistant");
   const activity = !isPoweredOn
     ? claps.pending ? "Esperando permiso del micrófono" : claps.listening ? "Da dos aplausos para encender" : isRecording ? "Di «NEXO, enciéndete»" : "Listo cuando tú lo estés"
-    : isRecording ? "Te escucho" : voiceSpeaking ? "Hablando contigo" : readyToPlay ? "Pulsa Reproducir voz" : voicePending ? "Preparando mi voz" : isLoading ? "Pensando contigo" : "Aquí para ayudarte";
+    : isRecording ? "Te escucho" : voiceSpeaking ? "Hablando contigo" : readyToPlay ? "Pulsa Reproducir voz" : voicePending ? "Preparando mi voz" : isLoading ? agentActivity ?? "Organizando tu solicitud" : "Aquí para ayudarte";
   const exit = () => { claps.stop(); stopMicrophone(); stopSpokenTurn(); cancelResponse(); };
   const avatarState = voiceSpeaking ? "SPEAKING" : isRecording || claps.listening ? "LISTENING" : isLoading || voicePending ? "PROCESSING" : state === "ERROR" ? "ERROR" : "IDLE";
   useEffect(() => {
@@ -266,7 +270,8 @@ function JarvisFullscreenInner({
     return () => window.removeEventListener("keydown", interrupt);
   }, [panel, isLoading, voiceBusy, stopSpokenTurn, cancelResponse]);
 
-  if (desktopMode) return <DesktopBubble powered={isPoweredOn} listening={isRecording} armed={microphoneArmed} busy={isLoading || voiceBusy} speaking={voiceSpeaking}
+  const proposals = <OrderProposals state={orderProposals} onDecision={() => { stopMicrophone(); claps.stop(); stopSpokenTurn(); cancelResponse(); }} />;
+  if (desktopMode) return <DesktopBubble proposals={proposals} powered={isPoweredOn} listening={isRecording} armed={microphoneArmed} busy={isLoading || voiceBusy} speaking={voiceSpeaking}
     activity={activity} reply={latest?.content || commandNotice} error={error || voiceError || microphoneError} input={input} voice={isVoiceOutputEnabled} readyToPlay={readyToPlay}
     onPower={isPoweredOn ? powerOff : powerOn} onMicrophone={toggleRecording} onVoice={() => { stopSpokenTurn(); setIsVoiceOutputEnabled(value => !value); }}
     onStop={() => { stopSpokenTurn(); cancelResponse(); }} onResume={() => { pauseMicrophone(); resume(); }}
@@ -299,6 +304,7 @@ function JarvisFullscreenInner({
 
         <section className={styles.dock} aria-label="Habla o escribe a NEXO" onDragOver={event => { if (event.dataTransfer.types.includes("Files")) event.preventDefault(); }} onDrop={event => { event.preventDefault(); if (userId && !isLoading && !attachments.pending) void attachments.upload(event.dataTransfer.files); }}>
           {userId && <CreditBalancePanel compact />}
+          {proposals}
           {justPaid && <p className={styles.notice}>Tu plan está activo. Enciende a NEXO para comenzar.</p>}
           {(error || voiceError || microphoneError || claps.error) && <p role="alert" className={styles.error}>{error || voiceError || microphoneError || claps.error}</p>}
           {attachments.error && <p role="alert" className={styles.error}>{attachments.error}</p>}

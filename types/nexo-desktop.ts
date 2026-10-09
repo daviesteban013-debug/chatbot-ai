@@ -1,5 +1,6 @@
 export interface DesktopPreferences { color: string; expanded: boolean }
 export interface NexoDesktop {
+  surface?: "crm" | "bubble";
   getPreferences(): Promise<DesktopPreferences>;
   setColor(color: string): Promise<DesktopPreferences>;
   setExpanded(expanded: boolean): Promise<DesktopPreferences>;

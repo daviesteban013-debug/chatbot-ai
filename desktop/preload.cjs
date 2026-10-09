@@ -2,6 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 // A narrow bridge: no arbitrary IPC channel, URL, shell, filesystem or credentials.
 if (window.top === window && window.location.origin === 'https://chatbot-ai-gold-two.vercel.app') {
   contextBridge.exposeInMainWorld('nexoDesktop', {
+    surface: process.argv.includes('--nexo-surface=crm') ? 'crm' : 'bubble',
     getPreferences: () => ipcRenderer.invoke('nexo:preferences'),
     setColor: color => ipcRenderer.invoke('nexo:color', color),
     setExpanded: expanded => ipcRenderer.invoke('nexo:expanded', expanded),

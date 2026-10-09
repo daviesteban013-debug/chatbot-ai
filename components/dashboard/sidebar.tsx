@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState, type MouseEvent } from "react";
 import { usePathname } from "next/navigation";
 import { Bot, LogOut, Settings2 } from "lucide-react";
 import { signOut } from "@/app/dashboard/actions";
@@ -11,6 +12,13 @@ import { DesktopDownloadLink } from "@/components/pwa/desktop-download-link";
 
 export function DashboardSidebar({ tenantName }: { tenantName?: string }) {
   const pathname = usePathname();
+  const [desktopError, setDesktopError] = useState<string | null>(null);
+  function openNexo(event: MouseEvent<HTMLAnchorElement>) {
+    if (window.nexoDesktop?.surface !== "crm") return;
+    event.preventDefault();
+    setDesktopError(null);
+    void window.nexoDesktop.setExpanded(true).catch(() => setDesktopError("No se pudo abrir NEXO. Intenta desde el icono de la bandeja."));
+  }
 
   const isActive = (href: string) =>
     href === "/dashboard"
@@ -20,7 +28,7 @@ export function DashboardSidebar({ tenantName }: { tenantName?: string }) {
   return (
     <aside className="sticky top-0 z-30 flex max-h-svh flex-col border-b border-slate-200 bg-slate-950 text-white lg:h-svh lg:w-64 lg:shrink-0 lg:border-b-0 lg:border-r lg:border-white/5">
       <div className="flex h-16 items-center justify-between px-5 lg:h-20">
-        <Link href="/dashboard/jarvis" className="flex items-center gap-2.5">
+        <Link href="/dashboard/jarvis" onClick={openNexo} className="flex items-center gap-2.5">
           <span className="flex size-9 items-center justify-center rounded-xl bg-yellow-400 text-slate-950 shadow-lg shadow-yellow-400/15">
             <Bot className="size-5" strokeWidth={2.4} />
           </span>
@@ -43,6 +51,7 @@ export function DashboardSidebar({ tenantName }: { tenantName?: string }) {
           <Link
             key={href}
             href={href}
+            onClick={href === "/dashboard/jarvis" ? openNexo : undefined}
             className={cn(
               "flex shrink-0 items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition",
               isActive(href)
@@ -55,6 +64,7 @@ export function DashboardSidebar({ tenantName }: { tenantName?: string }) {
           </Link>
         ))}
       </nav>
+      {desktopError && <p role="alert" className="px-5 pb-3 text-xs text-rose-300">{desktopError}</p>}
 
       <div className="space-y-2 px-4 pb-3"><DesktopDownloadLink className="w-full" /><DesktopDownloadLink platform="mac" className="w-full" /><InstallJarvisButton className="w-full" /></div>
       <div className="mt-auto hidden p-4 lg:block">

@@ -25,6 +25,7 @@ export interface UseJarvisAgentReturn {
   messages: ChatMessage[];
   sessionId: string;
   isLoading: boolean;
+  activity: string | null;
   error: string | null;
   input: string;
   setInput: (value: string) => void;
@@ -55,6 +56,7 @@ export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAg
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [activity, setActivity] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [input, setInput] = useState("");
 
@@ -135,6 +137,7 @@ export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAg
       setInput("");
       setError(null);
       setIsLoading(true);
+      setActivity("Organizando tu solicitud");
 
       // Transición inmediata a PROCESSING
       setState("PROCESSING");
@@ -199,6 +202,9 @@ export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAg
 
               if (payload.status === "processing") {
                 setState("PROCESSING");
+                setActivity(payload.phase === "delegating" && payload.agentLabel
+                  ? `Consultando al agente de ${payload.agentLabel}`
+                  : payload.phase === "synthesizing" ? "Reuniendo los resultados" : "Organizando tu solicitud");
               } else if (payload.status === "streaming" && payload.delta) {
                 accumulatedText += payload.delta;
                 onResponseDelta?.(payload.delta);
@@ -225,6 +231,7 @@ export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAg
                   content: finalContent,
                   createdAt: new Date().toISOString(),
                   status: "completed",
+                  metadata: { handoffs: payload.handoffs ?? [], orderProposals: payload.orderProposals ?? [] },
                 };
 
                 setMessages((prev) =>
@@ -281,6 +288,7 @@ export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAg
       } finally {
         window.dispatchEvent(new Event("jarvis:credits"));
         setIsLoading(false);
+        setActivity(null);
         abortControllerRef.current = null;
       }
     },
@@ -328,6 +336,7 @@ export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAg
     messages,
     sessionId,
     isLoading,
+    activity,
     error,
     input,
     setInput,

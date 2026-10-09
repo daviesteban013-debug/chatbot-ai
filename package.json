@@ -12,6 +12,7 @@
     "test:jarvis": "node --test tools/jarvis/*.test.mjs",
     "test:agent": "node --test tools/agent/*.test.mjs",
     "test:agent:live": "node tools/agent/smoke.mjs",
+    "test:team:live": "node tools/agent/team-smoke.mjs",
     "test:pwa": "node --test tools/pwa/*.test.mjs",
     "test:credits": "node --test tools/credits/*.test.mjs",
     "llm:status": "node tools/llm/status.mjs",

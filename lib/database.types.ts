@@ -579,6 +579,12 @@ export type Database = {
           },
         ];
       };
+      nexo_order_proposals: {
+        Row: { id: string; tenant_id: string; user_id: string; session_id: string; request_key: string; status: string; snapshot: Json; order_id: string | null; handoff_id: string | null; created_at: string; expires_at: string; decided_at: string | null };
+        Insert: { tenant_id: string; user_id: string; session_id: string; request_key: string; snapshot: Json };
+        Update: { status?: string; decided_at?: string; order_id?: string; handoff_id?: string };
+        Relationships: [];
+      };
       orders: {
         Row: Order;
         Insert: {
@@ -1002,6 +1008,14 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      nexo_prepare_order: {
+        Args: { p_tenant: string; p_user: string; p_session: string; p_customer: string; p_items: Json };
+        Returns: Json;
+      };
+      nexo_decide_order: {
+        Args: { p_id: string; p_user: string; p_decision: string };
+        Returns: Json;
+      };
       credit_balance: {
         Args: { p_tenant_id: string | null; p_user_id: string | null };
         Returns: Json;

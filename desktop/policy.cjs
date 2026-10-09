@@ -33,7 +33,7 @@ function callbackUrl(value, pendingUntil, now = Date.now()) {
       [...url.searchParams.keys()].some(key => key !== 'code') || url.searchParams.getAll('code').length !== 1 || !/^[\w-]{16,256}$/.test(code || '')) return null;
     const destination = new URL('/auth/callback', APP_ORIGIN);
     destination.searchParams.set('code', code);
-    destination.searchParams.set('next', '/dashboard/jarvis');
+    destination.searchParams.set('next', '/dashboard');
     return destination.href;
   } catch { return null; }
 }

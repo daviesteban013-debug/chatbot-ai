@@ -1,4 +1,6 @@
 import type { JarvisPersonalization } from "@/lib/jarvis-personalization";
+import type { HandoffTrace, SpecialistId } from "@/lib/agent/team";
+import type { OrderProposal } from "@/lib/order-proposals";
 
 export type AvatarState = "IDLE" | "LISTENING" | "PROCESSING" | "SPEAKING" | "ERROR";
 
@@ -19,7 +21,11 @@ export interface AgentStreamPayload {
   content?: string;
   sessionId: string;
   messageId?: string;
-  phase?: "thinking" | "tool_call" | "synthesizing";
+  phase?: "thinking" | "tool_call" | "synthesizing" | "delegating";
+  agent?: SpecialistId;
+  agentLabel?: string;
+  handoffs?: HandoffTrace[];
+  orderProposals?: OrderProposal[];
   tool?: string;
   error?: string;
   latencyMs?: number;

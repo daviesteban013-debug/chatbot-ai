@@ -1,0 +1,23 @@
+.list { display:grid; gap:10px; max-height:340px; overflow-y:auto; scrollbar-width:thin; text-align:left; width:100%; padding:3px; margin:10px 0; }
+.heading { display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:9px; letter-spacing:1.5px; color:#aaa; }
+.heading button { background:transparent; border:0; color:#ddd; font-size:11px; cursor:pointer; letter-spacing:normal; }
+.card { padding:16px; border:1px solid #ffffff20; border-radius:16px; background:linear-gradient(145deg,#ffffff07,#ffffff02); color:#f5f5f5; }
+.status { margin:0 0 8px; color:var(--nexo-color,var(--jarvis-accent,#facc15)); font-size:11px; }
+.status[data-done=true] { color:#6ee7b7; }
+.card h3 { font-size:16px; margin:0 0 12px; overflow-wrap:anywhere; }
+.card ul { list-style:none; margin:0; padding:0; display:grid; gap:9px; }
+.card li { display:flex; justify-content:space-between; gap:12px; font-size:12px; align-items:start; }
+.card li div { min-width:0; overflow-wrap:anywhere; }
+.card li strong { white-space:nowrap; font-size:11px; }
+.card li small { display:block; margin-top:3px; color:#a3a3ad; font-size:10px; }
+.total { display:flex; justify-content:space-between; gap:12px; border-top:1px solid #ffffff14; padding-top:12px; margin-top:12px; font-size:12px; }
+.total small { color:#aaa; font-size:9px; }
+.note { color:#acadb7; font-size:11px; line-height:1.6; margin:10px 0; }
+.expiry { color:#aaa; font-size:10px; }
+.actions { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
+.actions button { padding:9px 11px; border:1px solid #ffffff20; border-radius:9px; color:#ddd; background:#ffffff05; cursor:pointer; font-size:11px; }
+.actions .confirm { background:var(--nexo-color,var(--jarvis-accent,#facc15)); color:#101010; font-weight:600; border-color:transparent; }
+.actions button:disabled { opacity:.45; cursor:wait; }
+.actions button:focus-visible,.link:focus-visible { outline:2px solid #facc15; outline-offset:3px; }
+.link { display:inline-block; color:#facc15; font-size:12px; margin-top:8px; }
+.error { color:#fda4af; font-size:12px; line-height:1.5; margin:4px 0; }
