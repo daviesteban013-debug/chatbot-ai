@@ -10,6 +10,7 @@ export function useDesktopMode() {
 }
 interface Props {
   proposals?: ReactNode;
+  hasProposals?: boolean;
   powered: boolean; listening: boolean; armed: boolean; busy: boolean; speaking: boolean;
   activity: string; reply: string; error?: string | null; input: string; voice: boolean; readyToPlay: boolean;
   onPower(): void; onMicrophone(): void; onVoice(): void; onStop(): void; onResume(): void;
@@ -48,7 +49,7 @@ export function DesktopBubble(props: Props) {
   }
   const state = props.speaking ? "speaking" : props.listening ? "listening" : props.busy ? "thinking" : "idle";
   const hasReply = props.reply && props.reply !== "Estoy aquí. ¿Qué vamos a hacer hoy?";
-  return <main className={styles.shell} data-expanded={preferences.expanded} data-state={state} style={{ "--nexo-color": preferences.color, "--eye-x": `${eyes.x}px`, "--eye-y": `${eyes.y}px` } as CSSProperties}>
+  return <main className={styles.shell} data-proposals={props.hasProposals} data-expanded={preferences.expanded} data-state={state} style={{ "--nexo-color": preferences.color, "--eye-x": `${eyes.x}px`, "--eye-y": `${eyes.y}px` } as CSSProperties}>
     <header className={styles.handle}>{preferences.expanded ? <><span className={styles.wordmark}>NEXO<span>.</span></span><span className={styles.headerLabel}>Tu agente</span><button type="button" onClick={() => void open("/dashboard")} aria-label="Abrir CRM" title="Abrir CRM"><LayoutDashboard size={14} /><span>CRM</span><ArrowUpRight size={12} /></button><button type="button" onClick={expand} aria-label="Contraer NEXO" title="Contraer"><ChevronDown size={16} /></button></> : <GripHorizontal size={16} aria-label="Arrastra para mover NEXO" />}</header>
     <button type="button" className={styles.orbButton} onClick={preferences.expanded ? props.onPower : expand} aria-label={preferences.expanded ? props.powered ? "Apagar NEXO" : "Encender NEXO y activar escucha" : "Abrir NEXO"}
       onPointerMove={event => { const box = event.currentTarget.getBoundingClientRect(); setEyes({ x: (event.clientX - box.left - box.width / 2) / 15, y: (event.clientY - box.top - box.height / 2) / 15 }); }} onPointerLeave={() => setEyes({ x: 0, y: 0 })}>

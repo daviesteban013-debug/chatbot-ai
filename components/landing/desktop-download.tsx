@@ -8,8 +8,8 @@ export function DesktopDownloadSection() {
       <div className="relative grid items-center gap-9 md:grid-cols-[1.4fr_1fr]">
         <div>
           <p className="landing-eyebrow inline-flex items-center gap-2"><Monitor size={14} /> NEXO EN TU ESCRITORIO</p>
-          <h2 id="desktop-title" className="mt-4 text-3xl font-medium leading-tight tracking-tight text-white sm:text-4xl">Tu agente, siempre a mano.</h2>
-          <p className="mt-4 max-w-lg text-sm leading-7 text-zinc-400">Una burbuja que te acompaña encima de tus ventanas. Habla con NEXO, abre los paneles de tu CRM y dale tu color.</p>
+          <h2 id="desktop-title" className="mt-4 text-3xl font-medium leading-tight tracking-tight text-white sm:text-4xl">Tu CRM completo. NEXO a tu lado.</h2>
+          <p className="mt-4 max-w-lg text-sm leading-7 text-zinc-400">Abre tu CRM en una ventana maximizada y lleva a NEXO contigo en una burbuja discreta. Habla, abre paneles y revisa propuestas de pedidos antes de confirmarlas. Tú eliges su color.</p>
           <div className="mt-6 flex flex-wrap gap-4">
             <div><DesktopDownloadLink className="min-h-12 border-yellow-300! bg-yellow-300! px-5! text-zinc-950! hover:bg-yellow-200!" /><p className="mt-2 text-[11px] leading-5 text-zinc-500">Beta {desktopRelease.version} · Windows 10/11 · {desktopRelease.sizeLabel}</p></div>
             <div><DesktopDownloadLink platform="mac" className="min-h-12 px-5!" /><p className="mt-2 text-[11px] leading-5 text-zinc-500">Beta {macDesktopRelease.version} · {macDesktopRelease.systemLabel}</p></div>

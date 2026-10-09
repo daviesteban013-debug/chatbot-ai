@@ -270,8 +270,8 @@ function JarvisFullscreenInner({
     return () => window.removeEventListener("keydown", interrupt);
   }, [panel, isLoading, voiceBusy, stopSpokenTurn, cancelResponse]);
 
-  const proposals = <OrderProposals state={orderProposals} onDecision={() => { stopMicrophone(); claps.stop(); stopSpokenTurn(); cancelResponse(); }} />;
-  if (desktopMode) return <DesktopBubble proposals={proposals} powered={isPoweredOn} listening={isRecording} armed={microphoneArmed} busy={isLoading || voiceBusy} speaking={voiceSpeaking}
+  const proposals = <OrderProposals compact={desktopMode} state={orderProposals} onDecision={() => { stopMicrophone(); claps.stop(); stopSpokenTurn(); cancelResponse(); }} />;
+  if (desktopMode) return <DesktopBubble hasProposals={orderProposals.proposals.length > 0} proposals={proposals} powered={isPoweredOn} listening={isRecording} armed={microphoneArmed} busy={isLoading || voiceBusy} speaking={voiceSpeaking}
     activity={activity} reply={latest?.content || commandNotice} error={error || voiceError || microphoneError} input={input} voice={isVoiceOutputEnabled} readyToPlay={readyToPlay}
     onPower={isPoweredOn ? powerOff : powerOn} onMicrophone={toggleRecording} onVoice={() => { stopSpokenTurn(); setIsVoiceOutputEnabled(value => !value); }}
     onStop={() => { stopSpokenTurn(); cancelResponse(); }} onResume={() => { pauseMicrophone(); resume(); }}

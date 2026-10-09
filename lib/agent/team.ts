@@ -146,4 +146,3 @@ export function createSpecialistTeam(options: TeamOptions) {
 
   return { tools: delegationTools, traces, delegate };
 }
-

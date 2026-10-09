@@ -3,9 +3,9 @@ import type { useOrderProposals } from "@/hooks/useOrderProposals";
 import styles from "./order-proposals.module.css";
 
 const money = (value: number) => new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(value);
-export function OrderProposals({ state, onDecision }: { state: ReturnType<typeof useOrderProposals>; onDecision(): void }) {
+export function OrderProposals({ state, onDecision, compact = false }: { state: ReturnType<typeof useOrderProposals>; onDecision(): void; compact?: boolean }) {
   if (!state.proposals.length) return null;
-  return <section className={styles.list} aria-label="Propuestas de pedidos">
+  return <section className={styles.list} data-compact={compact} aria-label="Propuestas de pedidos">
     <div className={styles.heading}><span>TUS PROPUESTAS</span><button type="button" disabled={!!state.busy} onClick={() => void state.refresh()}>Actualizar</button></div>
     {state.error && <p role="alert" className={styles.error}>{state.error}</p>}
     {!state.verified && <p role="status" className={styles.error}>Actualiza el estado para volver a decidir.</p>}

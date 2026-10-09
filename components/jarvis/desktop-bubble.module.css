@@ -10,6 +10,11 @@
 .handle button { display: flex; align-items: center; gap: 5px; height: 28px; padding: 0 7px; color: #c1c2c8; font-size: 10px; border: 1px solid #ffffff0d; border-radius: 8px; background: #ffffff04; -webkit-app-region: no-drag; app-region: no-drag; }
 .handle button:hover { background: #ffffff10; color: white; }
 .orbButton { position: relative; flex-shrink: 0; display: grid; place-items: center; width: 132px; height: 108px; margin: 4px 0 0; border: 0; background: transparent; isolation: isolate; }
+.shell[data-expanded=true][data-proposals=true] .orbButton { height:50px; margin-top:8px; }
+.shell[data-expanded=true][data-proposals=true] .orb { width:42px; height:44px; }
+.shell[data-expanded=true][data-proposals=true] .eyes { gap:7px; }
+.shell[data-expanded=true][data-proposals=true] .eyes i { height:10px; width:4px; }
+.shell[data-expanded=true][data-proposals=true] .aura { width:48px; height:44px; }
 .orb { position: relative; display: grid; place-items: center; width: 92px; height: 95px; border-radius: 48% 52% 46% 54% / 53% 43% 57% 47%; background: radial-gradient(ellipse at 28% 17%,#fffadf 0%,#ffffff55 6%,transparent 35%),radial-gradient(ellipse at 35% 28%,var(--nexo-color) 5%,color-mix(in srgb,var(--nexo-color),#24231c 32%) 56%,#141411 95%); box-shadow: inset -9px -14px 18px #0009,inset 1px 1px 2px #fff9,0 10px 20px #0006; animation: breathe 6s ease-in-out infinite; }
 .orb[data-active=false] { filter: saturate(.8); }
 .orb[data-state=listening] { animation: breathe 2s ease-in-out infinite; }

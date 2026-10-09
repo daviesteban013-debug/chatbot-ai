@@ -1,4 +1,5 @@
 .list { display:grid; gap:10px; max-height:340px; overflow-y:auto; scrollbar-width:thin; text-align:left; width:100%; padding:3px; margin:10px 0; }
+.list[data-compact=true] { max-height:none; overflow:visible; }
 .heading { display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:9px; letter-spacing:1.5px; color:#aaa; }
 .heading button { background:transparent; border:0; color:#ddd; font-size:11px; cursor:pointer; letter-spacing:normal; }
 .card { padding:16px; border:1px solid #ffffff20; border-radius:16px; background:linear-gradient(145deg,#ffffff07,#ffffff02); color:#f5f5f5; }
