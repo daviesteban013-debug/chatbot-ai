@@ -19,6 +19,7 @@ const db = { from(table) {
 globalThis.__webCatalog = async (args, ctx) => { state.catalogCalls++; state.catalog = { args, ctx }; return { ok: true, data: { products: [] } }; };
 const { executeWebToolCall, webCrmTools } = await import(await load("../../lib/agent/web-tools.ts", {
   zod: import.meta.resolve("zod"),
+  "./operator": await load("../../lib/agent/operator.ts", { zod: import.meta.resolve("zod") }),
   "./tools": moduleUrl("export const AGENT_TOOLS = ['search_catalog','check_stock','confirm_order','create_draft_order'].map(name=>({type:'function',function:{name}})); export const searchCatalog=(...args)=>globalThis.__webCatalog(...args);"),
 }));
 const context = extra => ({ supabase: db, tenantId: "business-a", role: "owner", ...extra });
@@ -27,7 +28,7 @@ const run = (name, args = {}, extra = {}) => executeWebToolCall(name, args, cont
 test("web membership enables only CRM reads; guessed WhatsApp writes and missing membership never reach the database", async () => {
   assert.equal(webCrmTools("business-a", null).length, 0);
   assert.equal(webCrmTools(null, "owner").length, 0);
-  assert.equal(webCrmTools("business-a", "viewer").length, 5);
+  assert.equal(webCrmTools("business-a", "viewer").length, 10);
   for (const name of ["confirm_order", "create_draft_order", "send_product_media", "escalate_to_human", "unknown"]) assert.equal((await run(name, { order_id: "known-order" })).ok, false);
   assert.equal((await run("get_business_overview", {}, { role: null })).ok, false);
   assert.equal(state.queries.length, 0);

@@ -8,19 +8,21 @@ nextEnv.loadEnvConfig(process.cwd(), false, { info() {}, error() {} });
 const inline = source => `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`;
 const rows = [], queries = [];
 const customerId = "11111111-1111-4111-8111-111111111111";
+const tenantId = "22222222-2222-4222-8222-222222222222";
+const userId = "33333333-3333-4333-8333-333333333333";
 globalThis.__teamSmokeDB = () => ({ from(table) {
   let inserted;
   const q = {
     insert(row) { inserted = row; rows.push(row); return q; },
     select() { return q; }, eq() { return q; }, order() { return q; }, limit() { return q; }, abortSignal() { return q; },
-    maybeSingle: async () => ({ data: null, error: null }),
+    maybeSingle: async () => ({ data: table === "tenant_members" ? { role: "owner" } : null, error: null }),
     single: async () => ({ data: { id: "synthetic-message" }, error: null }),
     then(resolve, reject) { return Promise.resolve({ data: inserted ? null : table === "jarvis_messages" ? [] : null, error: null }).then(resolve, reject); },
   };
   return q;
 } });
 globalThis.__teamSmokeQuery = async (name, args, context) => {
-  assert.equal(context.tenantId, "");
+  assert.equal(context.tenantId, tenantId);
   assert.equal(context.role, "owner");
   queries.push(name);
   if (name === "search_customers") return { ok: true, data: { customers: [{ id: customerId, name: "Aurora de prueba" }], total_matches: 1, truncated: false } };
@@ -32,9 +34,14 @@ globalThis.__teamSmokeQuery = async (name, args, context) => {
 };
 let stage = "load_modules";
 try {
+  const metered = await moduleUrl("lib/llm/metered.ts");
   const { createAgentExecutor } = await import(await moduleUrl("lib/agent/executor.ts", {
     "@/lib/supabase/admin": inline("export const createAdminClient=()=>globalThis.__teamSmokeDB();"),
     "@/lib/llm": await moduleUrl("lib/llm/client.ts"),
+    // The synthetic authenticated context never changes the credit account used by this smoke.
+    "@/lib/llm/metered": inline(`import { meteredChatCompletion as complete, meteredChatCompletionStream as stream } from ${JSON.stringify(metered)};
+      export const meteredChatCompletion=(_account,...args)=>complete({channel:'web'},...args);
+      export const meteredChatCompletionStream=(_account,...args)=>stream({channel:'web'},...args);`),
     "./web-tools": inline(`export const webCrmTools=()=>[
       {type:'function',function:{name:'search_customers',description:'Busca clientes por nombre y devuelve su ID real.',parameters:{type:'object',properties:{query:{type:'string'}},required:['query'],additionalProperties:false}}},
       {type:'function',function:{name:'list_orders',description:'Consulta pedidos de un cliente por su ID real.',parameters:{type:'object',properties:{customer_id:{type:'string'},status:{type:'string'}},required:['customer_id'],additionalProperties:false}}}
@@ -45,8 +52,8 @@ try {
   const events = [];
   stage = "execute_turn";
   for await (const event of createAgentExecutor({
-    sessionId: "synthetic-team-smoke", tenantId: null, userId: null,
-    role: "owner", userMessage: "Busca al cliente de prueba Aurora y consulta sus pedidos pendientes. Informa el estado y si hay más coincidencias.",
+    sessionId: "synthetic-team-smoke", tenantId, userId,
+    role: "owner", userMessage: "Busca al cliente de prueba Aurora y consulta sus pedidos pendientes. Informa el estado y si hay más coincidencias. Al terminar abre el panel de Pedidos (la lista, no un pedido individual).",
   })) events.push(event);
   stage = "validate_result";
   assert.equal(events.at(-1)?.status, "completed", "The model must finish the coordinated turn");
@@ -54,8 +61,12 @@ try {
   assert.deepEqual(events.at(-1).handoffs.map(handoff => handoff.agent), ["clientes", "pedidos"]);
   assert.ok(events.at(-1).handoffs.every(handoff => handoff.status === "completed"));
   assert.match(events.at(-1).content, /pendiente|pago/i);
+  const actions = events.at(-1).operatorActions;
+  assert.ok(actions.some(action => action.tool === "search_customers" && action.status === "completed"));
+  assert.ok(actions.some(action => action.tool === "list_orders" && action.status === "completed"));
+  assert.ok(actions.some(action => action.tool === "open_crm_panel" && action.status === "completed" && action.navigation?.href === "/dashboard/orders"));
   const saved = rows.at(-1);
-  console.log(JSON.stringify({ ok: true, syntheticDataOnly: true, agents: saved.metadata.handoffs.map(handoff => handoff.agent), modelCalls: saved.metadata.modelCalls, tokensIn: saved.tokens_in, tokensOut: saved.tokens_out, latencyMs: saved.latency_ms }));
+  console.log(JSON.stringify({ ok: true, syntheticDataOnly: true, navigationVerified: true, actions: actions.map(action => ({ tool: action.tool, status: action.status })), agents: saved.metadata.handoffs.map(handoff => handoff.agent), modelCalls: saved.metadata.modelCalls, tokensIn: saved.tokens_in, tokensOut: saved.tokens_out, latencyMs: saved.latency_ms }));
 } catch (error) {
   console.error(JSON.stringify({ ok: false, stage, code: typeof error.code === "string" && /^(ERR_[A-Z_]+|ENOENT|ENAMETOOLONG)$/.test(error.code) ? error.code : "CHECK_FAILED", missingModule: error.code === "ENOENT" ? String(error.path).split(/[\\/]/).at(-1) : undefined, reason: "La comprobación del equipo no se completó. Revisa acceso, cuota, latencia y pruebas locales." }));
   process.exitCode = 1;

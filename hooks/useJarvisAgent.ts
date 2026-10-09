@@ -6,6 +6,26 @@ import { useJarvisAvatar } from "@/context/JarvisAvatarContext";
 import type { ChatMessage } from "@/types/jarvis";
 import type { JarvisPersonalization } from "@/lib/jarvis-personalization";
 import type { FileSummary } from "@/lib/files/types";
+import { mergeOperatorActions, settleOperatorActions, type OperatorAction } from "@/lib/crm-operator";
+
+type HistoryMessage = { id?: string; role: string; content: string; createdAt?: string; metadata?: Record<string, unknown> };
+function restoreHistory(messages: HistoryMessage[]): ChatMessage[] {
+  return messages.map(message => ({
+    id: message.id || crypto.randomUUID(),
+    role: message.role as ChatMessage["role"],
+    content: message.content,
+    createdAt: message.createdAt || new Date().toISOString(),
+    status: "completed",
+    metadata: {
+      ...message.metadata,
+      operatorActions: settleOperatorActions(message.metadata?.operatorActions, "completed"),
+    },
+  }));
+}
+function latestHistoryActions(messages: ChatMessage[]): OperatorAction[] {
+  const latestAssistant = messages.findLast(message => message.role === "assistant");
+  return settleOperatorActions(latestAssistant?.metadata?.operatorActions, "completed");
+}
 
 export interface UseJarvisAgentOptions {
   initialSessionId?: string;
@@ -26,6 +46,7 @@ export interface UseJarvisAgentReturn {
   sessionId: string;
   isLoading: boolean;
   activity: string | null;
+  operatorActions: OperatorAction[];
   error: string | null;
   input: string;
   setInput: (value: string) => void;
@@ -57,28 +78,24 @@ export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAg
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [activity, setActivity] = useState<string | null>(null);
+  const [operatorActions, setOperatorActions] = useState<OperatorAction[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [input, setInput] = useState("");
 
   const abortControllerRef = useRef<AbortController | null>(null);
+  const turnRef = useRef(0);
 
   // Cargar historial de la sesión
   const reloadHistory = useCallback(async () => {
+    const turn = turnRef.current;
     try {
       const res = await fetch(`/api/chat?sessionId=${encodeURIComponent(sessionId)}`);
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data.messages)) {
-          setMessages(
-            data.messages.map((m: { id?: string; role: string; content: string; createdAt?: string; metadata?: Record<string, unknown> }) => ({
-              id: m.id || Math.random().toString(),
-              role: m.role as ChatMessage["role"],
-              content: m.content,
-              createdAt: m.createdAt || new Date().toISOString(),
-              status: "completed",
-              metadata: m.metadata,
-            }))
-          );
+        if (Array.isArray(data.messages) && turn === turnRef.current && !abortControllerRef.current) {
+          const restored = restoreHistory(data.messages);
+          setMessages(restored);
+          setOperatorActions(latestHistoryActions(restored));
         }
       }
     } catch (err) {
@@ -88,20 +105,14 @@ export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAg
 
   useEffect(() => {
     let active = true;
+    const turn = turnRef.current;
     fetch(`/api/chat?sessionId=${encodeURIComponent(sessionId)}`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (active && data && Array.isArray(data.messages)) {
-          setMessages(
-            data.messages.map((m: { id?: string; role: string; content: string; createdAt?: string; metadata?: Record<string, unknown> }) => ({
-              id: m.id || Math.random().toString(),
-              role: m.role as ChatMessage["role"],
-              content: m.content,
-              createdAt: m.createdAt || new Date().toISOString(),
-              status: "completed",
-              metadata: m.metadata,
-            }))
-          );
+        if (active && data && Array.isArray(data.messages) && turn === turnRef.current && !abortControllerRef.current) {
+          const restored = restoreHistory(data.messages);
+          setMessages(restored);
+          setOperatorActions(latestHistoryActions(restored));
         }
       })
       .catch((err) => {
@@ -132,18 +143,22 @@ export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAg
   const sendMessage = useCallback(
     async (customText?: string) => {
       const messageText = (customText ?? input).trim() || (attachments.length ? "Analiza los archivos adjuntos." : "");
-      if (!messageText || isLoading) return;
+      if (!messageText || isLoading || abortControllerRef.current) return;
 
       setInput("");
       setError(null);
       setIsLoading(true);
       setActivity("Organizando tu solicitud");
+      setOperatorActions([]);
+      const turn = ++turnRef.current;
+      let accumulatedText = "";
+      let currentActions: OperatorAction[] = [];
 
       // Transición inmediata a PROCESSING
       setState("PROCESSING");
 
       // ID temporal para el mensaje de usuario
-      const userMessageId = `user_${Date.now()}`;
+      const userMessageId = `user_${crypto.randomUUID()}`;
       const userMessage: ChatMessage = {
         id: userMessageId,
         role: "user",
@@ -154,7 +169,7 @@ export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAg
       };
 
       // ID temporal para la respuesta del asistente
-      const assistantMessageId = `assistant_${Date.now()}`;
+      const assistantMessageId = `assistant_${crypto.randomUUID()}`;
       const placeholderAssistant: ChatMessage = {
         id: assistantMessageId,
         role: "assistant",
@@ -184,6 +199,7 @@ export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAg
           }),
           signal: abortController.signal,
         });
+        if (turn !== turnRef.current || abortController.signal.aborted) return;
 
         if (!response.ok) {
           const errData = await response.json().catch(() => ({}));
@@ -195,19 +211,29 @@ export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAg
         }
         if (attachments.length) onFilesSubmitted?.();
 
-        let accumulatedText = "";
         let terminal = false;
         for await (const payload of readAgentStream(response.body, abortController.signal)) {
+              if (turn !== turnRef.current || abortController.signal.aborted) return;
               if (payload.personalization) onPersonalizationChange?.(payload.personalization);
+              if (payload.operatorActions || payload.operation) {
+                currentActions = mergeOperatorActions(currentActions, payload.operatorActions);
+                currentActions = mergeOperatorActions(currentActions, payload.operation ? [payload.operation] : []);
+                setOperatorActions(currentActions);
+                setMessages(previous => previous.map(message => message.id === assistantMessageId
+                  ? { ...message, metadata: { ...message.metadata, operatorActions: currentActions } } : message));
+              }
 
               if (payload.status === "processing") {
                 setState("PROCESSING");
-                setActivity(payload.phase === "delegating" && payload.agentLabel
+                setActivity(payload.phase === "operating" && payload.operation
+                  ? currentActions.find(action => action.id === payload.operation?.id)?.label ?? "Trabajando en el CRM"
+                  : payload.phase === "delegating" && payload.agentLabel
                   ? `Consultando al agente de ${payload.agentLabel}`
                   : payload.phase === "synthesizing" ? "Reuniendo los resultados" : "Organizando tu solicitud");
               } else if (payload.status === "streaming" && payload.delta) {
                 accumulatedText += payload.delta;
                 onResponseDelta?.(payload.delta);
+                if (turn !== turnRef.current || abortController.signal.aborted) return;
 
                 setMessages((prev) =>
                   prev.map((msg) =>
@@ -225,13 +251,15 @@ export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAg
                 if (!onResponseComplete) setState("IDLE");
 
                 const finalContent = payload.content || accumulatedText;
+                currentActions = settleOperatorActions(currentActions, "completed");
+                setOperatorActions(currentActions);
                 const finalMsg: ChatMessage = {
                   id: payload.messageId || assistantMessageId,
                   role: "assistant",
                   content: finalContent,
                   createdAt: new Date().toISOString(),
                   status: "completed",
-                  metadata: { handoffs: payload.handoffs ?? [], orderProposals: payload.orderProposals ?? [] },
+                  metadata: { handoffs: payload.handoffs ?? [], orderProposals: payload.orderProposals ?? [], operatorActions: currentActions },
                 };
 
                 setMessages((prev) =>
@@ -248,18 +276,35 @@ export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAg
                 onResponseError?.();
                 setState("ERROR");
                 setError(payload.error || "Error desconocido");
+                currentActions = settleOperatorActions(currentActions, "error");
+                setOperatorActions(currentActions);
+                setMessages(previous => previous.map(message => message.id === assistantMessageId ? {
+                  ...message,
+                  content: payload.content || accumulatedText || "No pude completar la solicitud. Puedes revisar los pasos realizados.",
+                  status: "error",
+                  metadata: { ...message.metadata, handoffs: payload.handoffs ?? [], orderProposals: payload.orderProposals ?? [], operatorActions: currentActions },
+                } : message));
 
                 // Auto-recuperación a IDLE tras 3.5 segundos
                 setTimeout(() => {
-                  setState("IDLE");
+                  if (turn === turnRef.current) setState("IDLE");
                 }, 3500);
               }
           if (terminal) break;
         }
         if (!terminal) throw new Error("La respuesta se interrumpió. Vuelve a intentarlo.");
       } catch (err: unknown) {
+        if (turn !== turnRef.current) return;
         if (err instanceof Error && err.name === "AbortError") {
           onResponseError?.();
+          currentActions = settleOperatorActions(currentActions, "cancelled");
+          setOperatorActions(currentActions);
+          setMessages(previous => previous.flatMap(message => message.id !== assistantMessageId ? [message]
+            : !message.content && !currentActions.length ? [] : [{ ...message,
+              content: accumulatedText || "Solicitud detenida. Estos son los pasos realizados.",
+              status: "error" as const,
+              metadata: { ...message.metadata, operatorActions: currentActions },
+            }]));
           console.log("[useJarvisAgent] Solicitud cancelada por el usuario");
           return;
         }
@@ -269,27 +314,32 @@ export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAg
         setError(message);
         onResponseError?.();
         setState("ERROR");
+        currentActions = settleOperatorActions(currentActions, "error");
+        setOperatorActions(currentActions);
 
         setMessages((prev) =>
           prev.map((msg) =>
             msg.id === assistantMessageId
               ? {
                   ...msg,
-                  content: `Lo siento, no pude conectar con el núcleo de Jarvis: ${message}`,
+                  content: accumulatedText || `No pude completar la solicitud: ${message}`,
                   status: "error",
+                  metadata: { ...msg.metadata, operatorActions: currentActions },
                 }
               : msg
           )
         );
 
         setTimeout(() => {
-          setState("IDLE");
+          if (turn === turnRef.current) setState("IDLE");
         }, 3500);
       } finally {
         window.dispatchEvent(new Event("jarvis:credits"));
-        setIsLoading(false);
-        setActivity(null);
-        abortControllerRef.current = null;
+        if (turn === turnRef.current) {
+          setIsLoading(false);
+          setActivity(null);
+          abortControllerRef.current = null;
+        }
       }
     },
     [
@@ -311,6 +361,8 @@ export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAg
 
   const clearChat = useCallback(() => {
     abortControllerRef.current?.abort();
+    turnRef.current++;
+    abortControllerRef.current = null;
     onResponseError?.();
     const newSession = `session_${crypto.randomUUID()}`;
     setSessionId(newSession);
@@ -318,17 +370,28 @@ export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAg
       localStorage.setItem(sessionKey, newSession);
     }
     setMessages([]);
+    setOperatorActions([]);
+    setIsLoading(false);
+    setActivity(null);
     setError(null);
     setState("IDLE");
   }, [setState, sessionKey, onResponseError]);
 
   const cancelResponse = useCallback(() => {
+    if (!abortControllerRef.current) return;
     abortControllerRef.current?.abort();
+    turnRef.current++;
+    abortControllerRef.current = null;
     onResponseError?.();
     setState("IDLE");
+    setIsLoading(false);
+    setActivity(null);
+    setOperatorActions(previous => settleOperatorActions(previous, "cancelled"));
     setMessages(previous => previous.flatMap(message =>
-      message.status === "processing" && !message.content ? [] :
-      message.status === "streaming" ? [{ ...message, status: "completed" as const }] : [message]
+      message.status === "processing" && !message.content && !settleOperatorActions(message.metadata?.operatorActions, "cancelled").length ? [] :
+      message.status === "streaming" || message.status === "processing" ? [{ ...message, status: "error" as const,
+        metadata: { ...message.metadata, operatorActions: settleOperatorActions(message.metadata?.operatorActions, "cancelled") },
+      }] : [message]
     ));
   }, [onResponseError, setState]);
 
@@ -337,6 +400,7 @@ export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAg
     sessionId,
     isLoading,
     activity,
+    operatorActions,
     error,
     input,
     setInput,

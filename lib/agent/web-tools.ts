@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { TenantMemberRole } from "@/lib/database.types";
 import type { LLMTool } from "@/lib/llm";
 import { AGENT_TOOLS, searchCatalog, type ToolContext, type ToolResult } from "./tools";
+import { OPERATOR_READ_TOOLS, executeOperatorReadTool } from "./operator";
 
 export type WebToolContext = Pick<ToolContext, "supabase" | "tenantId"> & {
   role: TenantMemberRole | null;
@@ -23,6 +24,7 @@ const catalogInput = z.object({ query: z.string().trim().min(1).max(100), catego
 const stockInput = z.object({ variant_sku: z.string().trim().min(1).max(100), qty: z.number().int().min(1).max(10000).default(1) }).strict();
 
 export const WEB_CRM_TOOLS: LLMTool[] = [
+  ...OPERATOR_READ_TOOLS,
   ...AGENT_TOOLS.filter(tool => ["search_catalog", "check_stock"].includes(tool.function.name)),
   {
     type: "function", function: {
@@ -62,6 +64,7 @@ export async function executeWebToolCall(name: string, args: Record<string, unkn
   }
   ctx.signal?.throwIfAborted();
   try {
+    if (OPERATOR_READ_TOOLS.some(tool => tool.function.name === name)) return await executeOperatorReadTool(name, args, ctx);
     if (name === "search_catalog") {
       const parsed = catalogInput.safeParse(args);
       if (!parsed.success) return { ok: false, error: "Indica una búsqueda de catálogo y un límite válidos." };

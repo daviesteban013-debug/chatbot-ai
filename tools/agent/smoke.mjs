@@ -13,7 +13,16 @@ const probes = [
   ["get_business_overview", { days: 7 }],
   ["search_customers", { query: "jarvis-smoke-unmatched", limit: 1 }],
   ["list_orders", { limit: 1 }],
+  ["list_conversations", { limit: 1 }],
+  ["list_handoffs", { limit: 1 }],
 ];
+const { data: customer, error: customerError } = await db.from("customers").select("id").eq("tenant_id", ctx.tenantId).limit(1).maybeSingle();
+const { data: order, error: orderError } = await db.from("orders").select("id").eq("tenant_id", ctx.tenantId).limit(1).maybeSingle();
+const { data: conversation, error: conversationError } = await db.from("conversations").select("id").eq("tenant_id", ctx.tenantId).limit(1).maybeSingle();
+if (customerError || orderError || conversationError) throw new Error("No se pudieron resolver registros para la comprobación de solo lectura.");
+if (customer) probes.push(["get_customer_history", { customer_id: customer.id, limit: 1 }]);
+if (order) probes.push(["get_order_details", { order_id: order.id }]);
+if (conversation) probes.push(["get_conversation", { conversation_id: conversation.id, limit: 1 }]);
 const { data: product, error: productError } = await db.from("products").select("name").eq("tenant_id", ctx.tenantId).eq("active", true).limit(1).maybeSingle();
 const { data: variant, error: variantError } = await db.from("product_variants").select("sku").eq("tenant_id", ctx.tenantId).eq("active", true).limit(1).maybeSingle();
 if (productError || variantError) throw new Error("No se pudo consultar el catálogo para la comprobación.");

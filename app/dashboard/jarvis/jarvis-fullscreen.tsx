@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useCallback, type CSSProperties } from "react";
 import Link from "next/link";
 import { JarvisLiquidAvatar } from "@/components/jarvis/liquid-avatar";
-import { useRouter } from "next/navigation";
 import styles from "./jarvis-fullscreen.module.css";
 import { Mic, MicOff, Volume2, VolumeX, Send, Sliders, RotateCcw, LayoutDashboard, Power, Settings2, Menu, X, MessageSquare, Hand, Square, Paperclip, FileText, Trash2 } from "lucide-react";
 import { useJarvisClaps } from "@/hooks/useJarvisClaps";
@@ -25,6 +24,10 @@ import { FILE_ACCEPT } from "@/lib/files/types";
 import type { FileSummary } from "@/lib/files/types";
 import { useOrderProposals } from "@/hooks/useOrderProposals";
 import { OrderProposals } from "@/components/jarvis/order-proposals";
+import { OperatorTask } from "@/components/jarvis/operator-task";
+import { normalizeOperatorActions, parseOperatorNavigation, type OperatorNavigation } from "@/lib/crm-operator";
+import { completedOperatorNavigation, desktopPanelFallback } from "@/lib/operator-interface";
+import type { ChatMessage } from "@/types/jarvis";
 
 const pageAccent = "#facc15";
 
@@ -75,19 +78,44 @@ function JarvisFullscreenInner({
   justPaid,
   onSwitchToStudio,
 }: FullscreenProps) {
-  const router = useRouter();
   const desktopMode = useDesktopMode();
   const { state, setAudioLevel, setState } = useJarvisAvatar();
   const [isPoweredOn, setIsPoweredOn] = useState(false);
   const poweredRef = useRef(false);
   const [commandNotice, setCommandNotice] = useState("Estoy aquí. ¿Qué vamos a hacer hoy?");
+  const [navigationNotice, setNavigationNotice] = useState<string | null>(null);
   const [isVoiceOutputEnabled, setIsVoiceOutputEnabled] = useState(profile.voice.enabled);
-  const [panel, setPanel] = useState<"menu" | "history" | "personalization" | null>(null);
+  const [panel, setPanel] = useState<"menu" | "history" | "personalization" | "workspace" | null>(null);
+  const [workspace, setWorkspace] = useState<OperatorNavigation | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const clapStopRef = useRef<() => void>(() => {});
   const microphoneStopRef = useRef<() => void>(() => {});
   const microphonePauseRef = useRef<() => void>(() => {});
   const microphoneStartRef = useRef<(wakeOnly: boolean, continuous?: boolean, initiallyPaused?: boolean) => void>(() => {});
+  const openCrmWorkspace = useCallback(async (target: OperatorNavigation) => {
+    const destination = parseOperatorNavigation(target);
+    if (!destination) return;
+    setNavigationNotice(null);
+    if (window.nexoDesktop) {
+      try {
+        await window.nexoDesktop.openPanel(destination.href);
+        setNavigationNotice(`Abrí ${destination.label}. Sigo aquí contigo.`);
+      } catch {
+        const fallback = desktopPanelFallback(destination);
+        if (!fallback) { setNavigationNotice("No se pudo abrir el panel. Inténtalo de nuevo."); return; }
+        try {
+          await window.nexoDesktop.openPanel(fallback.href);
+          setNavigationNotice(`Abrí ${fallback.label}. Esta versión de la app permite abrir la lista; selecciona allí el registro.`);
+        } catch { setNavigationNotice("No se pudo abrir el panel. Inténtalo de nuevo."); }
+      }
+      return;
+    }
+    if (destination.href === "/dashboard/jarvis") { setPanel(null); return; }
+    microphonePauseRef.current();
+    clapStopRef.current();
+    setWorkspace(destination);
+    setPanel("workspace");
+  }, []);
   const [turnStart, setTurnStart] = useState<number | null>(null);
   const onVoiceActivity = useCallback((speaking: boolean) => {
     setState(speaking ? "SPEAKING" : "IDLE");
@@ -107,16 +135,19 @@ function JarvisFullscreenInner({
   const onResponseDelta = useCallback((delta: string) => {
     if (spokenTurnRef.current) pushText(delta);
   }, [pushText]);
-  const onResponseComplete = useCallback((message: { content: string }) => {
+  const onResponseComplete = useCallback((message: ChatMessage) => {
     if (spokenTurnRef.current) finishStream(message.content);
     else setState("IDLE");
-  }, [finishStream, setState]);
+    const destination = completedOperatorNavigation(message.metadata?.operatorActions);
+    if (destination) void openCrmWorkspace(destination);
+  }, [finishStream, setState, openCrmWorkspace]);
   const stopSpokenTurn = useCallback(() => { spokenTurnRef.current = false; stopVoice(); }, [stopVoice]);
   const {
     messages,
     sessionId,
     isLoading,
     activity: agentActivity,
+    operatorActions,
     error,
     input,
     handleInputChange,
@@ -166,20 +197,11 @@ function JarvisFullscreenInner({
     if (destination) {
       setInput("");
       setTurnStart(null);
-      if (window.nexoDesktop) {
-        void window.nexoDesktop.openPanel(destination.path).then(() => {
-          setCommandNotice(`Abrí ${destination.label}. Sigo aquí contigo.`);
-        }).catch(() => setCommandNotice("No se pudo abrir el panel. Inténtalo de nuevo."));
-        // A panel command keeps the continuous listener armed without an AI turn.
-        return false;
-      }
-      clapStopRef.current();
-      microphoneStopRef.current();
-      stopVoice();
+      stopSpokenTurn();
       cancelResponse();
-      setInput("");
-      router.push(destination.path);
-      return true;
+      void openCrmWorkspace({ href: destination.path, label: destination.label });
+      // The desktop listener remains armed; web pauses it while the CRM is open.
+      return !window.nexoDesktop;
     }
     if (!poweredRef.current) {
       setCommandNotice("Primero pulsa Encender NEXO o escribe «NEXO, enciéndete».");
@@ -190,9 +212,10 @@ function JarvisFullscreenInner({
     stopVoice();
     clapStopRef.current();
     setTurnStart(messages.length);
+    setNavigationNotice(null);
     sendMessage(text);
     return true;
-  }, [setInput, powerOn, powerOff, stopVoice, cancelResponse, router, isLoading, attachments.pending, messages.length, sendMessage]);
+  }, [setInput, powerOn, powerOff, stopVoice, stopSpokenTurn, cancelResponse, openCrmWorkspace, isLoading, attachments.pending, messages.length, sendMessage]);
 
   const microphoneBlocked = isLoading || voiceBusy || attachments.pending || panel !== null;
   const { supported: speechSupported, listening: isRecording, armed: microphoneArmed, error: microphoneError, start: startMicrophone, stop: stopMicrophone, pause: pauseMicrophone } = useJarvisMicrophone(profile.voice.locale, submitInstruction, microphoneBlocked);
@@ -271,8 +294,9 @@ function JarvisFullscreenInner({
   }, [panel, isLoading, voiceBusy, stopSpokenTurn, cancelResponse]);
 
   const proposals = <OrderProposals compact={desktopMode} state={orderProposals} onDecision={() => { stopMicrophone(); claps.stop(); stopSpokenTurn(); cancelResponse(); }} />;
-  if (desktopMode) return <DesktopBubble hasProposals={orderProposals.proposals.length > 0} proposals={proposals} powered={isPoweredOn} listening={isRecording} armed={microphoneArmed} busy={isLoading || voiceBusy} speaking={voiceSpeaking}
-    activity={activity} reply={latest?.content || commandNotice} error={error || voiceError || microphoneError} input={input} voice={isVoiceOutputEnabled} readyToPlay={readyToPlay}
+  const operator = <OperatorTask actions={operatorActions} busy={isLoading} compact={desktopMode} onOpen={destination => { pauseMicrophone(); claps.stop(); stopSpokenTurn(); void openCrmWorkspace(destination); }} />;
+  if (desktopMode) return <DesktopBubble hasProposals={orderProposals.proposals.length > 0 || operatorActions.length > 0} operator={operator} proposals={proposals} powered={isPoweredOn} listening={isRecording} armed={microphoneArmed} busy={isLoading || voiceBusy} speaking={voiceSpeaking}
+    activity={activity} reply={latest?.content || commandNotice} navigationNotice={navigationNotice} error={error || voiceError || microphoneError} input={input} voice={isVoiceOutputEnabled} readyToPlay={readyToPlay}
     onPower={isPoweredOn ? powerOff : powerOn} onMicrophone={toggleRecording} onVoice={() => { stopSpokenTurn(); setIsVoiceOutputEnabled(value => !value); }}
     onStop={() => { stopSpokenTurn(); cancelResponse(); }} onResume={() => { pauseMicrophone(); resume(); }}
     onInput={setInput} onSubmit={handleFormSubmit} />;
@@ -304,8 +328,10 @@ function JarvisFullscreenInner({
 
         <section className={styles.dock} aria-label="Habla o escribe a NEXO" onDragOver={event => { if (event.dataTransfer.types.includes("Files")) event.preventDefault(); }} onDrop={event => { event.preventDefault(); if (userId && !isLoading && !attachments.pending) void attachments.upload(event.dataTransfer.files); }}>
           {userId && <CreditBalancePanel compact />}
+          {operator}
           {proposals}
           {justPaid && <p className={styles.notice}>Tu plan está activo. Enciende a NEXO para comenzar.</p>}
+          {navigationNotice && <p role="status" className={styles.notice}>{navigationNotice}</p>}
           {(error || voiceError || microphoneError || claps.error) && <p role="alert" className={styles.error}>{error || voiceError || microphoneError || claps.error}</p>}
           {attachments.error && <p role="alert" className={styles.error}>{attachments.error}</p>}
           {attachments.pending && <p role="status" className={styles.notice}>Leyendo el archivo; los escaneos pueden tardar unos segundos…</p>}
@@ -337,8 +363,11 @@ function JarvisFullscreenInner({
         </section>
       </main>
 
-      <dialog ref={dialogRef} className={styles.dialog} onCancel={() => setPanel(null)} onClose={() => setPanel(null)} aria-label={panel === "history" ? "Conversación con NEXO" : panel === "personalization" ? "Personalización de NEXO" : "Menú de NEXO"}>
-        {panel === "personalization" ? <JarvisPersonalizationPanel profile={profile} tone={initialConfig.tone} authenticated={Boolean(userId)} availability={voiceAvailability} onClose={() => setPanel(null)} onSaved={next => { onProfileChange(next); setIsVoiceOutputEnabled(next.voice.enabled); }} /> : <>
+      <dialog ref={dialogRef} className={`${styles.dialog} ${panel === "workspace" ? styles.workspace : ""}`} onCancel={() => setPanel(null)} onClose={() => setPanel(null)} aria-label={panel === "workspace" ? `CRM · ${workspace?.label}` : panel === "history" ? "Conversación con NEXO" : panel === "personalization" ? "Personalización de NEXO" : "Menú de NEXO"}>
+        {panel === "workspace" && workspace ? <>
+          <div className={styles.dialogHeader}><div><h2>{workspace.label}</h2><p className={styles.workspaceHint}>NEXO conserva tu conversación. Vuelve para darle la siguiente instrucción.</p></div><button type="button" onClick={() => setPanel(null)} className={styles.returnButton}>Volver a NEXO<X size={16}/></button></div>
+          <iframe key={workspace.href} src={workspace.href} title={`CRM · ${workspace.label}`} className={styles.workspaceFrame} />
+        </> : panel === "personalization" ? <JarvisPersonalizationPanel profile={profile} tone={initialConfig.tone} authenticated={Boolean(userId)} availability={voiceAvailability} onClose={() => setPanel(null)} onSaved={next => { onProfileChange(next); setIsVoiceOutputEnabled(next.voice.enabled); }} /> : <>
           <div className={styles.dialogHeader}><h2>{panel === "history" ? "Tu conversación" : "Tu NEXO"}</h2><button type="button" onClick={() => setPanel(null)} aria-label="Cerrar panel" className={styles.iconButton}><X size={20} /></button></div>
           {panel === "menu" && <div className={styles.menu}>
             {plan && <p className={styles.plan}>Plan {plan}</p>}
@@ -355,7 +384,7 @@ function JarvisFullscreenInner({
             <p className={styles.help}>Al encender NEXO se activa la escucha continua con permiso del micrófono. Espera a que termine de hablar y dile tu siguiente instrucción: no necesitas pulsar el micrófono en cada turno. Puedes pausar la escucha con su botón o decir «NEXO, apágate» o «NEXO, abre el CRM». Mientras hablo, abres un panel o cambias de pestaña, la escucha queda en pausa.</p>
           </div>}
           {panel === "history" && <div ref={chatScrollRef} className={styles.history}>
-            {messages.length ? messages.map(message => <article key={message.id} data-role={message.role}><span>{message.role === "user" ? "Tú" : initialConfig.name || "NEXO"}</span><p>{message.content || "Preparando respuesta…"}</p>{Array.isArray(message.metadata?.attachments) && <div className={styles.fileList}>{(message.metadata.attachments as FileSummary[]).map(file => <a key={file.id} href={`/api/jarvis/files/${file.id}`} download className={styles.fileItem}><FileText size={15} />{file.name}</a>)}</div>}</article>) : <p className={styles.help}>Tu conversación aparecerá aquí cuando envíes tu primera instrucción.</p>}
+            {messages.length ? messages.map(message => <article key={message.id} data-role={message.role}><span>{message.role === "user" ? "Tú" : initialConfig.name || "NEXO"}</span><p>{message.content || "Preparando respuesta…"}</p>{message.role === "assistant" && <OperatorTask actions={normalizeOperatorActions(message.metadata?.operatorActions)} busy={isLoading} onOpen={destination => void openCrmWorkspace(destination)} />}{Array.isArray(message.metadata?.attachments) && <div className={styles.fileList}>{(message.metadata.attachments as FileSummary[]).map(file => <a key={file.id} href={`/api/jarvis/files/${file.id}`} download className={styles.fileItem}><FileText size={15} />{file.name}</a>)}</div>}</article>) : <p className={styles.help}>Tu conversación aparecerá aquí cuando envíes tu primera instrucción.</p>}
           </div>}
         </>}
       </dialog>

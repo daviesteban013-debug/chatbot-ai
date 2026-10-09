@@ -9,6 +9,8 @@ export function useDesktopMode() {
   return useSyncExternalStore(subscribe, () => Boolean(window.nexoDesktop && window.nexoDesktop.surface !== "crm") || (process.env.NODE_ENV === "development" && new URLSearchParams(window.location.search).get("desktopPreview") === "1"), () => false);
 }
 interface Props {
+  operator?: ReactNode;
+  navigationNotice?: string | null;
   proposals?: ReactNode;
   hasProposals?: boolean;
   powered: boolean; listening: boolean; armed: boolean; busy: boolean; speaking: boolean;
@@ -59,6 +61,8 @@ export function DesktopBubble(props: Props) {
     {!preferences.expanded && <button type="button" className={styles.compactPower} onClick={props.onPower} aria-label={props.powered ? "Apagar NEXO y micrófono" : "Encender NEXO y activar escucha"} aria-pressed={props.powered} title={props.powered ? "Apagar NEXO" : "Encender NEXO"}><Power size={12} /></button>}
     {preferences.expanded && <>
       <section className={styles.conversation} aria-label="Conversación con NEXO">
+        {props.operator}
+        {props.navigationNotice && <p className={styles.hint} role="status">{props.navigationNotice}</p>}
         {props.proposals}
         {hasReply ? <><span className={styles.eyebrow}>NEXO CONTIGO</span><div className={styles.reply} aria-live="polite">{props.reply}</div></> : <div className={styles.welcome}><h1>¿Qué hacemos hoy?</h1><p>Tu negocio a una conversación.<br />Dime por dónde empezamos.</p><div className={styles.shortcuts}><button type="button" onClick={() => void open(commandPanels.orders.path)}><ShoppingBag size={16} /><span>Ver pedidos<small>Todo en un lugar</small></span><ArrowUpRight size={14} /></button><button type="button" onClick={() => void open("/dashboard/handoffs")}><UserRound size={16} /><span>Atención humana<small>Personas primero</small></span><ArrowUpRight size={14} /></button></div></div>}
       </section>

@@ -22,7 +22,7 @@
 .clapButton { color: #acafc3; border: 1px solid #ffffff15; }
 .clapButton[aria-pressed="true"] { border-color: var(--jarvis-accent); color: color-mix(in srgb, var(--jarvis-accent) 35%, white); }
 .wakeHint { flex-shrink: 0; margin: 12px 0 0; max-width: 440px; text-align: center; font-size: 11px; line-height: 1.7; color: #74788d; }
-.dock { flex-shrink: 0; width: min(100%, 690px); margin: 24px 0 0; padding-bottom: max(20px, env(safe-area-inset-bottom)); }
+.dock { flex-shrink: 0; width: min(100%, 690px); max-height: 62svh; overflow-y: auto; scrollbar-width: thin; margin: 24px 0 0; padding-bottom: max(20px, env(safe-area-inset-bottom)); }
 .reply { text-align: center; margin: 0 auto 15px; padding: 0 12px; max-width: 620px; min-height: 22px; }
 .greeting { color: #b4b4bc; font-size: 13px; line-height: 1.65; }
 .replyText { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; white-space: pre-wrap; color: #d4d4d8; font-size: 13px; line-height: 1.6; }
@@ -54,6 +54,11 @@
 .dialog::backdrop { background: #09090bd9; backdrop-filter: blur(12px); }
 .dialogHeader { display: flex; align-items: center; justify-content: space-between; padding: 20px 22px; border-bottom: 1px solid #ffffff0d; }
 .dialogHeader h2 { font-size: 17px; font-weight: 500; }
+.workspace[open] { display: flex; flex-direction: column; width: calc(100vw - 24px); max-width: 1600px; height: 94dvh; max-height: 94dvh; overflow: hidden; }
+.workspace .dialogHeader { flex-shrink: 0; gap: 16px; padding: 14px 20px; }
+.workspaceHint { color: #a1a1aa; font-size: 11px; margin-top: 4px; }
+.returnButton { display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; color: var(--jarvis-accent); font-size: 12px; padding: 9px 12px; border: 1px solid #ffffff18; border-radius: 12px; }
+.workspaceFrame { display: block; flex: 1; width: 100%; min-height: 0; border: 0; background: #f8fafc; }
 .menu { padding: 12px 22px 24px; display: flex; flex-direction: column; align-items: stretch; gap: 5px; }
 .menu > button, .menu > a { display: flex; align-items: center; gap: 12px; padding: 13px 10px; text-align: left; border-radius: 12px; font-size: 14px; color: #d4d4d8; }
 .menu > button:hover, .menu > a:hover { background: #ffffff06; color: white; }

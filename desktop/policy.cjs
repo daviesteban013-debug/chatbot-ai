@@ -1,11 +1,12 @@
 const APP_ORIGIN = 'https://chatbot-ai-gold-two.vercel.app';
 const AUTH_ORIGIN = 'https://hdrjzcxlhpzpayhrjafk.supabase.co';
-const PANELS = new Set(['/dashboard', '/dashboard/orders', '/dashboard/catalog', '/dashboard/conversations', '/dashboard/handoffs', '/dashboard/approval', '/dashboard/agent', '/dashboard/billing', '/dashboard/jarvis']);
+const PANELS = new Set(['/dashboard', '/dashboard/orders', '/dashboard/catalog', '/dashboard/conversations', '/dashboard/handoffs', '/dashboard/approval', '/dashboard/agent', '/dashboard/billing', '/dashboard/jarvis', '/dashboard/whatsapp']);
+const DETAIL_PANEL = /^\/dashboard\/(?:orders|conversations|handoffs)\/[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
 function trustedUrl(value) {
   try { const url = new URL(value); return url.origin === APP_ORIGIN && !url.username && !url.password; } catch { return false; }
 }
 function panelUrl(value) {
-  if (typeof value !== 'string' || !PANELS.has(value)) throw new Error('Panel no permitido');
+  if (typeof value !== 'string' || (!PANELS.has(value) && !(DETAIL_PANEL.test(value) && value === value.trim()))) throw new Error('Panel no permitido');
   return APP_ORIGIN + value;
 }
 function color(value) {

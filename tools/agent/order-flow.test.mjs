@@ -5,7 +5,7 @@ const customer=crypto.randomUUID(),id=crypto.randomUUID(),tenant=crypto.randomUU
 const proposal={id,session_id:'order-flow',status:'pending',expires_at:new Date(Date.now()+900000).toISOString(),order_id:null,handoff_id:null,snapshot:{customer_id:customer,customer_name:'Ana',currency:'COP',fulfillment:'unassigned',subtotal:24000,total:24000,items:[{variant_id:crypto.randomUUID(),sku:'SKU-1',name:'Producto',qty:2,unit_price:12000}]}};
 const rows=[],calls=[],rootCalls=[];
 globalThis.__orderFlowDB=()=>({
- from(){let inserted;const q={insert(row){inserted=row;rows.push(row);return q;},select(){return q;},eq(){return q;},order(){return q;},limit(){return q;},abortSignal(){return q;},maybeSingle:async()=>({data:null,error:null}),single:async()=>({data:{id:'saved'},error:null}),then(resolve,reject){return Promise.resolve({data:inserted?null:[],error:null}).then(resolve,reject);}};return q;},
+ from(table){let inserted;const q={insert(row){inserted=row;rows.push(row);return q;},select(){return q;},eq(){return q;},order(){return q;},limit(){return q;},abortSignal(){return q;},maybeSingle:async()=>({data:table==='tenant_members'?{role:'owner'}:null,error:null}),single:async()=>({data:{id:'saved'},error:null}),then(resolve,reject){return Promise.resolve({data:inserted?null:[],error:null}).then(resolve,reject);}};return q;},
  rpc(name,args){calls.push({name,args});const q=Promise.resolve({data:{ok:true,proposal},error:null});q.abortSignal=()=>q;return q;}
 });
 globalThis.__orderFlowQuery=async(name,args)=>{calls.push({name,args});return {ok:true,data:name==='search_customers'?{customers:[{id:customer,name:'Ana'}]}:{products:[{variants:[{sku:'SKU-1',stock_qty:10,price:12000}]}]}};};
@@ -16,13 +16,18 @@ globalThis.__orderFlowComplete=async(_account,messages,tools)=>{
  return {content:read?'Evidencia verificada, espera confirmación.':null,toolCalls:read||!name?[]:[{id:name,type:'function',function:{name,arguments:JSON.stringify(args)}}],model:'fixture',tokensIn:10,tokensOut:5,latencyMs:1};
 };
 const shared=await load('../../lib/order-proposals.ts',{zod:import.meta.resolve('zod')});
-const orderActions=await load('../../lib/agent/order-actions.ts',{'@/lib/order-proposals':shared});
+const orderActions=await load('../../lib/agent/order-actions.ts',{'@/lib/order-proposals':shared,zod:import.meta.resolve('zod')});
+const operatorShared=await load('../../lib/crm-operator.ts');
 const {createAgentExecutor}=await import(await load('../../lib/agent/executor.ts',{
  '@/lib/supabase/admin':moduleUrl('export const createAdminClient=()=>globalThis.__orderFlowDB();'),
  '@/lib/llm':moduleUrl("export const calculateCost=()=>0;export const configuredModel=()=> 'fixture';"),
  '@/lib/llm/metered':moduleUrl('export const meteredChatCompletionStream=(...args)=>globalThis.__orderFlowStream(...args);export const meteredChatCompletion=(...args)=>globalThis.__orderFlowComplete(...args);'),
  './web-tools':moduleUrl("export const webCrmTools=()=>['search_customers','search_catalog','list_orders'].map(name=>({type:'function',function:{name}}));export const executeWebToolCall=(...args)=>globalThis.__orderFlowQuery(...args);"),
  './order-actions':orderActions,'./team':await load('../../lib/agent/team.ts',{zod:import.meta.resolve('zod')}),
+ './navigation':moduleUrl('export const crmNavigationTools=()=>[];export const executeCrmNavigation=()=>{throw new Error("unexpected navigation")};'),
+ './operator-activity':await load('../../lib/agent/operator-activity.ts',{'@/lib/crm-operator':operatorShared}),
+ '@/lib/crm-operator':operatorShared,
+ '@/lib/credits/server':moduleUrl('export class CreditError extends Error {constructor(code,message){super(message);this.code=code;}}'),
  '@/lib/jarvis':await load('../../lib/jarvis.ts'),'@/lib/jarvis-personalization':await load('../../lib/jarvis-personalization.ts'),
  '@/lib/files/tools':moduleUrl("export const FILE_TOOLS=[];export const fileContext=()=>'';export const executeFileTool=()=>{throw new Error('unexpected')};"),
 }));
@@ -30,5 +35,6 @@ test('Clientes → Catálogo → Pedidos produces a persisted/SSE proposal, neve
  const events=[];for await(const e of createAgentExecutor({sessionId:'order-flow',tenantId:tenant,userId:user,role:'owner',userMessage:'Prepara para Ana dos unidades SKU-1'}))events.push(e);
  assert.equal(events.at(-1).status,'completed');assert.deepEqual(calls.map(c=>c.name),['search_customers','search_catalog','nexo_prepare_order']);assert.equal(calls.at(-1).args.p_user,user);assert.equal(calls.at(-1).args.p_tenant,tenant);
  assert.equal(events.at(-1).orderProposals[0].id,id);assert.equal(rows.at(-1).metadata.orderProposals[0].id,id);assert.deepEqual(events.at(-1).handoffs.map(h=>h.agent),['clientes','catalogo','pedidos']);assert.equal(rows.at(-1).tokens_in,100);assert.equal(rows.at(-1).tokens_out,50);
+ assert.deepEqual(events.at(-1).operatorActions.map(a=>[a.tool,a.status]),[['search_customers','completed'],['search_catalog','completed'],['prepare_order_proposal','approval_required']]);
  for(const messages of rootCalls)assert.ok(!messages.some(m=>m.tool_calls?.some(c=>c.function.name==='nexo_decide_order')));
 });

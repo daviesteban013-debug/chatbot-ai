@@ -1,0 +1,20 @@
+.task { margin: 14px 0; padding: 16px; border: 1px solid #ffffff16; border-radius: 18px; background: #ffffff05; color: #e4e4e7; text-align: left; }
+.task header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding-bottom: 12px; }
+.task header > span { display: flex; align-items: center; gap: 7px; font-size: 10px; letter-spacing: .13em; color: var(--jarvis-accent, #facc15); }
+.task header > small { color: #a1a1aa; font-size: 10px; }
+.task ol { display: grid; gap: 12px; list-style: none; max-height: 230px; overflow-y: auto; padding: 0; margin: 0; }
+.task li { display: flex; align-items: flex-start; gap: 10px; }
+.icon { color: #a1a1aa; padding-top: 2px; }
+.task li[data-status="completed"] .icon { color: #6ee7b7; }
+.task li[data-status="approval_required"] .icon { color: var(--jarvis-accent, #facc15); }
+.task li[data-status="failed"] .icon { color: #fda4af; }
+.task li[data-status="running"] .icon { color: var(--jarvis-accent, #facc15); animation: spin 1.8s linear infinite; }
+.task li > div { min-width: 0; flex: 1; }
+.task strong { display: block; font-size: 12px; font-weight: 500; }
+.task li small { display: block; color: #a1a1aa; font-size: 11px; line-height: 1.6; margin-top: 3px; overflow-wrap: anywhere; }
+.task button { display: inline-flex; gap: 5px; align-items: center; margin-top: 5px; padding: 3px 0; color: var(--jarvis-accent, #facc15); font-size: 11px; }
+.task button:disabled { opacity: .5; }
+.task > p { border-top: 1px solid #ffffff10; padding-top: 12px; margin-top: 12px; color: #d4d4d8; font-size: 11px; line-height: 1.6; }
+.task[data-compact="true"] { margin: 10px 0; padding: 12px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .icon { animation: none !important; } }

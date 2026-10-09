@@ -124,7 +124,10 @@ const { saveJarvisPersonalization } = await import(await load("../../app/dashboa
   "@/lib/jarvis-personalization": profileUrl,
 }));
 const reset = () => { state = { user: { id: "user-1", user_metadata: { unrelated: "preserved" } }, member: { tenant_id: "tenant-1" }, sessions: new Map(), writes: [], failSave: false }; globalThis.__jarvisTestParams = null; };
-const request = (userMessage, extra = {}) => ({ json: async () => ({ sessionId: "session_1", userMessage, ...extra }) });
+const request = (userMessage, extra = {}) => new Request("https://nexo.test/api/chat", {
+  method: "POST", headers: { "Content-Type": "application/json", Origin: "https://nexo.test" },
+  body: JSON.stringify({ sessionId: "session_1", userMessage, ...extra }),
+});
 
 test("remembered preferences persist across new conversations and failures are not reported as success", async () => {
   reset();

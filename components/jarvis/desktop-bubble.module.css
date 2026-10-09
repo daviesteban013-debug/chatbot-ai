@@ -1,5 +1,5 @@
 :global(html):has(.shell), :global(body):has(.shell) { background: transparent !important; min-height: 0; color-scheme: dark; }
-.shell { --nexo-color: #facc15; height: 100svh; width: 100%; padding: 20px; color: #f5f5f5; background: radial-gradient(ellipse at 50% 0%,color-mix(in srgb,var(--nexo-color),transparent 95%),transparent 45%),linear-gradient(160deg,#1c1d20,#101113 70%); border: 1px solid #ffffff18; border-radius: 26px; overflow: hidden; font-family: var(--font-geist-sans),sans-serif; display: flex; flex-direction: column; align-items: center; }
+.shell { --nexo-color: #facc15; --jarvis-accent: var(--nexo-color); height: 100svh; width: 100%; padding: 20px; color: #f5f5f5; background: radial-gradient(ellipse at 50% 0%,color-mix(in srgb,var(--nexo-color),transparent 95%),transparent 45%),linear-gradient(160deg,#1c1d20,#101113 70%); border: 1px solid #ffffff18; border-radius: 26px; overflow: hidden; font-family: var(--font-geist-sans),sans-serif; display: flex; flex-direction: column; align-items: center; }
 .shell button { cursor: pointer; transition: background .2s,color .2s,border-color .2s; }
 .shell button:disabled { cursor: default; }
 .shell button:focus-visible { outline: 2px solid var(--nexo-color); outline-offset: 3px; }

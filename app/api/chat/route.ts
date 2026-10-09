@@ -9,6 +9,43 @@ import type { TenantMemberRole } from "@/lib/database.types";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
+const MAX_CHAT_BODY_BYTES = 64 * 1024;
+
+/** Bound streamed requests too: Content-Length is not a trustworthy size limit. */
+async function readChatBody(request: NextRequest): Promise<
+  { ok: true; body: Record<string, unknown> } | { ok: false; status: number }
+> {
+  if (request.headers.get("content-type")?.split(";", 1)[0].trim().toLowerCase() !== "application/json")
+    return { ok: false, status: 400 };
+  const declared = request.headers.get("content-length");
+  if (declared && (!/^\d+$/.test(declared) || Number(declared) > MAX_CHAT_BODY_BYTES))
+    return { ok: false, status: /^\d+$/.test(declared) ? 413 : 400 };
+  if (!request.body) return { ok: false, status: 400 };
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > MAX_CHAT_BODY_BYTES) {
+        await reader.cancel().catch(() => {});
+        return { ok: false, status: 413 };
+      }
+      chunks.push(value);
+    }
+    const bytes = new Uint8Array(size);
+    let offset = 0;
+    for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+    const body: unknown = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+    return body && typeof body === "object" && !Array.isArray(body)
+      ? { ok: true, body: body as Record<string, unknown> }
+      : { ok: false, status: 400 };
+  } catch {
+    return { ok: false, status: 400 };
+  } finally { reader.releaseLock(); }
+}
 
 /**
  * GET /api/chat?sessionId=xyz
@@ -46,7 +83,7 @@ export async function GET(request: NextRequest) {
       if (error.code === "PGRST205") {
         return NextResponse.json({ messages: [] });
       }
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: "No se pudo recuperar el historial." }, { status: 503 });
     }
 
     return NextResponse.json({
@@ -59,9 +96,8 @@ export async function GET(request: NextRequest) {
         metadata: m.metadata,
       })),
     });
-  } catch (err) {
-    const errorMsg = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ error: errorMsg }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: "No se pudo recuperar el historial." }, { status: 503 });
   }
 }
 
@@ -71,8 +107,13 @@ export async function GET(request: NextRequest) {
  * en tiempo real utilizando Server-Sent Events (SSE).
  */
 export async function POST(request: NextRequest) {
+  // Browser chat can prepare actions and update personal memory. Require its own origin.
+  if (request.headers.get("origin") !== new URL(request.url).origin || request.headers.get("sec-fetch-site") === "cross-site")
+    return NextResponse.json({ error: "Abre NEXO para enviar esta solicitud." }, { status: 403 });
   try {
-    const body = await request.json();
+    const parsed = await readChatBody(request);
+    if (!parsed.ok) return NextResponse.json({ error: parsed.status === 413 ? "La solicitud es demasiado grande." : "Solicitud no válida." }, { status: parsed.status });
+    const body = parsed.body;
     const { sessionId, userMessage, tenantId: bodyTenantId } = body;
     const attachmentIds = body.attachmentIds ?? [];
     if (!Array.isArray(attachmentIds) || attachmentIds.length > MAX_ATTACHMENTS || attachmentIds.some(id => !validFileId(id)) || new Set(attachmentIds).size !== attachmentIds.length)
@@ -127,7 +168,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Esta conversación pertenece a otra sesión. Inicia una nueva." }, { status: 403 });
     let files;
     try { files = user && !user.is_anonymous ? await loadChatFiles(user.id, sessionId, attachmentIds) : []; }
-    catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "No se pudieron leer los adjuntos." }, { status: error instanceof FileAccessError ? error.status : 503 }); }
+    catch (error) { return NextResponse.json({ error: error instanceof FileAccessError ? error.message : "No se pudieron leer los adjuntos." }, { status: error instanceof FileAccessError ? error.status : 503 }); }
 
     let personalization = sanitizePersonalization(user?.user_metadata?.jarvis_personalization);
     let memoryReply: string | undefined;
@@ -173,15 +214,11 @@ export async function POST(request: NextRequest) {
             controller.enqueue(encoder.encode(dataString));
           }
           if (!signal.aborted) controller.close();
-        } catch (streamError) {
+        } catch {
           if (signal.aborted) return;
-          const errorMsg =
-            streamError instanceof Error
-              ? streamError.message
-              : String(streamError);
           const errorPayload = `data: ${JSON.stringify({
             status: "error",
-            error: errorMsg,
+            error: "NEXO no pudo terminar la solicitud. Revisa el estado antes de repetir una acción.",
             sessionId,
           })}\n\n`;
           controller.enqueue(encoder.encode(errorPayload));
@@ -199,9 +236,8 @@ export async function POST(request: NextRequest) {
         "X-Accel-Buffering": "no",
       },
     });
-  } catch (err) {
-    const errorMsg = err instanceof Error ? err.message : String(err);
-    console.error("[api/chat] Error procesando request:", errorMsg);
-    return NextResponse.json({ error: errorMsg }, { status: 500 });
+  } catch {
+    console.error("[api/chat] No se pudo procesar la solicitud.");
+    return NextResponse.json({ error: "No se pudo procesar la solicitud. Inténtalo de nuevo." }, { status: 503 });
   }
 }

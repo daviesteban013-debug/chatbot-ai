@@ -26,6 +26,18 @@ test('CRM routes reject external URLs, traversal and arbitrary paths', () => {
   assert.equal(trustedUrl(APP_ORIGIN + '/login'), true);
   for (const value of ['http://chatbot-ai-gold-two.vercel.app', APP_ORIGIN + '.evil.test', 'https://user@chatbot-ai-gold-two.vercel.app', 'file:///tmp']) assert.equal(trustedUrl(value), false);
 });
+test('operator opens WhatsApp and UUID records only in supported CRM panels', () => {
+  assert.equal(panelUrl('/dashboard/whatsapp'), APP_ORIGIN + '/dashboard/whatsapp');
+  const id = '11111111-2222-4333-8444-555555555555';
+  for (const panel of ['orders', 'conversations', 'handoffs']) {
+    const path = `/dashboard/${panel}/${id}`;
+    assert.equal(panelUrl(path), APP_ORIGIN + path);
+    for (const bad of [path + '/delete', path + '?next=https://evil.test', path + '#x', path.replace(id, '%2e%2e'), path.replace(id, 'not-a-uuid')])
+      assert.throws(() => panelUrl(bad));
+  }
+  for (const bad of [`/dashboard/agent/${id}`, `/dashboard/billing/${id}`, `/dashboard/orders//${id}`, `/dashboard/orders/../${id}`, `/dashboard/orders/${id}\n`, `/dashboard/orders/${id}%2f`])
+    assert.throws(() => panelUrl(bad));
+});
 test('preferences admit only plain hex colors', () => {
   assert.equal(color('#FAcC15'), '#facc15');
   for (const value of ['red', '#fff', '#ffffff;background:url(evil)', null]) assert.throws(() => color(value));

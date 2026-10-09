@@ -2,13 +2,21 @@ import assert from "node:assert/strict";
 import { beforeEach, test } from "node:test";
 import { load, moduleUrl } from "./load.mjs";
 let state;
-beforeEach(() => { state = { calls: [], specialistCalls: [], toolCalls: [], rows: [], history: [], mode: "chain", userSaveError: false, assistantSaveError: false }; });
+beforeEach(() => { state = { calls: [], specialistCalls: [], toolCalls: [], memberQueries: [], rows: [], history: [], mode: "chain", member: { role: "owner" }, userSaveError: false, assistantSaveError: false }; });
 globalThis.__agentDb = () => ({ from(table) {
   let inserted;
+  const filters = {};
   const query = {
     insert(row) { inserted = row; state.rows.push(row); return query; },
-    select() { return query; }, eq() { return query; }, order() { return query; }, limit() { return query; }, abortSignal() { return query; },
-    maybeSingle: async () => ({ data: null, error: null }),
+    select() { return query; }, eq(key, value) { filters[key] = value; return query; }, order() { return query; }, limit() { return query; }, abortSignal() { return query; },
+    maybeSingle: async () => {
+      if (table === "tenant_members") {
+        state.memberQueries.push({ ...filters });
+        if (state.membershipThrow) throw new Error("private-membership-response");
+        return { data: state.member, error: state.membershipError ? { message: "private-membership-error" } : null };
+      }
+      return { data: null, error: null };
+    },
     single: async () => ({ data: { id: "saved" }, error: state.assistantSaveError ? { message: "private" } : null }),
     then(resolve, reject) { return Promise.resolve({ data: inserted ? null : table === "jarvis_messages" ? structuredClone(state.history) : [], error: inserted?.role === "user" && state.userSaveError ? { message: "private" } : null }).then(resolve, reject); },
   }; return query;
@@ -27,6 +35,11 @@ globalThis.__agentStream = async function* (account, messages, tools, options) {
     yield { type: "tool_calls", toolCalls: [toolCall("delegate_to_agent", { agent: "clientes", task: "Busca a Ana" })] };
   } else if (state.mode === "overflow" && tools) {
     yield { type: "tool_calls", toolCalls: Array.from({ length: 13 }, () => toolCall("delegate_to_agent", { agent: "clientes", task: "Busca a Ana" })) };
+  } else if (["navigate", "repeat"].includes(state.mode) && state.calls.length === 1) {
+    yield { type: "tool_calls", toolCalls: [state.mode === "navigate" ? toolCall("open_crm_panel", { panel: "orders" })
+      : toolCall("delegate_to_agent", { agent: "pedidos", task: "Prepara otro pedido para el cliente confirmado" })] };
+  } else if (state.mode === "provider-error") {
+    throw new Error("private-provider-body");
   } else yield { type: "delta", content: "Ana tiene un pedido pendiente." };
   yield { type: "done", model: "test-model", tokensIn: 20, tokensOut: 10 };
 };
@@ -35,22 +48,41 @@ globalThis.__agentTool = async (name, args, context) => {
   return { ok: true, data: name === "search_customers" ? { customers: [{ id: "customer-a", name: "Ana" }] } : { orders: [{ id: "order-a", status: "pending_payment" }] } };
 };
 const webTools = moduleUrl("export const webCrmTools=(tenant,role)=>tenant&&role?['search_customers','list_orders'].map(name=>({type:'function',function:{name}})):[]; export const executeWebToolCall=(...args)=>globalThis.__agentTool(...args);");
+globalThis.__agentPrepare = async () => {
+  state.toolCalls.push({ name: "prepare_repeat_order_proposal" });
+  const proposal = { id: "proposal-a" };
+  state.proposals.push(proposal);
+  return { ok: true, data: { proposal, requires_click_confirmation: true, order_created: false, stock_reserved: false } };
+};
+globalThis.__agentPreparation = () => {
+  state.proposals = [];
+  return { tools: state.mode === "repeat" ? [{ type: "function", function: { name: "prepare_repeat_order_proposal" } }] : [], proposals: state.proposals,
+    execute: async () => ({ ok: false }), executeRepeat: globalThis.__agentPrepare };
+};
 globalThis.__specialistComplete = async (account, messages, tools, options) => {
   state.specialistCalls.push({ account, messages: structuredClone(messages), tools, options });
   const evidence = messages.filter(message => message.role === "tool");
+  const selected = state.mode === "repeat" ? tools?.find(tool => tool.function.name === "prepare_repeat_order_proposal") : tools?.[0];
   return { content: evidence.length ? "Consulta confirmada." : null,
-    toolCalls: evidence.length || !tools ? [] : [{ ...toolCall(tools[0].function.name,
-      tools[0].function.name === "search_customers" ? { query: "Ana" } : { customer_id: "customer-a" }), type: "function" }],
+    toolCalls: evidence.length || !selected ? [] : [{ ...toolCall(selected.function.name,
+      selected.function.name === "search_customers" ? { query: "Ana" } : { customer_id: "customer-a" }), type: "function" }],
     model: "test-model", tokensIn: 15, tokensOut: 5, latencyMs: 1 };
 };
 const team = await load("../../lib/agent/team.ts", { zod: import.meta.resolve("zod") });
+const operator = await load("../../lib/crm-operator.ts");
+const activity = await load("../../lib/agent/operator-activity.ts", { "@/lib/crm-operator": operator });
+const navigation = await load("../../lib/agent/navigation.ts", { zod: import.meta.resolve("zod"), "@/lib/jarvis-commands": await load("../../lib/jarvis-commands.ts") });
 const { createAgentExecutor } = await import(await load("../../lib/agent/executor.ts", {
   "@/lib/supabase/admin": moduleUrl("export const createAdminClient=()=>globalThis.__agentDb();"),
   "@/lib/llm": moduleUrl("export const calculateCost=()=>0; export const configuredModel=()=> 'test-model';"),
   "@/lib/llm/metered": moduleUrl("export const meteredChatCompletionStream=(...args)=>globalThis.__agentStream(...args); export const meteredChatCompletion=(...args)=>globalThis.__specialistComplete(...args);"),
   "./web-tools": webTools,
   "./team": team,
-  "./order-actions": moduleUrl("export const createOrderPreparation=()=>({tools:[],proposals:[],execute:async()=>({ok:false})});"),
+  "./order-actions": moduleUrl("export const createOrderPreparation=()=>globalThis.__agentPreparation();"),
+  "./navigation": navigation,
+  "./operator-activity": activity,
+  "@/lib/crm-operator": operator,
+  "@/lib/credits/server": moduleUrl("export class CreditError extends Error { constructor(code,message){super(message);this.code=code;} }"),
   "@/lib/jarvis": await load("../../lib/jarvis.ts"),
   "@/lib/jarvis-personalization": await load("../../lib/jarvis-personalization.ts"),
   "@/lib/files/tools": moduleUrl("export const FILE_TOOLS=[];export const fileContext=()=>'';export const executeFileTool=()=>{throw new Error('not expected')};"),
@@ -123,4 +155,63 @@ test("canceled requests never call the model or CRM tools", async () => {
   const controller = new AbortController(); controller.abort();
   assert.equal((await run({ signal: controller.signal })).at(-1).status, "error");
   assert.equal(state.calls.length, 0); assert.equal(state.toolCalls.length, 0);
+});
+
+test("each CRM step rechecks the authenticated user and tenant; revoked or changed roles cannot execute", async () => {
+  await run();
+  assert.deepEqual(state.memberQueries, [
+    { tenant_id: "business-a", user_id: "auth-user-a" },
+    { tenant_id: "business-a", user_id: "auth-user-a" },
+  ]);
+  for (const change of [{ member: null }, { member: { role: "viewer" } }, { membershipError: true }, { membershipThrow: true }]) {
+    state.calls = []; state.specialistCalls = []; state.toolCalls = []; state.memberQueries = [];
+    state.member = { role: "owner" }; state.membershipError = false; state.membershipThrow = false;
+    Object.assign(state, change);
+    const events = await run();
+    assert.equal(state.toolCalls.length, 0);
+    assert.equal(events.at(-1).operatorActions.length, 2);
+    assert.ok(events.at(-1).operatorActions.every(action => action.status === "failed"));
+    assert.doesNotMatch(JSON.stringify(events), /private-membership/);
+  }
+});
+
+test("navigation emits running and verified completion without claiming the screen has already opened", async () => {
+  state.mode = "navigate";
+  const events = await run({ role: "viewer" });
+  // The role must match the authenticated membership, even for read-only navigation.
+  assert.equal(events.at(-1).operatorActions[0].status, "failed");
+  state.member = { role: "viewer" }; state.calls = [];
+  const allowed = await run({ role: "viewer" });
+  const progress = allowed.filter(event => event.operation).map(event => event.operation);
+  assert.deepEqual(progress.map(action => action.status), ["running", "completed"]);
+  assert.equal(progress[0].navigation, undefined);
+  assert.equal(progress[1].navigation.href, "/dashboard/orders");
+  const toolResult = JSON.parse(state.calls[1].messages.find(message => message.role === "tool").content);
+  assert.equal(toolResult.data.opened, false);
+  assert.equal(toolResult.data.destination_verified, true);
+  assert.deepEqual(allowed.at(-1).operatorActions, [progress[1]]);
+  assert.deepEqual(state.rows.at(-1).metadata.operatorActions, [progress[1]]);
+});
+
+test("repeat preparation remains a pending approval and retains its proposal if final persistence fails", async () => {
+  state.mode = "repeat";
+  const events = await run();
+  assert.deepEqual(events.at(-1).operatorActions.map(action => [action.tool, action.status]), [["prepare_repeat_order_proposal", "approval_required"]]);
+  assert.deepEqual(events.at(-1).orderProposals, [{ id: "proposal-a" }]);
+  assert.equal(state.toolCalls.length, 1);
+  assert.equal(state.rows.at(-1).metadata.handoffs[0].status, "completed");
+  state.calls = []; state.specialistCalls = []; state.assistantSaveError = true;
+  const failed = await run();
+  assert.equal(failed.at(-1).status, "error");
+  assert.deepEqual(failed.at(-1).orderProposals, [{ id: "proposal-a" }]);
+  assert.equal(failed.at(-1).operatorActions[0].status, "approval_required");
+  assert.deepEqual(state.rows.at(-1).metadata.orderProposals, [{ id: "proposal-a" }]);
+});
+
+test("unexpected provider exceptions do not reach SSE, stored messages, or operator metadata", async () => {
+  state.mode = "provider-error";
+  const events = await run();
+  assert.equal(events.at(-1).status, "error");
+  assert.doesNotMatch(JSON.stringify(events) + JSON.stringify(state.rows), /private-provider-body/);
+  assert.match(events.at(-1).error, /resultados confirmados/);
 });

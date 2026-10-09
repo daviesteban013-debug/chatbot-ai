@@ -31,6 +31,7 @@ globalThis.__filesSpecialistComplete = async (account, messages, tools, options)
 };
 const team = await load("../../lib/agent/team.ts", { zod: import.meta.resolve("zod") });
 const files = await load("../../lib/files/tools.ts", { "decimal.js": import.meta.resolve("decimal.js") });
+const operator = await load("../../lib/crm-operator.ts");
 const { createAgentExecutor } = await import(await load("../../lib/agent/executor.ts", {
   "@/lib/supabase/admin": url("export const createAdminClient = () => globalThis.__filesExecutorDB();"),
   "@/lib/llm": url("export const calculateCost = () => 0; export const configuredModel = () => 'test-model';"),
@@ -41,6 +42,10 @@ const { createAgentExecutor } = await import(await load("../../lib/agent/executo
   "@/lib/files/tools": files,
   "./team": team,
   "./order-actions": url("export const createOrderPreparation=()=>({tools:[],proposals:[],execute:async()=>({ok:false})});"),
+  "./navigation": url("export const crmNavigationTools=()=>[]; export const executeCrmNavigation=()=>{throw new Error('Business navigation should not run')};"),
+  "./operator-activity": await load("../../lib/agent/operator-activity.ts", { "@/lib/crm-operator": operator }),
+  "@/lib/crm-operator": operator,
+  "@/lib/credits/server": url("export class CreditError extends Error {}"),
 }));
 const file = { id: "attached", name: "ventas.xlsx", size: 100, status: "ready", warnings: [], references: 2, createdAt: "2026-10-06", truncated: false, sections: [{ reference: "hoja Ventas, fila 2", text: "B2: 0.1", sheet: "Ventas", row: 2, numbers: { B: 0.1 } }, { reference: "hoja Ventas, fila 3", text: "B3: 0.2", sheet: "Ventas", row: 3, numbers: { B: 0.2 } }] };
 const run = async () => { const events = []; for await (const event of createAgentExecutor({ sessionId: "session", userId: "owner", userMessage: "Suma las ventas", files: [file], attachmentIds: [file.id] })) events.push(event); return events; };
