@@ -98,6 +98,23 @@ test('reopening the app preserves the current CRM panel and restores a minimized
   assert.equal(crm.loads.length, count); assert.equal(crm.restored, true); assert.equal(crm.webContents.getURL(), policy.panelUrl('/dashboard/orders'));
 });
 
+test('operator IPC opens verified record routes and WhatsApp in the existing CRM without reloading NEXO', async () => {
+  const { crm, bubble, handlers, event, windows } = await launch();
+  const bubbleLoads = bubble.loads.length;
+  const id = '11111111-2222-4333-8444-555555555555';
+  for (const route of ['/dashboard/whatsapp', ...['orders', 'conversations', 'handoffs'].map(panel => `/dashboard/${panel}/${id}`)]) {
+    handlers.get('nexo:panel')(event(bubble), route);
+    await settle();
+    assert.equal(crm.webContents.getURL(), policy.APP_ORIGIN + route);
+    assert.equal(crm.focused, true);
+    assert.equal(windows.length, 2);
+    assert.equal(bubble.loads.length, bubbleLoads);
+  }
+  const count = crm.loads.length;
+  assert.throws(() => handlers.get('nexo:panel')(event(bubble), `/dashboard/orders/${id}?next=https://evil.test`), /permitido/);
+  assert.equal(crm.loads.length, count);
+});
+
 test('CRM can open the assistant but only its trusted main frame; color remains bubble-only', async () => {
   const { handlers, crm, bubble, event } = await launch();
   handlers.get('nexo:expanded')(event(crm), true);

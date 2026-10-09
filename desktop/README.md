@@ -29,7 +29,7 @@ npm test --prefix desktop
 npm run package --prefix desktop
 ```
 
-En un Mac, `npm run package:mac --prefix desktop` genera `NEXO-0.2.0-mac-universal.dmg`. El workflow **NEXO · macOS beta** permite construirlo manualmente en GitHub Actions y comprobar el arranque del mismo DMG en máquinas Intel y Apple Silicon. Solo empaqueta los archivos declarados en `build.files`; nunca requiere las claves del backend.
+En un Mac, `npm run package:mac --prefix desktop` genera `NEXO-0.2.1-mac-universal.dmg`. El workflow **NEXO · macOS beta** permite construirlo manualmente en GitHub Actions y comprobar el arranque del mismo DMG en máquinas Intel y Apple Silicon. Solo empaqueta los archivos declarados en `build.files`; nunca requiere las claves del backend.
 
 La beta de macOS usa firma ad hoc, sin certificado Developer ID ni notarización de Apple. Gatekeeper puede bloquear su apertura. La distribución sin ese aviso requiere el certificado del editor y notarización, pendientes de configurar. No desactives las protecciones del sistema. La web sigue disponible para usar el CRM sin instalar la beta.
 
@@ -37,7 +37,9 @@ Electron usa contexto aislado, sandbox y una sesión local separada del navegado
 
 El puente identifica las superficies `crm` y `bubble` para que la ventana principal no use el diseño compacto. Ambas comparten la sesión; solo el asistente tiene acceso al micrófono. Los IPC validan la ventana emisora y su frame principal. `npm test --prefix desktop` comprueba arranque, acceso, retorno OAuth, cierre de sesión, aislamiento y tamaños en varios monitores.
 
-El arranque nuevo necesita instalar la versión 0.2.0. Publicar únicamente la web cambia el diseño del asistente, pero no actualiza el código nativo de los instaladores 0.1.x. Los enlaces de descarga publicados deben cambiarse solo después de construir y publicar los nuevos artefactos correspondientes.
+La versión 0.2.1 permite abrir WhatsApp y las fichas de pedidos, conversaciones y handoffs desde NEXO en la ventana CRM existente, conservando el asistente. Los destinos siguen limitados al CRM del servicio; el servidor comprueba que cada registro pertenezca al negocio antes de pedir su apertura.
+
+Para actualizar, cierra NEXO e instala la versión nueva sobre la anterior. En Mac, reemplaza NEXO en Aplicaciones. No borres los datos locales: la sesión y el color usan el mismo perfil. Esta beta no incorpora actualización automática. Publicar únicamente la web cambia el asistente, pero no actualiza el código nativo instalado. Los enlaces de descarga deben cambiarse solo después de construir y publicar los artefactos correspondientes.
 
 Para revisar el diseño sin una sesión ni micrófono, ejecuta Next en desarrollo y abre `/dev/nexo`. Esa ruta devuelve 404 en producción.
 
