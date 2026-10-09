@@ -75,7 +75,8 @@ export async function GET(request: NextRequest) {
       .from("jarvis_messages")
       .select("id, role, content, status, created_at, metadata")
       .eq("session_id", sessionId)
-      .order("created_at", { ascending: true })
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
       .limit(50);
 
     if (error) {
@@ -87,7 +88,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
-      messages: (messages || []).map((m) => ({
+      messages: (messages || []).reverse().map((m) => ({
         id: m.id,
         role: m.role,
         content: m.content,

@@ -24,6 +24,7 @@ globalThis.__agentDb = () => ({ from(table) {
 const toolCall = (name, args = {}) => ({ id: `call-${state.calls.length}`, function: { name, arguments: typeof args === "string" ? args : JSON.stringify(args) } });
 globalThis.__agentStream = async function* (account, messages, tools, options) {
   state.calls.push({ account, messages: structuredClone(messages), tools, options });
+  if (state.providerError) throw state.providerError;
   if (state.mode === "chain" && state.calls.length <= 2) {
     yield { type: "delta", content: "Una afirmación provisional que no debe escucharse." };
     yield { type: "tool_calls", toolCalls: [state.calls.length === 1 ? toolCall("delegate_to_agent", { agent: "clientes", task: "Busca a Ana" }) : toolCall("delegate_to_agent", { agent: "pedidos", task: "Consulta los pedidos de customer-a" })] };
@@ -47,7 +48,10 @@ globalThis.__agentTool = async (name, args, context) => {
   state.toolCalls.push({ name, args, context });
   return { ok: true, data: name === "search_customers" ? { customers: [{ id: "customer-a", name: "Ana" }] } : { orders: [{ id: "order-a", status: "pending_payment" }] } };
 };
-const webTools = moduleUrl("export const webCrmTools=(tenant,role)=>tenant&&role?['search_customers','list_orders'].map(name=>({type:'function',function:{name}})):[]; export const executeWebToolCall=(...args)=>globalThis.__agentTool(...args);");
+globalThis.__agentPromptTools = () => state.measurePrompt
+  ? ["search_customers", "get_customer_history", "list_conversations", "get_conversation", "list_handoffs", "list_orders", "get_order_details", "search_catalog", "check_stock", "get_business_overview"]
+  : ["search_customers", "list_orders"];
+const webTools = moduleUrl("export const webCrmTools=(tenant,role)=>tenant&&role?globalThis.__agentPromptTools().map(name=>({type:'function',function:{name}})):[]; export const executeWebToolCall=(...args)=>globalThis.__agentTool(...args);");
 globalThis.__agentPrepare = async () => {
   state.toolCalls.push({ name: "prepare_repeat_order_proposal" });
   const proposal = { id: "proposal-a" };
@@ -56,7 +60,7 @@ globalThis.__agentPrepare = async () => {
 };
 globalThis.__agentPreparation = () => {
   state.proposals = [];
-  return { tools: state.mode === "repeat" ? [{ type: "function", function: { name: "prepare_repeat_order_proposal" } }] : [], proposals: state.proposals,
+  return { tools: (state.measurePrompt ? ["prepare_order_proposal", "prepare_repeat_order_proposal"] : state.mode === "repeat" ? ["prepare_repeat_order_proposal"] : []).map(name => ({ type: "function", function: { name } })), proposals: state.proposals,
     execute: async () => ({ ok: false }), executeRepeat: globalThis.__agentPrepare };
 };
 globalThis.__specialistComplete = async (account, messages, tools, options) => {
@@ -72,6 +76,8 @@ const team = await load("../../lib/agent/team.ts", { zod: import.meta.resolve("z
 const operator = await load("../../lib/crm-operator.ts");
 const activity = await load("../../lib/agent/operator-activity.ts", { "@/lib/crm-operator": operator });
 const navigation = await load("../../lib/agent/navigation.ts", { zod: import.meta.resolve("zod"), "@/lib/jarvis-commands": await load("../../lib/jarvis-commands.ts") });
+const credits = await load("../../lib/credits/server.ts", { "@/lib/supabase/admin": moduleUrl("export const createAdminClient=()=>globalThis.__agentDb();") });
+const { CreditError, inputReservation } = await import(credits);
 const { createAgentExecutor } = await import(await load("../../lib/agent/executor.ts", {
   "@/lib/supabase/admin": moduleUrl("export const createAdminClient=()=>globalThis.__agentDb();"),
   "@/lib/llm": moduleUrl("export const calculateCost=()=>0; export const configuredModel=()=> 'test-model';"),
@@ -82,7 +88,7 @@ const { createAgentExecutor } = await import(await load("../../lib/agent/executo
   "./navigation": navigation,
   "./operator-activity": activity,
   "@/lib/crm-operator": operator,
-  "@/lib/credits/server": moduleUrl("export class CreditError extends Error { constructor(code,message){super(message);this.code=code;} }"),
+  "@/lib/credits/server": credits,
   "@/lib/jarvis": await load("../../lib/jarvis.ts"),
   "@/lib/jarvis-personalization": await load("../../lib/jarvis-personalization.ts"),
   "@/lib/files/tools": moduleUrl("export const FILE_TOOLS=[];export const fileContext=()=>'';export const executeFileTool=()=>{throw new Error('not expected')};"),
@@ -214,4 +220,32 @@ test("unexpected provider exceptions do not reach SSE, stored messages, or opera
   assert.equal(events.at(-1).status, "error");
   assert.doesNotMatch(JSON.stringify(events) + JSON.stringify(state.rows), /private-provider-body/);
   assert.match(events.at(-1).error, /resultados confirmados/);
+});
+
+test("default coordinator context stays bounded with every CRM specialist and preserves complete conversation history", async () => {
+  state.mode = "text"; state.measurePrompt = true;
+  for (const spokenResponse of [false, true]) {
+    state.calls = [];
+    await run({ spokenResponse });
+    const first = state.calls[0];
+    assert.equal(first.messages.length, 2);
+    assert.deepEqual(first.tools.find(tool => tool.function.name === "delegate_to_agent").function.parameters.properties.agent.enum,
+      ["clientes", "pedidos", "catalogo", "analisis"]);
+    assert.ok(inputReservation(first.messages, first.tools) < (spokenResponse ? 6000 : 5500), "Default context must fit without weakening credit reservations");
+  }
+  state.history = [{ role: "assistant", content: "Conservo el resultado anterior" }, { role: "user", content: "Conservo la pregunta anterior" }];
+  state.calls = [];
+  await run();
+  assert.equal(state.calls[0].messages.length, 4);
+  assert.ok(state.calls[0].messages.some(message => message.content === "Conservo el resultado anterior"));
+  assert.ok(state.calls[0].messages.some(message => message.content === "Conservo la pregunta anterior"));
+});
+
+test("insufficient credits explains the capacity required by the turn without claiming the whole plan is empty", async () => {
+  state.providerError = new CreditError("CREDITS_EXHAUSTED", "private-provider-credit-details");
+  const events = await run();
+  assert.equal(events.at(-1).status, "error");
+  assert.match(events.at(-1).error, /créditos restantes.*turno.*contexto/);
+  assert.match(events.at(-1).error, /conversación nueva/);
+  assert.doesNotMatch(JSON.stringify(events), /private-provider-credit|OpenAI|tokens/);
 });

@@ -11,7 +11,7 @@ export function crmNavigationTools(tenantId?: string | null, role?: string | nul
   return tenantId && role && ["owner", "agent", "viewer"].includes(role) ? [{
     type: "function", function: {
       name: "open_crm_panel",
-      description: "Prepara la apertura de un panel del CRM solicitado por el usuario. La interfaz lo abre al terminar este turno, conservando a NEXO. Usa solo paneles disponibles; record_id permite abrir un pedido, conversación o handoff real previamente identificado por herramientas. No abre sitios externos ni ejecuta botones, pagos o confirmaciones. No afirmes que la pantalla ya se abrió: la herramienta valida el destino y el navegador lo abre después.",
+      description: "Valida la pantalla CRM solicitada. Solo paneles permitidos; record_id abre pedido, conversación o handoff verificado. La interfaz abre al terminar, nunca la herramienta: no afirmes que ya abrió. Sin URLs externas, botones, pagos ni confirmaciones.",
       parameters: { type: "object", properties: {
         panel: { type: "string", enum: panels },
         record_id: { type: "string", description: "UUID verificado; solo para orders, conversations o handoffs." },

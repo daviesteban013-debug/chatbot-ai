@@ -61,7 +61,7 @@ export function createSpecialistTeam(options: TeamOptions) {
   const delegationTools: LLMTool[] = agents.length ? [{
     type: "function", function: {
       name: "delegate_to_agent",
-      description: `Encarga una tarea concreta a un agente especializado y recibe su informe con evidencia. Disponibles: ${agents.map(agent => `${agent.id}: ${agent.mission}`).join("; ")} Para cliente → pedidos, primero delega en clientes y después en pedidos usando el ID confirmado. Solo Pedidos puede preparar propuestas, sin crear pedidos ni reservar stock. La confirmación pertenece al usuario en su tarjeta. No delegues saludos ni conversación general.`,
+      description: `Delega una tarea y recibe informe con evidencia. Agentes: ${agents.map(agent => `${agent.id}: ${agent.label}`).join("; ")}. Primero identifica al cliente; después usa su ID en Pedidos. Pedidos prepara propuestas para aprobación humana, sin crear pedidos ni reservar stock. No delegues saludos ni prometas trabajo en segundo plano.`,
       parameters: { type: "object", properties: {
         agent: { type: "string", enum: agents.map(agent => agent.id) },
         task: { type: "string", minLength: 3, maxLength: 1500, description: "Objetivo concreto, filtros y fechas indicados por el usuario. Incluye los IDs confirmados necesarios. No incluyas credenciales, permisos ni identificadores de negocio." },

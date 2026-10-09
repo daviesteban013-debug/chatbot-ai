@@ -18,9 +18,10 @@ globalThis.__chatSecurityClient = admin => {
     },
     from(table) {
       const filters = {};
+      let descending = false, maxRows = Infinity;
       const query = {
         select() { return query; }, eq(key, value) { filters[key] = value; return query; },
-        order() { return query; }, limit() { return query; },
+        order(column, options) { if (column === "created_at") descending = options?.ascending === false; return query; }, limit(value) { maxRows = value; return query; },
         upsert: async row => {
           if (!state.sessions.has(row.session_id)) state.sessions.set(row.session_id, row);
           return { error: null };
@@ -34,7 +35,7 @@ globalThis.__chatSecurityClient = admin => {
           const row = state.sessions.get(filters.session_id);
           return { data: row && (!filters.user_id || filters.user_id === row.user_id) ? row : null, error: null };
         }
-        if (table === "jarvis_messages") return { data: [], error: state.historyError ? { message: "private-database-credential" } : null };
+        if (table === "jarvis_messages") return { data: [...(state.historyMessages ?? [])].sort((a, b) => descending ? b.created_at.localeCompare(a.created_at) : a.created_at.localeCompare(b.created_at)).slice(0, maxRows), error: state.historyError ? { message: "private-database-credential" } : null };
         throw new Error(`Unexpected fixture table ${table}`);
       };
       return query;
@@ -147,4 +148,17 @@ test("unexpected auth, database and provider exceptions never expose private err
   const result = await streaming.text();
   assert.match(result, /"status":"error"/);
   assert.doesNotMatch(result, /private-provider/);
+});
+
+test("history restores the latest fifty messages chronologically, retaining the latest operator result", async () => {
+  state.sessions.set(body.sessionId, { session_id: body.sessionId, tenant_id: "tenant-a", user_id: "user-a" });
+  state.historyMessages = Array.from({ length: 60 }, (_, index) => ({ id: `message-${index + 1}`, role: "assistant", content: `Result ${index + 1}`, created_at: new Date(1700000000000 + index * 1000).toISOString(), status: "completed", metadata: { operatorActions: index === 59 ? [{ id: "latest-step", tool: "open_crm_panel", kind: "navigation", status: "completed", navigation: { href: "/dashboard/orders" } }] : [] } }));
+  const get = request(); get.nextUrl.searchParams.set("sessionId", body.sessionId);
+  const response = await GET(get);
+  assert.equal(response.status, 200);
+  const { messages } = await response.json();
+  assert.equal(messages.length, 50);
+  assert.equal(messages[0].id, "message-11");
+  assert.equal(messages.at(-1).id, "message-60");
+  assert.equal(messages.at(-1).metadata.operatorActions[0].id, "latest-step");
 });
