@@ -7,6 +7,8 @@ import { EmptyState } from "@/components/dashboard/empty-state";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { agentModeLabel } from "@/lib/labels";
 import { formatCOP } from "@/lib/utils";
+import { salesPayments } from "@/lib/sales-payments";
+import { SalesPaymentsForm } from "./sales-payments-form";
 
 export default async function AgentPage() {
   const tenantContext = await getCurrentTenant();
@@ -21,6 +23,7 @@ export default async function AgentPage() {
       "id, name, tone, mode, model, system_prompt, business_rules, auto_confirm_max_total, max_discount_pct, active, updated_at"
     )
     .eq("tenant_id", tenantId)
+    .eq("active", true).order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
@@ -28,10 +31,10 @@ export default async function AgentPage() {
     <div className="mx-auto max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
       <PageHeader
         title="Configuración del Agente"
-        description="Parámetros con los que opera tu asistente de ventas."
+        description="Tu agente consulta productos, cotiza y cierra pedidos con la aceptación del cliente."
         actions={
           <Badge variant="neutral">
-            <Lock className="size-3" /> Solo lectura
+            <Lock className="size-3" /> {tenantContext.role === "owner" ? "Cobros configurables" : "Solo lectura"}
           </Badge>
         }
       />
@@ -46,6 +49,7 @@ export default async function AgentPage() {
         <div className="grid gap-6 lg:grid-cols-[.8fr_1.2fr]">
           {/* Left: key params */}
           <div className="space-y-4">
+            <SalesPaymentsForm canEdit={tenantContext.role === "owner"} initial={salesPayments(agent.business_rules && typeof agent.business_rules === "object" && !Array.isArray(agent.business_rules) ? agent.business_rules.sales_payments : null)} />
             <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/40">
               <div className="flex items-center gap-3">
                 <span className="flex size-11 items-center justify-center rounded-xl bg-slate-950 text-white">
@@ -81,10 +85,10 @@ export default async function AgentPage() {
                 </div>
                 <div className="flex justify-between gap-4">
                   <dt className="flex items-center gap-1.5 text-slate-500">
-                    <Gauge className="size-3.5" /> Auto-confirmar hasta
+                    <Gauge className="size-3.5" /> {agent.mode === "autonomous" ? "Cierre de pedidos" : "Auto-confirmar hasta"}
                   </dt>
                   <dd className="text-right font-medium text-slate-800">
-                    {formatCOP(agent.auto_confirm_max_total)}
+                    {agent.mode === "autonomous" ? "Sin aprobación de asesor" : formatCOP(agent.auto_confirm_max_total)}
                   </dd>
                 </div>
                 <div className="flex justify-between gap-4">
@@ -94,6 +98,7 @@ export default async function AgentPage() {
                   </dd>
                 </div>
               </dl>
+              {agent.mode === "autonomous" && <p className="mt-4 text-xs leading-6 text-slate-500">NEXO presenta el resumen completo y espera que el cliente acepte. El pedido se confirma automáticamente; el pago y el despacho conservan su estado real. Una duda o un importe alto no transfiere la venta.</p>}
             </div>
           </div>
 

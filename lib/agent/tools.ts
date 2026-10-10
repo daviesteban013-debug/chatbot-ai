@@ -18,6 +18,8 @@ import { sendImage, type SendOptions } from "@/lib/whatsapp/send";
 import { normalizeCity, normalizeDepartment } from "@/lib/geo/colombia";
 import type { LLMTool } from "@/lib/llm";
 import type { Json, Order, OrderType } from "@/lib/database.types";
+import { confirmedOrderReply, orderSummaryReply, type SalesReply, type SalesSnapshot } from "./sales-policy";
+import { salesPayments } from "@/lib/sales-payments";
 
 // ---------- Tipos base ----------
 
@@ -37,6 +39,10 @@ export type ToolContext = {
   simulate: boolean;
   /** Credenciales de WhatsApp para `send_product_media` en modo autónomo. */
   sendOptions?: SendOptions;
+  mode?: "shadow" | "copilot" | "autonomous";
+  triggerMessageId?: string;
+  /** Server-created reply; the model cannot supply this metadata. */
+  salesReply?: SalesReply;
 };
 
 /** Resultado serializable de un tool call. */
@@ -45,6 +51,22 @@ export type ToolResult = { ok: boolean; data?: unknown; error?: string };
 // ---------- Definiciones de tools para el LLM (español) ----------
 
 export const AGENT_TOOLS: LLMTool[] = [
+  { type: "function", function: {
+    name: "get_payment_options", description: "Consulta los medios de pago reales configurados por el dueño de ESTE negocio: enlace y transferencia. No inventes cuentas ni uses el Stripe de los planes de NEXO.",
+    parameters: { type: "object", properties: {}, required: [], additionalProperties: false },
+  } },
+  { type: "function", function: {
+    name: "get_sale_state", description: "Recupera el pedido y sus datos de envío/pago de ESTA conversación. Consulta antes de crear otro borrador.",
+    parameters: { type: "object", properties: {}, required: [], additionalProperties: false },
+  } },
+  { type: "function", function: {
+    name: "prepare_order_confirmation", description: "Envía el resumen verificado de un borrador con envío completo. Termina este turno y espera la aceptación del cliente en un mensaje NUEVO.",
+    parameters: { type: "object", properties: { order_id: { type: "string" } }, required: ["order_id"], additionalProperties: false },
+  } },
+  { type: "function", function: {
+    name: "cancel_draft_order", description: "Cancela el borrador de ESTA conversación y libera su stock si el cliente cancela o quiere cambiar los productos. No cancela pedidos ya confirmados ni reembolsa pagos.",
+    parameters: { type: "object", properties: { order_id: { type: "string" } }, required: ["order_id"], additionalProperties: false },
+  } },
   {
     type: "function",
     function: {
@@ -183,7 +205,7 @@ export const AGENT_TOOLS: LLMTool[] = [
           },
           payment_method: {
             type: "string",
-            enum: ["contraentrega", "transferencia", "nequi", "daviplata", "bancolombia", "pse", "otro"],
+            enum: ["enlace", "contraentrega", "transferencia", "nequi", "daviplata", "bancolombia", "pse", "otro"],
             description: "Método de pago elegido por el cliente.",
           },
         },
@@ -220,7 +242,7 @@ export const AGENT_TOOLS: LLMTool[] = [
     function: {
       name: "escalate_to_human",
       description:
-        "Escala la conversación a un agente humano. Úsala ante reclamos, negociaciones complejas, incertidumbre, pedidos fuera del catálogo, solicitud explícita del cliente o pedidos de alto valor.",
+        "En modo autónomo solo se permite si el cliente pide explícitamente hablar con una persona. No transfieras ventas por importe, dudas o falta de stock.",
       parameters: {
         type: "object",
         properties: {
@@ -279,7 +301,7 @@ const checkStockSchema = z.object({
 });
 
 const quoteOrderSchema = z.object({
-  items: z.array(orderItemSchema).min(1),
+  items: z.array(orderItemSchema).min(1).max(10),
   order_type: z.enum(["retail", "wholesale"]),
 });
 
@@ -294,9 +316,10 @@ const saveShippingSchema = z.object({
 });
 
 const createDraftOrderSchema = z.object({
-  items: z.array(orderItemSchema).min(1),
+  items: z.array(orderItemSchema).min(1).max(10),
   order_type: z.enum(["retail", "wholesale"]),
   payment_method: z.enum([
+    "enlace",
     "contraentrega",
     "transferencia",
     "nequi",
@@ -343,6 +366,14 @@ export async function executeToolCall(
 ): Promise<ToolResult> {
   try {
     switch (toolName) {
+      case "get_payment_options":
+        return await getPaymentOptions(ctx);
+      case "get_sale_state":
+        return await getSaleState(ctx);
+      case "prepare_order_confirmation":
+        return await prepareOrderConfirmation(args, ctx);
+      case "cancel_draft_order":
+        return await cancelDraftOrder(args, ctx);
       case "search_catalog":
         return await searchCatalog(args, ctx);
       case "check_stock":
@@ -400,6 +431,53 @@ const VARIANT_SELECT =
 
 // ---------- Helpers de negocio ----------
 
+async function getPaymentOptions(ctx: ToolContext): Promise<ToolResult> {
+  const config = await loadAgentToolConfig(ctx);
+  if (!config) return { ok: false, error: "No hay un agente activo en este negocio." };
+  const rules = config.businessRules;
+  const options = salesPayments(rules && typeof rules === "object" && !Array.isArray(rules) ? rules.sales_payments : null);
+  return { ok: true, data: { available_methods: [...(options.linkUrl ? ["enlace"] : []), ...(options.transferInstructions ? ["transferencia"] : [])],
+    link_url: options.linkUrl || null, transfer_instructions: options.transferInstructions || null,
+    automatic_payment_verification: false, scope: "current_business" } };
+}
+
+async function getSaleState(ctx: ToolContext): Promise<ToolResult> {
+  const { data, error } = await ctx.supabase.from("orders")
+    .select("id,status,total,payment_method,payment_status,recipient_name,recipient_phone,shipping_department,shipping_city,shipping_neighborhood,shipping_address,carrier,tracking_code,order_items(name_snapshot,qty,unit_price)")
+    .eq("tenant_id", ctx.tenantId).eq("conversation_id", ctx.conversationId).eq("customer_id", ctx.customerId)
+    .order("created_at", { ascending: false }).limit(5);
+  if (error) return { ok: false, error: "No se pudo consultar el estado de esta venta." };
+  return { ok: true, data: { orders: data ?? [], scope: "current_conversation", max_results: 5 } };
+}
+
+async function prepareOrderConfirmation(args: Record<string, unknown>, ctx: ToolContext): Promise<ToolResult> {
+  const parsed = z.object({ order_id: z.string().uuid() }).strict().safeParse(args);
+  if (!parsed.success) return { ok: false, error: "Indica el UUID del pedido borrador." };
+  if (ctx.mode !== "autonomous" || ctx.simulate) return { ok: false, error: "El resumen de cierre directo requiere el modo autónomo." };
+  const { data: order } = await ctx.supabase.from("orders").select("id")
+    .eq("tenant_id", ctx.tenantId).eq("conversation_id", ctx.conversationId).eq("customer_id", ctx.customerId)
+    .eq("id", parsed.data.order_id).eq("status", "draft").maybeSingle();
+  if (!order) return { ok: false, error: "No hay un borrador de esta conversación para resumir." };
+  const { data, error } = await ctx.supabase.rpc("nexo_sales_snapshot", {
+    p_tenant: ctx.tenantId, p_conversation: ctx.conversationId, p_customer: ctx.customerId, p_order: order.id,
+  });
+  if (error || !data) return { ok: false, error: "Completa el envío y verifica las líneas y totales antes de resumir el pedido." };
+  const reply = orderSummaryReply(data as unknown as SalesSnapshot);
+  if (reply.text.length > 4000) return { ok: false, error: "El resumen es demasiado largo; reduce las líneas del pedido antes de confirmarlo." };
+  ctx.salesReply = reply;
+  return { ok: true, data: { order_id: order.id, awaiting_customer_confirmation: true, requires_advisor: false } };
+}
+
+async function cancelDraftOrder(args: Record<string, unknown>, ctx: ToolContext): Promise<ToolResult> {
+  const parsed = z.object({ order_id: z.string().uuid() }).strict().safeParse(args);
+  if (!parsed.success) return { ok: false, error: "Indica el UUID del borrador que quieres cancelar." };
+  if (ctx.simulate) return { ok: true, data: { simulated: true, order_id: parsed.data.order_id, status: "canceled" } };
+  const { data, error } = await ctx.supabase.rpc("nexo_cancel_whatsapp_draft", {
+    p_tenant: ctx.tenantId, p_conversation: ctx.conversationId, p_customer: ctx.customerId, p_order: parsed.data.order_id,
+  });
+  return error ? { ok: false, error: "No se pudo cancelar ese borrador. Consulta el estado; los pedidos confirmados requieren otro proceso." } : { ok: true, data };
+}
+
 /** Formatea un ZodError en un mensaje legible por el modelo. */
 function formatZodError(error: z.ZodError): string {
   return error.issues
@@ -425,11 +503,12 @@ function normalizeProductJoin(
 function resolveUnitPrice(
   variant: VariantJoin,
   product: ProductJoin | null,
-  orderType: OrderType
+  orderType: OrderType,
+  qty: number
 ): number {
   if (variant.price_override != null) return variant.price_override;
   if (!product) return 0;
-  if (orderType === "wholesale" && product.price_wholesale != null) {
+  if (orderType === "wholesale" && product.price_wholesale != null && qty >= (product.wholesale_min_qty ?? 1)) {
     return product.price_wholesale;
   }
   return product.price_retail;
@@ -489,13 +568,13 @@ function calculateShipping(
   return rules.other;
 }
 
-type AgentToolConfig = { businessRules: Json; autoConfirmMaxTotal: number };
+type AgentToolConfig = { businessRules: Json; autoConfirmMaxTotal: number; mode: "shadow" | "copilot" | "autonomous" };
 
 /** Carga la configuración del agente activo del tenant. */
 async function loadAgentToolConfig(ctx: ToolContext): Promise<AgentToolConfig | null> {
   const { data } = await ctx.supabase
     .from("agents")
-    .select("business_rules, auto_confirm_max_total")
+    .select("business_rules, auto_confirm_max_total, mode")
     .eq("tenant_id", ctx.tenantId)
     .eq("active", true)
     .order("created_at", { ascending: false })
@@ -506,6 +585,7 @@ async function loadAgentToolConfig(ctx: ToolContext): Promise<AgentToolConfig | 
   return {
     businessRules: data.business_rules,
     autoConfirmMaxTotal: data.auto_confirm_max_total,
+    mode: data.mode,
   };
 }
 
@@ -569,6 +649,12 @@ type QuoteLine = {
   line_total: number;
 };
 
+function mergeOrderItems(items: Array<{ variant_sku: string; qty: number }>) {
+  const quantities = new Map<string, number>();
+  for (const item of items) quantities.set(item.variant_sku, (quantities.get(item.variant_sku) ?? 0) + item.qty);
+  return [...quantities].map(([variant_sku, qty]) => ({ variant_sku, qty }));
+}
+
 /**
  * Resuelve los ítems de un pedido a líneas con precios desde la BD.
  * Devuelve las líneas o el primer error de variante inexistente.
@@ -586,7 +672,8 @@ function resolveLines(
     if (!found) {
       return { error: `Variante no encontrada: ${item.variant_sku}` };
     }
-    const unitPrice = resolveUnitPrice(found.variant, found.product, orderType);
+    if (!found.variant.active) return { error: `Variante inactiva: ${item.variant_sku}` };
+    const unitPrice = resolveUnitPrice(found.variant, found.product, orderType, item.qty);
     lines.push({
       variant_sku: found.variant.sku,
       name: buildNameSnapshot(found.variant, found.product),
@@ -705,7 +792,7 @@ async function checkStock(
   const orderType: OrderType = draft?.order_type === "wholesale" ? "wholesale" : "retail";
 
   const availableQty = found.variant.stock_qty - found.variant.reserved_qty;
-  const unitPrice = resolveUnitPrice(found.variant, found.product, orderType);
+  const unitPrice = resolveUnitPrice(found.variant, found.product, orderType, qty);
 
   return {
     ok: true,
@@ -724,7 +811,8 @@ async function quoteOrder(
 ): Promise<ToolResult> {
   const parsed = quoteOrderSchema.safeParse(args);
   if (!parsed.success) return { ok: false, error: formatZodError(parsed.error) };
-  const { items, order_type } = parsed.data;
+  const { order_type } = parsed.data;
+  const items = mergeOrderItems(parsed.data.items);
 
   const skus = items.map((i) => i.variant_sku);
   const variantMap = await fetchVariantsBySkus(ctx, skus);
@@ -817,6 +905,11 @@ async function saveShippingDetails(
     updated_at: new Date().toISOString(),
   };
 
+  // The final destination can change the shipping rate and must change the quote.
+  const config = await loadAgentToolConfig(ctx);
+  const shippingCost = calculateShipping(draft.subtotal, city, extractShippingRules(config?.businessRules ?? null));
+  const totals = { shipping_cost: shippingCost, total: draft.subtotal - draft.discount + shippingCost };
+
   if (ctx.simulate) {
     return {
       ok: true,
@@ -828,17 +921,17 @@ async function saveShippingDetails(
     };
   }
 
-  const { error } = await ctx.supabase
+  const { data: updated, error } = await ctx.supabase
     .from("orders")
-    .update(shippingPatch)
+    .update({ ...shippingPatch, ...totals })
     .eq("tenant_id", ctx.tenantId)
-    .eq("id", draft.id);
+    .eq("id", draft.id).eq("status", "draft").select("id").maybeSingle();
 
-  if (error) {
-    return { ok: false, error: `Error guardando datos de envío: ${error.message}` };
+  if (error || !updated) {
+    return { ok: false, error: "No se pudo actualizar el envío de este borrador. Consulta su estado antes de reintentar." };
   }
 
-  return { ok: true, data: { message: "Datos de envío guardados correctamente" } };
+  return { ok: true, data: { message: "Datos de envío guardados correctamente", ...totals } };
 }
 
 /** 5. create_draft_order — crea el borrador y reserva stock atómicamente. */
@@ -848,7 +941,8 @@ async function createDraftOrder(
 ): Promise<ToolResult> {
   const parsed = createDraftOrderSchema.safeParse(args);
   if (!parsed.success) return { ok: false, error: formatZodError(parsed.error) };
-  const { items, order_type, payment_method } = parsed.data;
+  const { order_type, payment_method } = parsed.data;
+  const items = mergeOrderItems(parsed.data.items);
 
   // Verificar que no exista ya un borrador abierto para esta conversación.
   const priorDraft = await findOpenDraftOrder(ctx);
@@ -902,6 +996,15 @@ async function createDraftOrder(
         payment_method,
       },
     };
+  }
+
+  if (ctx.mode === "autonomous") {
+    const { data, error } = await ctx.supabase.rpc("nexo_create_whatsapp_order", {
+      p_tenant: ctx.tenantId, p_conversation: ctx.conversationId, p_customer: ctx.customerId,
+      p_items: items, p_order_type: order_type, p_payment: payment_method, p_shipping: shippingCost,
+    });
+    if (error || !data) return { ok: false, error: "No se pudo crear el pedido. Consulta de nuevo el stock y el estado de esta venta antes de reintentar." };
+    return { ok: true, data };
   }
 
   // 2) Reservar stock de forma atómica; si algo falla, liberar lo reservado.
@@ -1014,10 +1117,25 @@ async function confirmOrder(
   if (!parsed.success) return { ok: false, error: formatZodError(parsed.error) };
   const { order_id } = parsed.data;
 
+  const config = await loadAgentToolConfig(ctx);
+  if (config?.mode === "autonomous") {
+    if (!ctx.triggerMessageId || ctx.mode !== "autonomous") return { ok: false, error: "Falta el mensaje actual del cliente para confirmar." };
+    const { data, error } = await ctx.supabase.rpc("nexo_confirm_whatsapp_order", {
+      p_tenant: ctx.tenantId, p_conversation: ctx.conversationId, p_customer: ctx.customerId,
+      p_order: order_id, p_trigger: ctx.triggerMessageId,
+    });
+    if (error || !data) return { ok: false, error: "El pedido necesita un resumen vigente y un mensaje nuevo de aceptación explícita del cliente. Si hay cambios, prepara otro resumen; si la aceptación no es clara, pregunta «¿Confirmas el pedido?».", };
+    const result = data as { snapshot: SalesSnapshot; already_confirmed: boolean };
+    ctx.salesReply = confirmedOrderReply(result.snapshot);
+    return { ok: true, data: { order_id, status: "pending_payment", payment_status: "pending", already_confirmed: result.already_confirmed, requires_advisor: false } };
+  }
+
   const { data: order, error } = await ctx.supabase
     .from("orders")
     .select("*")
     .eq("tenant_id", ctx.tenantId)
+    .eq("conversation_id", ctx.conversationId)
+    .eq("customer_id", ctx.customerId)
     .eq("id", order_id)
     .maybeSingle();
 
@@ -1045,7 +1163,6 @@ async function confirmOrder(
     };
   }
 
-  const config = await loadAgentToolConfig(ctx);
   const autoMax = config?.autoConfirmMaxTotal ?? 0;
   const newStatus: Order["status"] =
     autoMax > 0 && order.total <= autoMax ? "pending_payment" : "pending_approval";
@@ -1083,6 +1200,16 @@ async function escalateToHuman(
   const parsed = escalateSchema.safeParse(args);
   if (!parsed.success) return { ok: false, error: formatZodError(parsed.error) };
   const { reason, summary, priority } = parsed.data;
+
+  if (ctx.mode === "autonomous") {
+    if (reason !== "solicitud_cliente" || !ctx.triggerMessageId) return { ok: false, error: "Continúa resolviendo la venta. Solo puedes derivar si el cliente solicita explícitamente una persona." };
+    const { data } = await ctx.supabase.from("messages").select("body, transcript")
+      .eq("tenant_id", ctx.tenantId).eq("conversation_id", ctx.conversationId)
+      .eq("id", ctx.triggerMessageId).eq("direction", "inbound").eq("sender", "customer").maybeSingle();
+    const text = (data?.transcript || data?.body || "").toLowerCase();
+    if (!/(?:hablar|comunicar|pasar|quiero|necesito|prefiero).{0,60}(?:asesor|humano|persona|operador)/u.test(text)
+      || /\bno\s+(?:quiero|necesito|deseo|me pases)/u.test(text)) return { ok: false, error: "No hay una solicitud explícita del cliente para atención humana; continúa la venta." };
+  }
 
   const message = `Conversación escalada a un humano. Motivo: ${reason}`;
 

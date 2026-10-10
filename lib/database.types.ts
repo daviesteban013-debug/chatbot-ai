@@ -29,6 +29,7 @@ export type OrderStatus =
   | "delivered"
   | "canceled";
 export type PaymentMethod =
+  | "enlace"
   | "contraentrega"
   | "transferencia"
   | "nequi"
@@ -1095,6 +1096,11 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      nexo_configure_sales_payments: { Args: { p_tenant: string; p_user: string; p_link: string; p_transfer: string }; Returns: Json };
+      nexo_sales_snapshot: { Args: { p_tenant: string; p_conversation: string; p_customer: string; p_order: string }; Returns: Json };
+      nexo_create_whatsapp_order: { Args: { p_tenant: string; p_conversation: string; p_customer: string; p_items: Json; p_order_type: OrderType; p_payment: PaymentMethod; p_shipping: number }; Returns: Json };
+      nexo_cancel_whatsapp_draft: { Args: { p_tenant: string; p_conversation: string; p_customer: string; p_order: string }; Returns: Json };
+      nexo_confirm_whatsapp_order: { Args: { p_tenant: string; p_conversation: string; p_customer: string; p_order: string; p_trigger: string }; Returns: Json };
       nexo_propose_work: { Args: { p_tenant: string; p_user: string; p_session: string | null; p_key: string; p_input: Json }; Returns: Json };
       nexo_change_work: { Args: { p_tenant: string; p_user: string; p_id: string; p_revision: number; p_action: string; p_patch?: Json }; Returns: Json };
       nexo_enqueue_task_reminders: { Args: Record<string, never>; Returns: number };

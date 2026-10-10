@@ -45,7 +45,7 @@ export async function saveOnboardingData(
   const data = parsed.data;
 
   const user = await getCurrentUser();
-  if (!user) {
+  if (!user || user.is_anonymous) {
     return { ok: false, error: "Tu sesión expiró. Vuelve a iniciar sesión." };
   }
 
@@ -53,6 +53,7 @@ export async function saveOnboardingData(
   if (!current) {
     return { ok: false, error: "No encontramos tu negocio. Contacta soporte." };
   }
+  if (current.role !== "owner") return { ok: false, error: "Solo el dueño puede configurar el negocio." };
   const tenantId = current.tenantId;
 
   const businessName = data.businessName.trim();
@@ -95,7 +96,7 @@ export async function saveOnboardingData(
   // 2) Agente: actualizar el existente del tenant o crearlo.
   const { data: existing } = await admin
     .from("agents")
-    .select("id")
+    .select("id, mode, business_rules")
     .eq("tenant_id", tenantId)
     .limit(1)
     .maybeSingle();
@@ -104,10 +105,10 @@ export async function saveOnboardingData(
     name: agentName,
     tone,
     system_prompt: systemPrompt,
-    business_rules: businessRules,
+    business_rules: { ...(existing?.business_rules && typeof existing.business_rules === "object" && !Array.isArray(existing.business_rules) ? existing.business_rules : {}), ...businessRules as Record<string, Json> },
     max_discount_pct: data.maxDiscountPct,
     auto_confirm_max_total: data.autoConfirmMaxTotal,
-    mode: "shadow" as const,
+    mode: existing?.mode ?? "autonomous",
     active: true,
     onboarding_completed: true,
     updated_at: new Date().toISOString(),
@@ -119,6 +120,7 @@ export async function saveOnboardingData(
           .from("agents")
           .update(agentFields)
           .eq("id", existing.id)
+          .eq("tenant_id", tenantId)
       ).error
     : (
         await admin
@@ -165,7 +167,7 @@ function buildSystemPrompt(input: {
   }
 
   partes.push(
-    "Para cualquier precio, stock o total, usa las tools disponibles; si no tienes la información, dilo con honestidad y escala la conversación a una persona del equipo."
+    "Resuelve la venta completa por este canal. Para precios, stock y totales, usa las herramientas; si falta información, pregunta o busca alternativas reales. No pases la venta a un asesor. Envía el resumen y espera la aceptación del cliente antes de confirmar. No afirmes pagos ni despachos que el sistema no haya verificado."
   );
 
   return partes.join("\n\n");

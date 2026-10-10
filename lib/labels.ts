@@ -90,6 +90,7 @@ export const handoffPriorityVariant: Record<HandoffPriority, BadgeVariant> = {
 };
 
 export const paymentMethodLabel: Record<PaymentMethod, string> = {
+  enlace: "Enlace de pago",
   contraentrega: "Contraentrega",
   transferencia: "Transferencia",
   nequi: "Nequi",
