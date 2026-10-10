@@ -3,7 +3,11 @@ import { beforeEach, test } from "node:test";
 import { load, moduleUrl } from "./load.mjs";
 let state;
 beforeEach(() => { state = { calls: [], specialistCalls: [], toolCalls: [], memberQueries: [], rows: [], history: [], mode: "chain", member: { role: "owner" }, userSaveError: false, assistantSaveError: false }; });
-globalThis.__agentDb = () => ({ from(table) {
+globalThis.__agentDb = () => ({ async rpc(name, args) {
+  state.messageRpc ??= []; state.messageRpc.push({ name, args });
+  if (state.messageDenied && name === "reserve_nexo_message") return { data: { ok: false, balance: { plan: "trial", businessName: "A", quotaMessages: 15, usedMessages: 15, reservedMessages: 0, availableMessages: 0, windowHours: 3, resetsAt: "2026-10-10T20:00:00Z", fullyResetsAt: "2026-10-10T21:00:00Z" } }, error: null };
+  return { data: { ok: true }, error: null };
+}, from(table) {
   let inserted;
   const filters = {};
   const query = {
@@ -248,4 +252,37 @@ test("insufficient credits explains the capacity required by the turn without cl
   assert.match(events.at(-1).error, /créditos restantes.*turno.*contexto/);
   assert.match(events.at(-1).error, /conversación nueva/);
   assert.doesNotMatch(JSON.stringify(events), /private-provider-credit|OpenAI|tokens/);
+});
+
+test("one user turn reserves and completes exactly one message across all specialists",async()=>{
+  await run();
+  assert.equal(state.messageRpc.filter(call=>call.name==='reserve_nexo_message').length,1);
+  const finished=state.messageRpc.filter(call=>call.name==='finish_nexo_message');
+  assert.equal(finished.length,1);assert.equal(finished[0].args.p_completed,true);
+  assert.ok([...state.calls,...state.specialistCalls].every(call=>call.account.messageReservationId===finished[0].args.p_id));
+});
+test("message exhaustion gives recovery time and prevents all model/tool calls",async()=>{
+  state.messageDenied=true;const events=await run();
+  assert.equal(events.at(-1).status,'error');assert.match(events.at(-1).error,/Recuperas espacio.*Colombia/);
+  assert.match(events.at(-1).error,/abrir otra conversación no cambia/);
+  assert.equal(state.calls.length,0);assert.equal(state.toolCalls.length,0);
+});
+test("failed and disconnected turns release their message; preference-only saves use no quota",async()=>{
+  state.mode='provider-error';await run();
+  assert.equal(state.messageRpc.at(-1).args.p_completed,false);
+  state.messageRpc=[];await run({memoryReply:'Preferencia guardada'});assert.equal(state.messageRpc.length,0);
+  state.mode='text';state.messageRpc=[];
+  const stream=createAgentExecutor({sessionId:'session-a',userId:'auth-user-a',tenantId:'business-a',role:'owner',userMessage:'Hola'});
+  for await(const event of stream){if(event.status==='streaming')break;}
+  assert.equal(state.messageRpc.at(-1).args.p_completed,false);
+});
+test("failed history pairs are excluded and large history is bounded without inventing missing context",async()=>{
+  state.mode='text';
+  state.history=[{role:'assistant',status:'error',content:'Error repetido'},{role:'user',status:'completed',content:'Intento fallido'},
+    {role:'assistant',status:'completed',content:'Respuesta útil'},{role:'user',status:'completed',content:'Pregunta útil'},
+    {role:'assistant',status:'completed',content:'x'.repeat(20000)},{role:'user',status:'completed',content:'Historia antigua'}];
+  await run();const messages=state.calls[0].messages;
+  assert.ok(messages.some(row=>row.content==='Respuesta útil'));
+  assert.ok(messages.some(row=>row.content.includes('historial antiguo se omitió')));
+  assert.ok(!messages.some(row=>/Error repetido|Intento fallido|Historia antigua/.test(row.content)));
 });

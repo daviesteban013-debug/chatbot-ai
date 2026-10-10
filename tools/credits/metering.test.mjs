@@ -12,6 +12,11 @@ async function load(relative, replacements = {}) {
 let state;
 globalThis.__creditsRpc = async (name, args) => {
   if (state.databaseError) return { error: { message: "unavailable" }, data: null };
+  if (name === "reserve_nexo_model") {
+    assert.equal(args.p_message_id,"turn-1");
+    state.requests.set(args.p_id,{reserved:args.p_requested,state:"reserved",nexo:true});
+    return {data:{ok:true,reservedTokens:args.p_requested},error:null};
+  }
   if (name === "reserve_credits") {
     const available = state.quota - state.used - state.reserved;
     if (available < args.p_minimum) return { error: null, data: { ok: false } };
@@ -23,6 +28,12 @@ globalThis.__creditsRpc = async (name, args) => {
   const request = state.requests.get(args.p_id);
   assert.ok(request);
   assert.equal(request.state,"reserved");
+  if (request.nexo) {
+    if(name === "settle_nexo_model"){request.state="settled";request.usage=args.p_tokens_in+args.p_tokens_out;state.settlements++;}
+    else if(name === "release_nexo_model"){request.state="released";state.releases++;}
+    else throw new Error(`wrong ledger ${name}`);
+    return {error:null,data:null};
+  }
   state.reserved -= request.reserved;
   if (name === "settle_credits") { state.used += args.p_tokens_in + args.p_tokens_out; request.state="settled"; state.settlements++; }
   else if (name === "release_credits") { request.state="released"; state.releases++; }
@@ -50,6 +61,24 @@ after(() => {
 });
 const messages = [{role:"user",content:"Hola"}];
 const account = {tenantId:"tenant-1",channel:"web"};
+test("a reserved NEXO turn bypasses monthly token exhaustion but records every model call separately",async()=>{
+  state.quota=0;globalThis.fetch=async()=>streamResponse();
+  const turn={...account,messageReservationId:'turn-1'};
+  await collect(metered.meteredChatCompletionStream(turn,messages));
+  await collect(metered.meteredChatCompletionStream(turn,messages));
+  assert.equal(state.settlements,2);assert.equal(state.used,0);assert.equal(state.reserved,0);
+  assert.ok([...state.requests.values()].every(row=>row.nexo && row.state==='settled' && row.usage===250));
+});
+test("NEXO definitive failure releases technical reservation; unknown usage stays pending",async()=>{
+  const turn={...account,messageReservationId:'turn-1'};
+  globalThis.fetch=async()=>new Response('private-provider-body',{status:401});
+  await assert.rejects(collect(metered.meteredChatCompletionStream(turn,messages)),/401/);
+  assert.equal(state.releases,1);
+  globalThis.fetch=async()=>streamResponse(fixture(null));
+  await assert.rejects(collect(metered.meteredChatCompletionStream(turn,messages)));
+  assert.equal(state.releases,1);
+  assert.equal([...state.requests.values()].filter(row=>row.state==='reserved').length,1);
+});
 const fixture = (usage = {prompt_tokens:75,completion_tokens:175}) => [
   {model:"test-model",choices:[{delta:{content:"Hola ñ"}}]},
   {choices:[{delta:{content:" mundo"},finish_reason:"stop"}]},

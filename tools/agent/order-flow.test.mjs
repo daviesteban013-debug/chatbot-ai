@@ -27,7 +27,7 @@ const {createAgentExecutor}=await import(await load('../../lib/agent/executor.ts
  './navigation':moduleUrl('export const crmNavigationTools=()=>[];export const executeCrmNavigation=()=>{throw new Error("unexpected navigation")};'),
  './operator-activity':await load('../../lib/agent/operator-activity.ts',{'@/lib/crm-operator':operatorShared}),
  '@/lib/crm-operator':operatorShared,
- '@/lib/credits/server':moduleUrl('export class CreditError extends Error {constructor(code,message){super(message);this.code=code;}}'),
+ '@/lib/credits/server':moduleUrl('export class CreditError extends Error {constructor(code,message){super(message);this.code=code;}} export const reserveMessage=async()=> "turn";export const finishMessage=async()=>{};'),
  '@/lib/jarvis':await load('../../lib/jarvis.ts'),'@/lib/jarvis-personalization':await load('../../lib/jarvis-personalization.ts'),
  '@/lib/files/tools':moduleUrl("export const FILE_TOOLS=[];export const fileContext=()=>'';export const executeFileTool=()=>{throw new Error('unexpected')};"),
 }));

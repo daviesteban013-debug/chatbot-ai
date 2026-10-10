@@ -13,7 +13,7 @@ let state;
 globalThis.__creditRouteState = () => state;
 const next=url("export const NextResponse = {json:(data,options)=>new Response(JSON.stringify(data),{...options,headers:options?.headers})};");
 const auth=url("export const getCurrentUser=async()=>globalThis.__creditRouteState().user; export const getCurrentTenant=async()=>globalThis.__creditRouteState().tenant;");
-const credits=url("export async function getCreditBalance(account){const s=globalThis.__creditRouteState();s.account=account;if(s.failure)throw new Error('private database detail');return {availableTokens:250,quotaTokens:1000};}");
+const credits=url("export async function getMessageBalance(account){const s=globalThis.__creditRouteState();s.account=account;if(s.failure)throw new Error('private database detail');return {availableMessages:25,quotaMessages:40};} export async function getCreditBalance(account){globalThis.__creditRouteState().whatsappAccount=account;return {availableTokens:250,quotaTokens:1000};}");
 const balanceRoute=await import(await load("../../app/api/credits/route.ts",{"next/server":next,"@/lib/auth":auth,"@/lib/credits/server":credits}));
 const simulate=await import(await load("../../app/api/dev/simulate/route.ts",{
   "next/server":next,"@/lib/auth":auth,

@@ -8,11 +8,11 @@ export async function meteredChatCompletion(account: CreditAccount, messages: LL
   try {
     const result = await chatCompletion(messages, tools, { ...options, maxTokens: reservation.maxTokens,
       onAccepted: () => { accepted = true; }, onRejected: () => { accepted = false; } });
-    await settleCredits(reservation.id, result.tokensIn, result.tokensOut, result.model);
+    await settleCredits(reservation.id, result.tokensIn, result.tokensOut, result.model, reservation.nexo);
     return result;
   } catch (error) {
     // Unknown usage stays pending for reconciliation, never billed as an estimate.
-    if (!accepted) await releaseCredits(reservation.id);
+    if (!accepted) await releaseCredits(reservation.id, reservation.nexo);
     throw error;
   }
 }
@@ -27,13 +27,13 @@ export async function* meteredChatCompletionStream(account: CreditAccount, messa
     })) {
       if (event.type === "usage" || event.type === "done") {
         if (!settled) {
-          await settleCredits(reservation.id, event.tokensIn, event.tokensOut, event.model);
+          await settleCredits(reservation.id, event.tokensIn, event.tokensOut, event.model, reservation.nexo);
           settled = true;
         }
       }
       yield event;
     }
   } finally {
-    if (!accepted && !settled) await releaseCredits(reservation.id);
+    if (!accepted && !settled) await releaseCredits(reservation.id, reservation.nexo);
   }
 }

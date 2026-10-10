@@ -35,19 +35,21 @@ globalThis.__teamSmokeQuery = async (name, args, context) => {
 let stage = "load_modules";
 try {
   const metered = await moduleUrl("lib/llm/metered.ts");
+  const creditServer = await moduleUrl("lib/credits/server.ts");
   const { createAgentExecutor } = await import(await moduleUrl("lib/agent/executor.ts", {
     "@/lib/supabase/admin": inline("export const createAdminClient=()=>globalThis.__teamSmokeDB();"),
     "@/lib/llm": await moduleUrl("lib/llm/client.ts"),
     // The synthetic authenticated context never changes the credit account used by this smoke.
     "@/lib/llm/metered": inline(`import { meteredChatCompletion as complete, meteredChatCompletionStream as stream } from ${JSON.stringify(metered)};
-      export const meteredChatCompletion=(_account,...args)=>complete({channel:'web'},...args);
-      export const meteredChatCompletionStream=(_account,...args)=>stream({channel:'web'},...args);`),
+      export const meteredChatCompletion=(account,...args)=>complete({channel:'web',messageReservationId:account.messageReservationId},...args);
+      export const meteredChatCompletionStream=(account,...args)=>stream({channel:'web',messageReservationId:account.messageReservationId},...args);`),
     "./web-tools": inline(`export const webCrmTools=()=>[
       {type:'function',function:{name:'search_customers',description:'Busca clientes por nombre y devuelve su ID real.',parameters:{type:'object',properties:{query:{type:'string'}},required:['query'],additionalProperties:false}}},
       {type:'function',function:{name:'list_orders',description:'Consulta pedidos de un cliente por su ID real.',parameters:{type:'object',properties:{customer_id:{type:'string'},status:{type:'string'}},required:['customer_id'],additionalProperties:false}}}
     ];export const executeWebToolCall=(...args)=>globalThis.__teamSmokeQuery(...args);`),
     // The turn uses the bounded shared demo credit pool, never a customer's plan.
-    "@/lib/credits/server": await moduleUrl("lib/credits/server.ts"),
+    "@/lib/credits/server": inline(`import {CreditError,inputReservation,reserveMessage as reserveDemoMessage,finishMessage} from ${JSON.stringify(creditServer)};
+      export {CreditError,inputReservation,finishMessage};export const reserveMessage=()=>reserveDemoMessage({channel:'web'});`),
   }));
   const events = [];
   stage = "execute_turn";

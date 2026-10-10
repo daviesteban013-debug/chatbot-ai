@@ -29,13 +29,105 @@ before(async () => {
 });
 after(async () => { await db?.close(); });
 beforeEach(async () => {
-  await db.exec("reset role; truncate public.credit_requests, public.credit_periods; update credit_limits set tokens = 1000000 where plan = 'esencial';");
+  await db.exec("reset role; truncate public.nexo_model_requests, public.nexo_message_requests, public.credit_requests, public.credit_periods; update credit_limits set tokens = 1000000 where plan = 'esencial'; update nexo_message_limits set messages=40 where plan='esencial';");
   await db.exec("update tenants set plan = 'esencial', stripe_subscription_status = 'active', stripe_current_period_end = now() + interval '2 months';");
   await db.exec("update billing_settings set mode='test'; update tenants set stripe_mode='test';");
 });
 const balance = async (id = tenant, uid = null) => (await db.query("select credit_balance($1,$2) as value", [id, uid])).rows[0].value;
 const reserve = async (requested = 600000, minimum = requested, channel = "web", id = crypto.randomUUID()) => ({ id, ...(await db.query("select reserve_credits($1,$2,null,$3,$4,$5) as value", [id, tenant, requested, minimum, channel])).rows[0].value });
 const settle = (id, input = 120, output = 130) => db.query("select settle_credits($1,$2,$3,'test-model')", [id, input, output]);
+
+const messageBalance = async (id = tenant, uid = null) => (await db.query("select nexo_message_balance($1,$2) as value", [id,uid])).rows[0].value;
+const reserveMessage = async (id = tenant, uid = null, requestId = crypto.randomUUID()) => ({ id: requestId, ...(await db.query("select reserve_nexo_message($1,$2,$3) as value", [requestId,id,uid])).rows[0].value });
+const finishMessage = (id, completed = true) => db.query("select finish_nexo_message($1,$2)", [id,completed]);
+
+test("NEXO grants the verified business tier; expired, wrong-mode and unrelated businesses get trial", async () => {
+  assert.equal((await messageBalance()).quotaMessages,40);
+  await db.query("update tenants set plan='crecimiento' where id=$1",[tenant]);
+  assert.equal((await messageBalance()).quotaMessages,100);
+  assert.equal((await messageBalance(otherTenant)).quotaMessages,40);
+  await db.query("update tenants set stripe_current_period_end=now()-interval '1 second' where id=$1",[tenant]);
+  assert.equal((await messageBalance()).quotaMessages,15);
+  await db.query("update tenants set stripe_current_period_end=now()+interval '1 month',stripe_mode='live' where id=$1",[tenant]);
+  assert.equal((await messageBalance()).quotaMessages,15);
+  assert.equal((await messageBalance(null,user)).quotaMessages,15);
+  assert.equal((await messageBalance(null,null)).quotaMessages,20);
+});
+test("competing NEXO turns reserve only the available slots, independently of monthly tokens", async () => {
+  await db.exec("update nexo_message_limits set messages=1 where plan='esencial'");
+  const r=await reserve(1000000);await settle(r.id,1000000,0);
+  const attempts=await Promise.all([reserveMessage(),reserveMessage()]);
+  assert.equal(attempts.filter(r=>r.ok).length,1);
+  assert.equal((await messageBalance()).availableMessages,0);
+  assert.equal((await messageBalance(otherTenant)).availableMessages,1);
+  await finishMessage(attempts.find(r=>r.ok).id,false);
+  assert.equal((await messageBalance()).availableMessages,1);
+});
+test("each completed message recovers after its own three-hour window, not a global clock reset", async () => {
+  const a=await reserveMessage(),b=await reserveMessage();await finishMessage(a.id);await finishMessage(b.id);
+  await db.query("update nexo_message_requests set created_at=now()-interval '2 hours' where id=$1",[a.id]);
+  assert.equal((await messageBalance()).usedMessages,2);
+  const recovery=new Date((await messageBalance()).resetsAt).getTime();
+  assert.ok(Math.abs(recovery-Date.now()-3600000)<5000);
+  await db.query("update nexo_message_requests set created_at=now()-interval '3 hours 1 second' where id=$1",[a.id]);
+  assert.equal((await messageBalance()).usedMessages,1);
+  assert.equal((await messageBalance()).availableMessages,39);
+  await finishMessage(b.id,false); // completed turns cannot be refunded by a delayed cleanup
+  assert.equal((await messageBalance()).usedMessages,1);
+});
+test("abandoned reservations expire after two minutes; failed turns and repeat cleanup do not charge", async () => {
+  const a=await reserveMessage();await finishMessage(a.id,false);await finishMessage(a.id,false);
+  assert.equal((await messageBalance()).availableMessages,40);
+  const b=await reserveMessage();
+  await db.query("update nexo_message_requests set created_at=now()-interval '2 minutes 1 second' where id=$1",[b.id]);
+  const bal=await messageBalance();assert.equal(bal.reservedMessages,0);assert.equal(bal.resetsAt,null);
+});
+test("many model calls cost one message and leave WhatsApp untouched; technical usage stays exact", async () => {
+  const turn=await reserveMessage();const calls=[];
+  for(let n=0;n<3;n++){
+    const id=crypto.randomUUID();calls.push(id);
+    await db.query("select reserve_nexo_model($1,$2,$3,null,12000)",[id,turn.id,tenant]);
+    await db.query("select settle_nexo_model($1,1234,67,'fixture')",[id]);
+    await db.query("select settle_nexo_model($1,1234,67,'fixture')",[id]);
+  }
+  await finishMessage(turn.id);
+  assert.equal((await messageBalance()).usedMessages,1);
+  assert.equal((await balance()).usedTokens,0);assert.equal((await balance()).reservedTokens,0);
+  assert.equal(Number((await db.query("select sum(tokens_in+tokens_out) as n from nexo_model_requests where message_id=$1",[turn.id])).rows[0].n),3903);
+  await assert.rejects(db.query("select settle_nexo_model($1,999,67,'fixture')",[calls[0]]),/nexo_usage_conflict/);
+});
+test("model reservations require an active matching message and enforce the shared call budget",async()=>{
+  const turn=await reserveMessage();
+  const call=(owner=tenant,requested=10000)=>db.query("select reserve_nexo_model($1,$2,$3,null,$4)",[crypto.randomUUID(),turn.id,owner,requested]);
+  await assert.rejects(call(otherTenant),/nexo_message_invalid/);
+  await assert.rejects(call(tenant,200001),/nexo_context_limit/);
+  for(let n=0;n<12;n++)await call();
+  await assert.rejects(call(),/nexo_model_limit/);
+  await finishMessage(turn.id,false);
+  await assert.rejects(call(),/nexo_message_invalid/);
+  assert.equal((await messageBalance()).usedMessages,0);
+});
+test("browser roles cannot forge NEXO limits, reservations, usage or another tenant's balance",async()=>{
+  for(const role of ['anon','authenticated']){
+    await db.exec(`set role ${role}`);
+    try{
+      await assert.rejects(messageBalance(),/permission denied/);
+      await assert.rejects(reserveMessage(),/permission denied/);
+      await assert.rejects(db.query("select * from nexo_model_requests"),/permission denied/);
+      await assert.rejects(db.query("update nexo_message_limits set messages=999999"),/permission denied/);
+      await assert.rejects(finishMessage(crypto.randomUUID()),/permission denied/);
+    }finally{await db.exec('reset role');}
+  }
+});
+test("failed retries cannot create unlimited upstream usage and the guard expires without charging messages",async()=>{
+  await db.exec("update nexo_message_limits set messages=1 where plan='esencial'");
+  for(let n=0;n<3;n++){const turn=await reserveMessage();assert.equal(turn.ok,true);await finishMessage(turn.id,false);}
+  const denied=await reserveMessage();assert.equal(denied.ok,false);assert.equal(denied.reason,'retry_limit');
+  assert.ok(Number.isFinite(Date.parse(denied.retryAt)));
+  assert.equal((await messageBalance()).availableMessages,1);
+  await db.exec("update nexo_message_requests set created_at=now()-interval '3 hours 1 second'");
+  assert.equal((await reserveMessage()).ok,true);
+});
 
 test("live cutover cannot carry over a test subscription's paid allowance", async () => {
   assert.equal((await balance()).quotaTokens,1000000);

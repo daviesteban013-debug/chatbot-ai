@@ -45,7 +45,7 @@ const { createAgentExecutor } = await import(await load("../../lib/agent/executo
   "./navigation": url("export const crmNavigationTools=()=>[]; export const executeCrmNavigation=()=>{throw new Error('Business navigation should not run')};"),
   "./operator-activity": await load("../../lib/agent/operator-activity.ts", { "@/lib/crm-operator": operator }),
   "@/lib/crm-operator": operator,
-  "@/lib/credits/server": url("export class CreditError extends Error {}"),
+  "@/lib/credits/server": url("export class CreditError extends Error {} export const reserveMessage=async()=> 'turn'; export const finishMessage=async()=>{};"),
 }));
 const file = { id: "attached", name: "ventas.xlsx", size: 100, status: "ready", warnings: [], references: 2, createdAt: "2026-10-06", truncated: false, sections: [{ reference: "hoja Ventas, fila 2", text: "B2: 0.1", sheet: "Ventas", row: 2, numbers: { B: 0.1 } }, { reference: "hoja Ventas, fila 3", text: "B3: 0.2", sheet: "Ventas", row: 3, numbers: { B: 0.2 } }] };
 const run = async () => { const events = []; for await (const event of createAgentExecutor({ sessionId: "session", userId: "owner", userMessage: "Suma las ventas", files: [file], attachmentIds: [file.id] })) events.push(event); return events; };

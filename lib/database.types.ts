@@ -1079,6 +1079,12 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      nexo_message_balance: { Args: { p_tenant_id: string | null; p_user_id: string | null }; Returns: Json };
+      reserve_nexo_message: { Args: { p_id: string; p_tenant_id: string | null; p_user_id: string | null }; Returns: Json };
+      finish_nexo_message: { Args: { p_id: string; p_completed: boolean }; Returns: undefined };
+      reserve_nexo_model: { Args: { p_id: string; p_message_id: string; p_tenant_id: string | null; p_user_id: string | null; p_requested: number }; Returns: Json };
+      settle_nexo_model: { Args: { p_id: string; p_tokens_in: number; p_tokens_out: number; p_model: string }; Returns: undefined };
+      release_nexo_model: { Args: { p_id: string }; Returns: undefined };
       configure_whatsapp_cloud: {
         Args: { p_tenant: string; p_user: string; p_phone: string; p_waba: string; p_display: string; p_ciphertext: string };
         Returns: string;

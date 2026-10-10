@@ -1,4 +1,50 @@
-# Créditos de IA
+# Cupos de NEXO y consumo de WhatsApp
+
+## NEXO: mensajes con recuperación por horas
+
+Desde `20261010131118_nexo_rolling_messages.sql`, NEXO web y escritorio usan una
+ventana móvil de **3 horas**: prueba 15 mensajes, Esencial 40, Crecimiento 100 y
+Equipo 200. Cada mensaje recupera su espacio 3 horas después de iniciarse; no se
+reinicia todo el cupo a una hora fija. Se comparte entre miembros y sesiones de
+un mismo negocio. Cuentas sin negocio tienen su propio cupo de prueba; la demo
+pública comparte 20 mensajes entre todos los visitantes.
+
+Un turno completado consume **un mensaje**, aunque consulte varios especialistas
+o herramientas. No se cobra por tokens al usuario de NEXO. Guardar una preferencia
+sin modelo no consume mensajes. Fallos y cancelaciones devuelven el espacio;
+reservas abandonadas caducan tras 2 minutos. La respuesta fallida puede haber
+consumido recursos del proveedor: su registro técnico se conserva.
+La protección contra reintentos repetidos permite hasta 3 veces el cupo del plan
+en intentos por ventana de 3 horas, incluyendo fallidos/cancelados. Si se alcanza,
+se informa de una pausa temporal distinta del agotamiento de mensajes y su fecha
+de recuperación. Esto evita consumir recursos ilimitados cancelando cada turno.
+
+La reserva es atómica: el bloqueo del periodo del propietario serializa todas
+las sesiones antes de comprobar la ventana. Cambiar de conversación, pestaña o
+dispositivo no renueva el cupo. Las RPC y tablas nuevas son privadas para
+`service_role`, con RLS y `SECURITY INVOKER`; la ruta deriva la identidad de la
+sesión autenticada. El plan sigue exigiendo suscripción y modo Stripe verificados.
+
+Los límites viven en `nexo_message_limits`; `NEXO_MESSAGE_LIMITS` documenta los
+valores comerciales. Cambiar ambos y los textos de `lib/plans.ts` conjuntamente.
+No se modifican precios ni suscripciones existentes. Las barras muestran el
+porcentaje y mensajes disponibles, el negocio y la próxima recuperación en hora
+de Colombia. Un cupo vacío pausa NEXO, pero no impide usar el CRM manualmente.
+
+`nexo_model_requests` registra cada llamada y su consumo real por separado, con
+liquidación idempotente. Una llamada necesita una reserva de mensaje activa y
+del mismo propietario. Se permiten como máximo 12 llamadas por turno y 200.000
+unidades de reserva por llamada, además del plazo de ejecución de 55 segundos.
+Una respuesta aceptada sin consumo confirmado permanece pendiente para revisión,
+sin inventar valores ni liberar costes desconocidos. El historial reenviado se
+limita a 8 pares completos / 12 KB, excluyendo intentos fallidos.
+
+Los turnos nuevos de NEXO no consumen ni quedan bloqueados por el saldo mensual de
+WhatsApp. El historial de consumo anterior permanece intacto; no se convierte en
+mensajes ni se reescriben consumos ya registrados. ElevenLabs, transcripción y
+Meta tienen controles separados y este cambio no amplía sus planes.
+
+## Ledger mensual de WhatsApp y compatibilidad anterior
 
 Un crédito equivale a **1.000 tokens de entrada + salida**. Se conservan tres
 decimales: una llamada de 75 tokens de entrada y 175 de salida consume 0,250
@@ -16,8 +62,9 @@ No se deduce un crédito fijo por mensaje ni por conversación.
 - La demostración pública comparte un presupuesto de **100 créditos diarios**
   entre todos los visitantes. Cambiar el identificador de sesión no renueva ese presupuesto.
 
-Jarvis web y WhatsApp comparten el saldo del negocio. El pago anual también tiene
-un cupo mensual. Los periodos se renuevan al comienzo del mes UTC (o del día UTC
+WhatsApp conserva el saldo mensual del negocio. Las rutas antiguas que no usan
+una reserva de mensaje siguen usando este ledger por compatibilidad. El pago
+anual también tiene un cupo mensual. Los periodos se renuevan al comienzo del mes UTC (o del día UTC
 para la demo); la interfaz muestra la fecha y hora en Colombia. Los créditos no
 consumidos no se acumulan. Esta primera versión no incluye compra de recargas.
 
@@ -27,7 +74,7 @@ administración. Si cambian los cupos comerciales, actualizar también
 
 ## Reserva y descuento
 
-Antes de **cada llamada al modelo**, el servidor reserva un presupuesto
+En WhatsApp y las rutas anteriores, antes de **cada llamada al modelo**, el servidor reserva un presupuesto
 conservador de entrada y la salida máxima. El proveedor recibe una salida máxima
 reducida si queda menos saldo; si no hay suficiente reserva para entrada y una
 respuesta mínima, la llamada se rechaza. Dos llamadas no pueden reservar los
