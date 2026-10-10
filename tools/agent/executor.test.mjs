@@ -87,6 +87,7 @@ const { createAgentExecutor } = await import(await load("../../lib/agent/executo
   "@/lib/llm": moduleUrl("export const calculateCost=()=>0; export const configuredModel=()=> 'test-model';"),
   "@/lib/llm/metered": moduleUrl("export const meteredChatCompletionStream=(...args)=>globalThis.__agentStream(...args); export const meteredChatCompletion=(...args)=>globalThis.__specialistComplete(...args);"),
   "./web-tools": webTools,
+  "./work-tools": await load("../../lib/agent/work-tools.ts", { zod: import.meta.resolve("zod"), "@/lib/workspace": await load("../../lib/workspace.ts", { zod: import.meta.resolve("zod") }) }),
   "./team": team,
   "./order-actions": moduleUrl("export const createOrderPreparation=()=>globalThis.__agentPreparation();"),
   "./navigation": navigation,
@@ -234,8 +235,8 @@ test("default coordinator context stays bounded with every CRM specialist and pr
     const first = state.calls[0];
     assert.equal(first.messages.length, 2);
     assert.deepEqual(first.tools.find(tool => tool.function.name === "delegate_to_agent").function.parameters.properties.agent.enum,
-      ["clientes", "pedidos", "catalogo", "analisis"]);
-    assert.ok(inputReservation(first.messages, first.tools) < (spokenResponse ? 6000 : 5500), "Default context must fit without weakening credit reservations");
+      ["clientes", "pedidos", "catalogo", "analisis", "seguimiento"]);
+    assert.ok(inputReservation(first.messages, first.tools) < (spokenResponse ? 7000 : 6500), `Coordinator plus follow-up specialist must remain bounded (${inputReservation(first.messages, first.tools)})`);
   }
   state.history = [{ role: "assistant", content: "Conservo el resultado anterior" }, { role: "user", content: "Conservo la pregunta anterior" }];
   state.calls = [];

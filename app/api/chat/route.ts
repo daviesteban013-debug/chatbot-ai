@@ -173,7 +173,10 @@ export async function POST(request: NextRequest) {
 
     let personalization = sanitizePersonalization(user?.user_metadata?.jarvis_personalization);
     let memoryReply: string | undefined;
-    const memory = explicitMemory(userMessage);
+    // Business requests go to the reviewed CRM memory tools; personal memory
+    // remains private and requires an explicit personal command in a business.
+    const personalCommand = userMessage.trim().replace(/^(?:(?:nexo|jarvis)[,\s]+)?recuerda\s+sobre\s+m[ií]\s+que\s+/i, "recuerda que ");
+    const memory = personalCommand !== userMessage.trim() || !resolvedTenantId ? explicitMemory(personalCommand) : null;
     if (memory) {
       if (!user) memoryReply = "Inicia sesión para que pueda recordar tus preferencias entre conversaciones.";
       else if (memory.length > 240) memoryReply = "Usa una preferencia de hasta 240 caracteres para guardarla.";

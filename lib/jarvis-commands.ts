@@ -9,6 +9,7 @@ export const commandPanels = {
   whatsapp: { path: "/dashboard/whatsapp", label: "Conexión de WhatsApp" },
   billing: { path: "/dashboard/billing", label: "Planes y pagos" },
   nexo: { path: "/dashboard/jarvis", label: "NEXO" },
+  workspace: { path: "/dashboard/workspace", label: "Memoria y tareas" },
 } as const;
 export type PanelCommand = keyof typeof commandPanels;
 export type JarvisCommand = "wake" | "sleep" | PanelCommand;
@@ -31,6 +32,7 @@ export function jarvisCommand(text: string): JarvisCommand | null {
     aprobaciones: "approvals", agente: "agent", configuracion: "agent", "configuracion del agente": "agent",
     whatsapp: "whatsapp", wsp: "whatsapp", "conexion de whatsapp": "whatsapp",
     pagos: "billing", planes: "billing", facturacion: "billing", "planes y pagos": "billing", nexo: "nexo",
+    memoria: "workspace", tareas: "workspace", recordatorios: "workspace", "memoria y tareas": "workspace",
   };
   if (panel && aliases[panel]) return aliases[panel];
   return null;

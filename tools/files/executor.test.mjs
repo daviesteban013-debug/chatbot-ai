@@ -37,6 +37,7 @@ const { createAgentExecutor } = await import(await load("../../lib/agent/executo
   "@/lib/llm": url("export const calculateCost = () => 0; export const configuredModel = () => 'test-model';"),
   "@/lib/llm/metered": url("export const meteredChatCompletionStream = (...args) => globalThis.__filesExecutorStream(...args); export const meteredChatCompletion = (...args) => globalThis.__filesSpecialistComplete(...args);"),
   "./web-tools": url("export const webCrmTools = () => []; export const executeWebToolCall = () => { throw new Error('Business tool should not run'); };"),
+  "./work-tools": url("export const workTools=()=>[];export const executeWorkTool=()=>{throw new Error('unexpected work tool')};"),
   "@/lib/jarvis": await load("../../lib/jarvis.ts"),
   "@/lib/jarvis-personalization": await load("../../lib/jarvis-personalization.ts"),
   "@/lib/files/tools": files,

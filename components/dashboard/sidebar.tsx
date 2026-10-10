@@ -9,6 +9,7 @@ import { navItems } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 import { InstallJarvisButton } from "@/components/pwa/app-provider";
 import { DesktopDownloadLink } from "@/components/pwa/desktop-download-link";
+import { TaskAlerts } from "./task-alerts";
 
 export function DashboardSidebar({ tenantName }: { tenantName?: string }) {
   const pathname = usePathname();
@@ -46,6 +47,7 @@ export function DashboardSidebar({ tenantName }: { tenantName?: string }) {
         </span>
       </div>
 
+      <div className="px-4 pb-2"><TaskAlerts /></div>
       <nav className="flex gap-1 overflow-x-auto px-3 pb-3 lg:flex-col lg:overflow-y-auto lg:px-4 lg:py-4">
         {navItems.map(({ label, href, icon: Icon }) => (
           <Link

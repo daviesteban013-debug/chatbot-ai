@@ -131,7 +131,7 @@ const request = (userMessage, extra = {}) => new Request("https://nexo.test/api/
 
 test("remembered preferences persist across new conversations and failures are not reported as success", async () => {
   reset();
-  const response = await POST(request("recuerda que prefiero ejemplos"));
+  const response = await POST(request("recuerda sobre mí que prefiero ejemplos"));
   assert.equal(response.status, 200);
   assert.match(await response.text(), /Recordaré esta preferencia/);
   assert.deepEqual(state.user.user_metadata.jarvis_personalization.memories, ["prefiero ejemplos"]);
@@ -139,21 +139,21 @@ test("remembered preferences persist across new conversations and failures are n
   await (await POST(request("hola", { sessionId: "session_2" }))).text();
   assert.deepEqual(globalThis.__jarvisTestParams.personalization.memories, ["prefiero ejemplos"]);
   state.failSave = true;
-  assert.match(await (await POST(request("recuerda que me gusta el café"))).text(), /No pude guardar/);
+  assert.match(await (await POST(request("recuerda sobre mí que me gusta el café"))).text(), /No pude guardar/);
   assert.equal(state.user.user_metadata.jarvis_personalization.memories.length, 1);
 });
 
 test("memory limit and duplicates do not silently discard existing preferences", async () => {
   reset();
   state.user.user_metadata.jarvis_personalization = sanitizePersonalization({ memories: Array.from({ length: MAX_MEMORIES }, (_, i) => `Preference ${i}`) });
-  assert.match(await (await POST(request("recuerda que Preference 0"))).text(), /ya está guardada/);
-  assert.match(await (await POST(request("recuerda que another preference"))).text(), /memoria está llena/);
+  assert.match(await (await POST(request("recuerda sobre mí que Preference 0"))).text(), /ya está guardada/);
+  assert.match(await (await POST(request("recuerda sobre mí que another preference"))).text(), /memoria está llena/);
   assert.equal(state.writes.length, 0);
 });
 
 test("guests cannot create persistent memories or access a supplied business", async () => {
   reset(); state.user = null; state.member = null;
-  assert.match(await (await POST(request("recuerda que prefiero ejemplos"))).text(), /Inicia sesión/);
+  assert.match(await (await POST(request("recuerda sobre mí que prefiero ejemplos"))).text(), /Inicia sesión/);
   assert.equal(state.writes.length, 0);
   assert.equal((await POST(request("hola", { tenantId: "tenant-1" }))).status, 401);
   assert.deepEqual(await (await GET({ nextUrl: new URL("https://example.com/api/chat?sessionId=session_1") })).json(), { messages: [] });

@@ -19,8 +19,9 @@ export function OperatorTask({ actions, busy, onOpen, compact = false }: {
       <span className={styles.icon} aria-hidden="true">{action.status === "running" ? <LoaderCircle size={16}/> : action.status === "failed" ? <X size={16}/> : action.status === "approval_required" ? <Circle size={16}/> : <Check size={16}/>}</span>
       <div><strong>{action.label}</strong><small>{action.status === "running" ? "En curso…" : action.summary || (action.status === "failed" ? "No se completó este paso." : "Paso verificado.")}</small>
         {action.navigation && action.status === "completed" && <button type="button" disabled={busy} onClick={() => onOpen(action.navigation!)}>{action.navigation.label.startsWith("Ver ") ? action.navigation.label : `Ver ${action.navigation.label}`}<ArrowUpRight size={12}/></button>}
+        {action.status === "approval_required" && ["propose_business_memory", "propose_crm_task"].includes(action.tool) && <button type="button" disabled={busy} onClick={() => onOpen({ href: "/dashboard/workspace", label: "Memoria y tareas" })}>Revisar propuesta<ArrowUpRight size={12}/></button>}
       </div>
     </li>)}</ol>
-    {awaiting && <p>Consulta la tarjeta de cada propuesta para ver su estado y decidir. El pedido solo se registra al confirmarlo.</p>}
+    {awaiting && <p>Revisa y confirma cada propuesta para activarla. Prepararla todavía no ejecuta la acción.</p>}
   </section>;
 }

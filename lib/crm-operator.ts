@@ -25,6 +25,7 @@ const PANELS: Record<string, string> = {
   "/dashboard/approval": "Aprobaciones",
   "/dashboard/agent": "Configuración del agente",
   "/dashboard/billing": "Planes y pagos",
+  "/dashboard/workspace": "Memoria y tareas",
 };
 const DETAIL_LABELS: Record<string, string> = {
   orders: "Ver pedido",

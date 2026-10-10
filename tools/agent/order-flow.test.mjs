@@ -24,6 +24,7 @@ const {createAgentExecutor}=await import(await load('../../lib/agent/executor.ts
  '@/lib/llm/metered':moduleUrl('export const meteredChatCompletionStream=(...args)=>globalThis.__orderFlowStream(...args);export const meteredChatCompletion=(...args)=>globalThis.__orderFlowComplete(...args);'),
  './web-tools':moduleUrl("export const webCrmTools=()=>['search_customers','search_catalog','list_orders'].map(name=>({type:'function',function:{name}}));export const executeWebToolCall=(...args)=>globalThis.__orderFlowQuery(...args);"),
  './order-actions':orderActions,'./team':await load('../../lib/agent/team.ts',{zod:import.meta.resolve('zod')}),
+ './work-tools':moduleUrl('export const workTools=()=>[];export const executeWorkTool=()=>{throw new Error("unexpected")};'),
  './navigation':moduleUrl('export const crmNavigationTools=()=>[];export const executeCrmNavigation=()=>{throw new Error("unexpected navigation")};'),
  './operator-activity':await load('../../lib/agent/operator-activity.ts',{'@/lib/crm-operator':operatorShared}),
  '@/lib/crm-operator':operatorShared,

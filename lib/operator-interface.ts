@@ -11,6 +11,7 @@ export function completedOperatorNavigation(value: unknown): OperatorNavigation 
 export function desktopPanelFallback(value: unknown): OperatorNavigation | null {
   const navigation = parseOperatorNavigation(value);
   if (!navigation) return null;
+  if (navigation.href === "/dashboard/workspace") return parseOperatorNavigation("/dashboard");
   const parts = navigation.href.split("/");
   return parts.length === 4 ? parseOperatorNavigation(parts.slice(0, 3).join("/")) : null;
 }

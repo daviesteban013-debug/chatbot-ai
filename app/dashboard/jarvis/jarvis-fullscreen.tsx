@@ -19,6 +19,7 @@ import { JarvisPersonalizationPanel } from "./jarvis-personalization";
 import { InstallJarvisButton } from "@/components/pwa/app-provider";
 import { DesktopDownloadLink } from "@/components/pwa/desktop-download-link";
 import { CreditBalancePanel } from "@/components/dashboard/credit-balance";
+import { TaskAlerts } from "@/components/dashboard/task-alerts";
 import { useJarvisFiles } from "@/hooks/useJarvisFiles";
 import { FILE_ACCEPT } from "@/lib/files/types";
 import type { FileSummary } from "@/lib/files/types";
@@ -105,7 +106,7 @@ function JarvisFullscreenInner({
         if (!fallback) { setNavigationNotice("No se pudo abrir el panel. Inténtalo de nuevo."); return; }
         try {
           await window.nexoDesktop.openPanel(fallback.href);
-          setNavigationNotice(`Abrí ${fallback.label}. Esta versión de la app permite abrir la lista; selecciona allí el registro.`);
+          setNavigationNotice(destination.href === "/dashboard/workspace" ? "Abrí el CRM. Selecciona Memoria y tareas en el menú para revisar la propuesta." : `Abrí ${fallback.label}. Esta versión de la app permite abrir la lista; selecciona allí el registro.`);
         } catch { setNavigationNotice("No se pudo abrir el panel. Inténtalo de nuevo."); }
       }
       return;
@@ -311,6 +312,7 @@ function JarvisFullscreenInner({
       </header>
 
       <main className={styles.main}>
+        {userId && <TaskAlerts onOpen={() => { pauseMicrophone(); void openCrmWorkspace({ href: "/dashboard/workspace", label: "Memoria y tareas" }); }}/>}
         <section className={styles.stage} aria-label="NEXO, tu agente">
           <div className={styles.avatar}>
             <JarvisLiquidAvatar powered={isPoweredOn} state={avatarState} accent={pageAccent} onActivate={powerOn} />

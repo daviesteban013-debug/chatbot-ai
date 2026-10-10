@@ -89,6 +89,15 @@ test("same-origin authenticated requests use server membership and ignore a supp
   assert.equal(state.params.tenantId, "tenant-a");
 });
 
+test("business memories go to reviewed CRM tools; explicit private preferences remain personal", async () => {
+  const business = await POST(request({ ...body, userMessage: "recuerda que Ana prefiere entrega por la mañana" }));
+  assert.equal(business.status, 200); await business.text();
+  assert.equal(state.params.memoryReply, undefined); assert.equal(state.updates.length, 0);
+  const personal = await POST(request({ ...body, userMessage: "NEXO, recuerda sobre mí que prefiero ejemplos" }));
+  assert.equal(personal.status, 200); await personal.text();
+  assert.match(state.params.memoryReply, /Recordaré esta preferencia/); assert.equal(state.updates.length, 1);
+});
+
 test("same-origin anonymous demo still runs without CRM tools; supplied tenant is forbidden", async () => {
   state.user = null; state.member = null;
   const response = await POST(request());

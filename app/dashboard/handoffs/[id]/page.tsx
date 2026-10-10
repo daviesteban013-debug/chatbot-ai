@@ -7,6 +7,7 @@ import { getCurrentTenant, getCurrentUser } from "@/lib/auth";
 import { singleJoin } from "@/lib/labels";
 import { HandoffClient, type ThreadMessage } from "./handoff-client";
 import type { HandoffStatus } from "@/lib/database.types";
+import { workDate } from "@/lib/workspace";
 
 type CustomerShape = { name: string | null; phone: string; city: string | null } | null;
 
@@ -27,7 +28,7 @@ export default async function HandoffDetailPage({
   const { data: handoff } = await supabase
     .from("handoffs")
     .select(
-      "id, reason, summary, priority, status, taken_by, created_at, resolved_at, conversation_id, conversations(id, status, customers(name, phone, city))"
+      "id, reason, summary, priority, status, taken_by, created_at, resolved_at, conversation_id, conversations(id, customer_id, status, customers(name, phone, city))"
     )
     .eq("tenant_id", tenantId)
     .eq("id", id)
@@ -37,8 +38,8 @@ export default async function HandoffDetailPage({
 
   const conversation = singleJoin(
     handoff.conversations as
-      | { id: string; status: string; customers: CustomerShape | CustomerShape[] }
-      | Array<{ id: string; status: string; customers: CustomerShape | CustomerShape[] }>
+      | { id: string; customer_id: string; status: string; customers: CustomerShape | CustomerShape[] }
+      | Array<{ id: string; customer_id: string; status: string; customers: CustomerShape | CustomerShape[] }>
       | null
   );
   const customer = conversation
@@ -54,6 +55,9 @@ export default async function HandoffDetailPage({
     .limit(500);
 
   const status = handoff.status as HandoffStatus;
+  const context = conversation?.customer_id ? await supabase.from("nexo_work_items")
+    .select("id,kind,title,body,due_at,timezone,updated_at").eq("tenant_id", tenantId).eq("customer_id", conversation.customer_id)
+    .eq("status", "active").order("updated_at", { ascending: false }).limit(11) : { data: [], error: null };
   const isMine = status === "taken" && handoff.taken_by === user.id;
 
   // Resolver el nombre de quién tomó el handoff (si es otro operador).
@@ -82,6 +86,13 @@ export default async function HandoffDetailPage({
         <ArrowLeft className="size-3.5" /> Handoffs
       </Link>
 
+      <section className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 p-5" aria-label="Memoria y tareas del cliente">
+        <div className="flex items-center justify-between gap-3"><h2 className="font-semibold text-slate-900">Contexto para continuar la atención</h2><Link className="text-xs font-medium text-amber-800 underline" href="/dashboard/workspace">Memoria y tareas</Link></div>
+        {context.error ? <p role="alert" className="mt-2 text-sm text-rose-700">No pude cargar los recuerdos y tareas del cliente.</p>
+          : !context.data?.length ? <p className="mt-2 text-sm text-slate-600">Este cliente todavía no tiene recuerdos o tareas confirmados.</p>
+          : <ul className="mt-3 grid gap-3 sm:grid-cols-2">{context.data.slice(0, 10).map(item => <li key={item.id} className="rounded-xl bg-white/80 p-3"><p className="text-xs text-amber-800">{item.kind === "memory" ? "Recuerdo confirmado" : "Tarea pendiente"}</p><h3 className="mt-1 text-sm font-semibold">{item.title}</h3><p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-600">{item.body}</p><p className="mt-2 text-xs text-slate-500">{item.due_at ? `Vence ${workDate(item.due_at, item.timezone)} · ${item.timezone}` : `Actualizado ${workDate(item.updated_at, "America/Bogota")}`}</p></li>)}</ul>}
+        {(context.data?.length ?? 0) > 10 && <p className="mt-3 text-xs text-slate-500">Mostrando 10 registros recientes. Consulta el resto en Memoria y tareas.</p>}
+      </section>
       <HandoffClient
         handoffId={handoff.id}
         status={status}

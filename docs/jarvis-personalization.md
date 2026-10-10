@@ -6,7 +6,7 @@ La personalidad del asistente se cambia en **Ajustes Manuales**. Guardarla y reg
 
 ## Recuerdos personales
 
-Con una sesión iniciada, escribe o di **«recuerda que prefiero ejemplos prácticos»**. El servidor guarda únicamente comandos explícitos que empiezan por «recuerda que» o «Jarvis, recuerda que». Se admiten 20 recuerdos de hasta 240 caracteres. Jarvis confirma la operación solamente si se guardó; los errores y la memoria llena se muestran sin descartar recuerdos anteriores.
+Con una sesión iniciada, escribe o di **«recuerda sobre mí que prefiero ejemplos prácticos»**. Se admiten 20 preferencias privadas de hasta 240 caracteres. NEXO confirma únicamente si se guardó. Dentro de un negocio, «recuerda que …» pasa a las propuestas de [memoria del CRM](nexo-memory-tasks.md), que requieren confirmación y pueden vincular un cliente. Los recuerdos privados antiguos no se comparten automáticamente.
 
 Puedes editar o borrar recuerdos en el panel y pulsar **Guardar personalización**. Una nueva conversación conserva las preferencias. El perfil pertenece al usuario autenticado, no al negocio ni a todos sus miembros. Se almacena en `user_metadata.jarvis_personalization` de Supabase Auth y nunca se usa para conceder permisos.
 

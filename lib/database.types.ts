@@ -650,6 +650,22 @@ export type Database = {
           },
         ];
       };
+      nexo_work_items: {
+        Row: import("./workspace").WorkItem;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      nexo_task_reminders: {
+        Row: import("./workspace").TaskReminder;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      nexo_work_events: {
+        Row: { id: number; tenant_id: string; item_id: string; actor_id: string | null; action: string; revision: number; created_at: string };
+        Insert: never; Update: never; Relationships: [];
+      };
       nexo_order_proposals: {
         Row: { id: string; tenant_id: string; user_id: string; session_id: string; request_key: string; status: string; snapshot: Json; order_id: string | null; handoff_id: string | null; created_at: string; expires_at: string; decided_at: string | null };
         Insert: { tenant_id: string; user_id: string; session_id: string; request_key: string; snapshot: Json };
@@ -1079,6 +1095,9 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      nexo_propose_work: { Args: { p_tenant: string; p_user: string; p_session: string | null; p_key: string; p_input: Json }; Returns: Json };
+      nexo_change_work: { Args: { p_tenant: string; p_user: string; p_id: string; p_revision: number; p_action: string; p_patch?: Json }; Returns: Json };
+      nexo_enqueue_task_reminders: { Args: Record<string, never>; Returns: number };
       nexo_message_balance: { Args: { p_tenant_id: string | null; p_user_id: string | null }; Returns: Json };
       reserve_nexo_message: { Args: { p_id: string; p_tenant_id: string | null; p_user_id: string | null }; Returns: Json };
       finish_nexo_message: { Args: { p_id: string; p_completed: boolean }; Returns: undefined };
