@@ -1,7 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
 import { moduleUrl } from '../stripe/load-module.mjs';
-const { jarvisCommand, jarvisCommandPanel } = await import(await moduleUrl('lib/jarvis-commands.ts'));
+const { jarvisCommand, jarvisCommandPanel, commandPanels } = await import(await moduleUrl('lib/jarvis-commands.ts'));
+const desktopPolicy = createRequire(import.meta.url)('../../desktop/policy.cjs');
 const { createVoiceActivity } = await import(await moduleUrl('lib/voice/voice-activity.ts'));
 const { desktopAuthResponse } = await import(await moduleUrl('lib/desktop-auth.ts'));
 const { createTranscriptionHandler } = await import(await moduleUrl('lib/voice/transcription.ts'));
@@ -21,6 +23,15 @@ test('voice activity ignores silence, rejects short spikes and bounds a spoken p
   assert.equal(gate.sample(.001, 4100), 'finish'); assert.equal(gate.valid(), true);
   gate.reset(); gate.sample(.2, 5000);
   assert.equal(gate.sample(.2, 17000), 'finish'); assert.equal(gate.duration(18000), 12000);
+});
+
+test('desktop accepts every current command panel, including memory, tasks and reminders', () => {
+  for (const panel of Object.values(commandPanels)) assert.equal(desktopPolicy.panelUrl(panel.path), desktopPolicy.APP_ORIGIN + panel.path);
+  for (const phrase of ['NEXO, abre memoria', 'abre tareas', 'abre recordatorios', 'abre memoria y tareas']) {
+    const panel = jarvisCommandPanel(jarvisCommand(phrase));
+    assert.equal(panel?.path, '/dashboard/workspace');
+    assert.equal(desktopPolicy.panelUrl(panel.path), desktopPolicy.APP_ORIGIN + '/dashboard/workspace');
+  }
 });
 test('desktop callback contains no session tokens, disallows injected codes and cannot be cached', async () => {
   const response = desktopAuthResponse('12345678-abcd-abcd-abcd-123456789012');

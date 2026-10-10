@@ -42,6 +42,11 @@ test('preferences admit only plain hex colors', () => {
   assert.equal(color('#FAcC15'), '#facc15');
   for (const value of ['red', '#fff', '#ffffff;background:url(evil)', null]) assert.throws(() => color(value));
 });
+
+test('memory and task workspace opens only as an exact CRM panel', () => {
+  assert.equal(panelUrl('/dashboard/workspace'), APP_ORIGIN + '/dashboard/workspace');
+  for (const bad of ['/dashboard/workspace/delete', '/dashboard/workspace?next=https://evil.test', '/dashboard/workspace#x', '/dashboard/workspace/../agent', '/dashboard/%77orkspace', '/dashboard/workspace\n']) assert.throws(() => panelUrl(bad));
+});
 test('Google requires trusted Supabase, PKCE, provider and exact desktop callback', () => {
   const url = new URL('https://hdrjzcxlhpzpayhrjafk.supabase.co/auth/v1/authorize');
   url.searchParams.set('provider', 'google'); url.searchParams.set('redirect_to', APP_ORIGIN + '/auth/callback?desktop=1');

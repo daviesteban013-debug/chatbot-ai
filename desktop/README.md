@@ -10,7 +10,7 @@ La aplicación carga la misma cuenta y backend de Nexo.ai. Desde la versión 0.2
 4. Arrastra el pequeño asa del orbe o la barra superior del panel para moverlo. La flecha y **Alt + Shift + N** contraen o expanden la burbuja. Desde la navegación del CRM, **NEXO** abre el asistente sin abandonar el panel actual. El acceso **CRM** del asistente vuelve al resumen.
 5. En **Personalizar burbuja**, elige un color o usa el selector. Se guarda en tu computadora.
 
-Comandos: **abre pedidos**, **abre catálogo**, **abre conversaciones**, **abre handoffs**, **abre aprobaciones**, **abre configuración**, **abre planes y pagos**, **abre resumen** y **abre NEXO**. También admite **NEXO, apágate**. Abrir paneles no consume llamadas al modelo de lenguaje. Las consultas del negocio siguen usando las herramientas del backend; abrir un panel no modifica sus datos.
+Comandos: **abre pedidos**, **abre catálogo**, **abre conversaciones**, **abre handoffs**, **abre aprobaciones**, **abre configuración**, **abre planes y pagos**, **abre memoria**, **abre tareas**, **abre recordatorios**, **abre resumen** y **abre NEXO**. También admite **NEXO, apágate**. Abrir paneles no consume llamadas al modelo de lenguaje. Las consultas del negocio siguen usando las herramientas del backend; abrir un panel no modifica sus datos.
 
 El icono de micrófono apaga la escucha. Contraer el orbe conserva la escucha si ya estaba activada; su botón de encendido permite apagarla sin expandirlo. **Salir de NEXO**, en Personalización o en el icono de la bandeja del sistema, cierra la aplicación y libera el micrófono. Cerrar la ventana principal también termina la app. Cerrar sesión descarga el asistente y libera su micrófono. El botón cuadrado interrumpe la respuesta; el micrófono puede seguir armado.
 
@@ -29,7 +29,7 @@ npm test --prefix desktop
 npm run package --prefix desktop
 ```
 
-En un Mac, `npm run package:mac --prefix desktop` genera `NEXO-0.2.1-mac-universal.dmg`. El workflow **NEXO · macOS beta** permite construirlo manualmente en GitHub Actions y comprobar el arranque del mismo DMG en máquinas Intel y Apple Silicon. Solo empaqueta los archivos declarados en `build.files`; nunca requiere las claves del backend.
+En un Mac, `npm run package:mac --prefix desktop` genera `NEXO-0.2.2-mac-universal.dmg`. El workflow **NEXO · macOS beta** permite construirlo manualmente en GitHub Actions y comprobar el arranque del mismo DMG en máquinas Intel y Apple Silicon. Solo empaqueta los archivos declarados en `build.files`; nunca requiere las claves del backend.
 
 La beta de macOS usa firma ad hoc, sin certificado Developer ID ni notarización de Apple. Gatekeeper puede bloquear su apertura. La distribución sin ese aviso requiere el certificado del editor y notarización, pendientes de configurar. No desactives las protecciones del sistema. La web sigue disponible para usar el CRM sin instalar la beta.
 
@@ -37,7 +37,9 @@ Electron usa contexto aislado, sandbox y una sesión local separada del navegado
 
 El puente identifica las superficies `crm` y `bubble` para que la ventana principal no use el diseño compacto. Ambas comparten la sesión; solo el asistente tiene acceso al micrófono. Los IPC validan la ventana emisora y su frame principal. `npm test --prefix desktop` comprueba arranque, acceso, retorno OAuth, cierre de sesión, aislamiento y tamaños en varios monitores.
 
-La versión 0.2.1 permite abrir WhatsApp y las fichas de pedidos, conversaciones y handoffs desde NEXO en la ventana CRM existente, conservando el asistente. Los destinos siguen limitados al CRM del servicio; el servidor comprueba que cada registro pertenezca al negocio antes de pedir su apertura.
+La versión 0.2.2 añade la apertura de **Memoria y tareas** desde la burbuja, los comandos de voz y las propuestas de seguimiento. Conserva WhatsApp y las fichas de pedidos, conversaciones y handoffs en la ventana CRM existente, sin recargar el asistente. Los destinos siguen limitados al CRM del servicio; el servidor comprueba que cada registro pertenezca al negocio antes de pedir su apertura.
+
+La app carga el backend publicado: incluye los cupos renovables por horas, memoria y tareas, y el cierre autónomo de pedidos por WhatsApp con enlace del negocio o transferencia. Los medios de cobro se configuran en **Configuración del agente**. El pago permanece pendiente hasta verificarse; esta versión no incorpora conciliación bancaria automática ni sustituye la vinculación del número real de WhatsApp. Las propuestas internas de memoria y tareas conservan su confirmación en el CRM.
 
 Para actualizar, cierra NEXO e instala la versión nueva sobre la anterior. En Mac, reemplaza NEXO en Aplicaciones. No borres los datos locales: la sesión y el color usan el mismo perfil. Esta beta no incorpora actualización automática. Publicar únicamente la web cambia el asistente, pero no actualiza el código nativo instalado. Los enlaces de descarga deben cambiarse solo después de construir y publicar los artefactos correspondientes.
 

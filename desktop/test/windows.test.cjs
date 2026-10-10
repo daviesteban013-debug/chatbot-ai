@@ -46,7 +46,7 @@ async function launch({ authenticated = true, selfTest = false } = {}) {
   }
   const app = Object.assign(new EventEmitter(), {
     requestSingleInstanceLock: () => true, whenReady: () => Promise.resolve(), getPath: () => '/test/preferences',
-    setAsDefaultProtocolClient() {}, quit() { state.quit++; }, exit() {},
+    setAsDefaultProtocolClient() {}, getVersion: () => '0.2.2', quit() { state.quit++; }, exit() {},
   });
   const shared = { setPermissionCheckHandler(fn) { this.check = fn; }, setPermissionRequestHandler(fn) { this.request = fn; }, setDisplayMediaRequestHandler(fn) { this.display = fn; } };
   const electron = { app, BrowserWindow: Window, ipcMain: { handle: (name, callback) => handlers.set(name, callback) },
@@ -102,7 +102,7 @@ test('operator IPC opens verified record routes and WhatsApp in the existing CRM
   const { crm, bubble, handlers, event, windows } = await launch();
   const bubbleLoads = bubble.loads.length;
   const id = '11111111-2222-4333-8444-555555555555';
-  for (const route of ['/dashboard/whatsapp', ...['orders', 'conversations', 'handoffs'].map(panel => `/dashboard/${panel}/${id}`)]) {
+  for (const route of ['/dashboard/whatsapp', '/dashboard/workspace', '/dashboard/agent', ...['orders', 'conversations', 'handoffs'].map(panel => `/dashboard/${panel}/${id}`)]) {
     handlers.get('nexo:panel')(event(bubble), route);
     await settle();
     assert.equal(crm.webContents.getURL(), policy.APP_ORIGIN + route);

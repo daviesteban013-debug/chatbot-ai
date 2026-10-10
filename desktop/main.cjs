@@ -149,7 +149,7 @@ else {
     if (selfTest) {
       // Hidden, bounded startup validation; never operates the user's UI or microphone.
       bubble.loadURL(policy.APP_ORIGIN + '/login').then(() => {
-        console.log(JSON.stringify({ startup: 'ok', platform: process.platform, arch: process.arch, sandbox: bubble.webContents.getLastWebPreferences().sandbox, nodeIntegration: bubble.webContents.getLastWebPreferences().nodeIntegration, alwaysOnTop: bubble.isAlwaysOnTop(), allWorkspaces: bubble.isVisibleOnAllWorkspaces() })); app.quit();
+        console.log(JSON.stringify({ startup: 'ok', version: app.getVersion(), workspacePanel: policy.panelUrl('/dashboard/workspace'), platform: process.platform, arch: process.arch, sandbox: bubble.webContents.getLastWebPreferences().sandbox, nodeIntegration: bubble.webContents.getLastWebPreferences().nodeIntegration, alwaysOnTop: bubble.isAlwaysOnTop(), allWorkspaces: bubble.isVisibleOnAllWorkspaces() })); app.quit();
       }).catch(() => { console.error('NEXO startup check failed'); app.exit(1); });
       setTimeout(() => app.exit(1), 30_000).unref();
     } else openPanel('/dashboard');

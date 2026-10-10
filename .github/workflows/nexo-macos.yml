@@ -59,4 +59,4 @@ jobs:
           codesign --verify --deep --strict "$app"
           "$app/Contents/MacOS/NEXO" --startup-check > startup.json
           cat startup.json
-          node -e 'const fs=require("node:fs"); const lines=fs.readFileSync("startup.json","utf8").trim().split("\n"); const s=JSON.parse(lines.at(-1)); if(s.startup!=="ok"||s.platform!=="darwin"||!s.sandbox||s.nodeIntegration||!s.alwaysOnTop||!s.allWorkspaces) process.exit(1)'
+          node -e 'const fs=require("node:fs"); const lines=fs.readFileSync("startup.json","utf8").trim().split("\n"); const s=JSON.parse(lines.at(-1)); if(s.startup!=="ok"||!s.version||s.workspacePanel!=="https://chatbot-ai-gold-two.vercel.app/dashboard/workspace"||s.platform!=="darwin"||!s.sandbox||s.nodeIntegration||!s.alwaysOnTop||!s.allWorkspaces) process.exit(1)'
