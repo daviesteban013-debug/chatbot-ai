@@ -29,11 +29,11 @@ npm test --prefix desktop
 npm run package --prefix desktop
 ```
 
-En un Mac, `npm run package:mac --prefix desktop` genera `NEXO-0.2.2-mac-universal.dmg`. El workflow **NEXO · macOS beta** permite construirlo manualmente en GitHub Actions y comprobar el arranque del mismo DMG en máquinas Intel y Apple Silicon. Solo empaqueta los archivos declarados en `build.files`; nunca requiere las claves del backend.
+En un Mac, `npm run package:mac --prefix desktop` genera `NEXO-0.2.3-mac-universal.dmg`. El workflow **NEXO · macOS beta** permite construirlo manualmente en GitHub Actions y comprobar el arranque del mismo DMG en máquinas Intel y Apple Silicon. Solo empaqueta los archivos declarados en `build.files`; nunca requiere las claves del backend.
 
 La beta de macOS usa firma ad hoc, sin certificado Developer ID ni notarización de Apple. Gatekeeper puede bloquear su apertura. La distribución sin ese aviso requiere el certificado del editor y notarización, pendientes de configurar. No desactives las protecciones del sistema. La web sigue disponible para usar el CRM sin instalar la beta.
 
-Electron usa contexto aislado, sandbox y una sesión local separada del navegador. Solo la ventana de NEXO puede solicitar micrófono; cámara y captura de pantalla están bloqueadas. El puente nativo admite únicamente preferencias, paneles permitidos, el acceso Google por PKCE y salir. No incorpora claves de OpenAI, ElevenLabs ni Supabase privadas.
+Electron usa contexto aislado, sandbox y una sesión local separada del navegador. Solo la ventana de NEXO puede solicitar micrófono; cámara y captura de pantalla están bloqueadas. El puente nativo admite preferencias, paneles permitidos, el acceso Google por PKCE, actualizaciones desde el repositorio oficial y salir. No incorpora claves de OpenAI, ElevenLabs ni Supabase privadas.
 
 El puente identifica las superficies `crm` y `bubble` para que la ventana principal no use el diseño compacto. Ambas comparten la sesión; solo el asistente tiene acceso al micrófono. Los IPC validan la ventana emisora y su frame principal. `npm test --prefix desktop` comprueba arranque, acceso, retorno OAuth, cierre de sesión, aislamiento y tamaños en varios monitores.
 
@@ -43,7 +43,17 @@ El workflow manual **NEXO · Publicar instaladores verificados** transfiere el D
 
 La app carga el backend publicado: incluye los cupos renovables por horas, memoria y tareas, y el cierre autónomo de pedidos por WhatsApp con enlace del negocio o transferencia. Los medios de cobro se configuran en **Configuración del agente**. El pago permanece pendiente hasta verificarse; esta versión no incorpora conciliación bancaria automática ni sustituye la vinculación del número real de WhatsApp. Las propuestas internas de memoria y tareas conservan su confirmación en el CRM.
 
-Para actualizar, cierra NEXO e instala la versión nueva sobre la anterior. En Mac, reemplaza NEXO en Aplicaciones. No borres los datos locales: la sesión y el color usan el mismo perfil. Esta beta no incorpora actualización automática. Publicar únicamente la web cambia el asistente, pero no actualiza el código nativo instalado. Los enlaces de descarga deben cambiarse solo después de construir y publicar los artefactos correspondientes.
+## Actualizaciones desde 0.2.3
+
+Instala 0.2.3 una vez sobre la versión anterior para incorporar el actualizador. No borres los datos locales: la sesión y el color usan el mismo perfil.
+
+En Windows, NEXO busca una versión al iniciar y cada seis horas. El CRM y la personalización de la burbuja muestran la versión y el estado; también puedes buscar desde la bandeja del sistema. Pulsa **Descargar actualización** y después **Reiniciar e instalar** cuando termines tu trabajo. No descarga ni instala por sorpresa o al cerrar la aplicación. El instalador conserva el perfil. Un fallo de descarga o de checksum impide instalar.
+
+La fuente es la última release estable de este repositorio público. Electron Updater usa el archivo generado `latest.yml`, SHA512 y el instalador NSIS; la publicación verifica la versión, el nombre, el tamaño y el hash contra el binario probado. Esta beta Windows sigue sin certificado del editor, por lo que no aporta verificación de firma Authenticode.
+
+En Mac, el aviso ofrece **Descargar para Mac** y abre el DMG oficial en el navegador. Cierra NEXO y reemplázalo en Aplicaciones. La actualización automática completa en macOS requiere firma Developer ID y distribución compatible; con la firma ad hoc actual se mantiene este proceso asistido sin modificar las protecciones de macOS.
+
+Publicar únicamente la web cambia el asistente al recargar, pero no actualiza el código nativo instalado. Los enlaces de descarga deben cambiarse solo después de construir y publicar los artefactos correspondientes. Las comprobaciones de arranque y el modo de desarrollo nunca buscan actualizaciones.
 
 Para revisar el diseño sin una sesión ni micrófono, ejecuta Next en desarrollo y abre `/dev/nexo`. Esa ruta devuelve 404 en producción.
 

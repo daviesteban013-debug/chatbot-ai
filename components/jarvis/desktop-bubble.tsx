@@ -4,6 +4,7 @@ import { ArrowUpRight, ChevronDown, GripHorizontal, LayoutDashboard, Mic, MicOff
 import { commandPanels } from "@/lib/jarvis-commands";
 import type { DesktopPreferences } from "@/types/nexo-desktop";
 import styles from "./desktop-bubble.module.css";
+import { DesktopUpdates } from "@/components/pwa/desktop-updates";
 const subscribe = () => () => {};
 export function useDesktopMode() {
   return useSyncExternalStore(subscribe, () => Boolean(window.nexoDesktop && window.nexoDesktop.surface !== "crm") || (process.env.NODE_ENV === "development" && new URLSearchParams(window.location.search).get("desktopPreview") === "1"), () => false);
@@ -61,6 +62,7 @@ export function DesktopBubble(props: Props) {
     {!preferences.expanded && <button type="button" className={styles.compactPower} onClick={props.onPower} aria-label={props.powered ? "Apagar NEXO y micrófono" : "Encender NEXO y activar escucha"} aria-pressed={props.powered} title={props.powered ? "Apagar NEXO" : "Encender NEXO"}><Power size={12} /></button>}
     {preferences.expanded && <>
       <section className={styles.conversation} aria-label="Conversación con NEXO">
+        {settings && <DesktopUpdates compact beforeInstall={props.onStop} />}
         {props.operator}
         {props.navigationNotice && <p className={styles.hint} role="status">{props.navigationNotice}</p>}
         {props.proposals}

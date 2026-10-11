@@ -9,6 +9,15 @@ if (window.top === window && window.location.origin === 'https://chatbot-ai-gold
     openPanel: path => ipcRenderer.invoke('nexo:panel', path),
     startGoogleSignIn: url => ipcRenderer.invoke('nexo:google', url),
     quit: () => ipcRenderer.invoke('nexo:quit'),
+    getUpdateState: () => ipcRenderer.invoke('nexo:update-state'),
+    checkForUpdates: () => ipcRenderer.invoke('nexo:update-check'),
+    downloadUpdate: () => ipcRenderer.invoke('nexo:update-download'),
+    installUpdate: () => ipcRenderer.invoke('nexo:update-install'),
+    onUpdateState: callback => {
+      const listener = (_event, state) => callback(state);
+      ipcRenderer.on('nexo:update-state', listener);
+      return () => ipcRenderer.removeListener('nexo:update-state', listener);
+    },
     onPreferences: callback => {
       const listener = (_event, preferences) => callback(preferences);
       ipcRenderer.on('nexo:preferences-changed', listener);

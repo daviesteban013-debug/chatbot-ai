@@ -211,6 +211,7 @@ test("signed-in entry lands in Jarvis; guests stay protected and incomplete onbo
 });
 
 const { DashboardShell } = await load("../../components/dashboard/dashboard-shell.tsx", {
+  "@/components/pwa/desktop-updates": moduleUrl("export const DesktopUpdates = () => null;"),
   "next/navigation": moduleUrl("export const usePathname = () => globalThis.__entryPath;"),
   "./sidebar": moduleUrl(`import { createElement } from ${JSON.stringify(import.meta.resolve("react"))}; export const DashboardSidebar = () => createElement("aside", null, "CRM navigation");`),
 });

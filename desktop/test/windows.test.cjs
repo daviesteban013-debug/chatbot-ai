@@ -46,7 +46,7 @@ async function launch({ authenticated = true, selfTest = false } = {}) {
   }
   const app = Object.assign(new EventEmitter(), {
     requestSingleInstanceLock: () => true, whenReady: () => Promise.resolve(), getPath: () => '/test/preferences',
-    setAsDefaultProtocolClient() {}, getVersion: () => '0.2.2', quit() { state.quit++; }, exit() {},
+    setAsDefaultProtocolClient() {}, getVersion: () => '0.2.3', quit() { state.quit++; }, exit() {},
   });
   const shared = { setPermissionCheckHandler(fn) { this.check = fn; }, setPermissionRequestHandler(fn) { this.request = fn; }, setDisplayMediaRequestHandler(fn) { this.display = fn; } };
   const electron = { app, BrowserWindow: Window, ipcMain: { handle: (name, callback) => handlers.set(name, callback) },
@@ -55,7 +55,7 @@ async function launch({ authenticated = true, selfTest = false } = {}) {
     Tray: class extends EventEmitter { setToolTip() {} setContextMenu(menu) { state.menu = menu; } }, Menu: { buildFromTemplate: items => items },
     nativeImage: { createFromPath: () => ({ resize: () => ({}) }) }, systemPreferences: {},
   };
-  vm.runInNewContext(source, { require: name => name === 'electron' ? electron : name === './policy.cjs' ? policy : name === 'node:fs' ? { readFileSync() { throw new Error('First start'); }, writeFileSync() {}, renameSync() {} } : require(name),
+  vm.runInNewContext(source, { require: name => name === 'electron' ? electron : name === './policy.cjs' ? policy : name === './updater.cjs' ? require('../updater.cjs') : name === 'node:fs' ? { readFileSync() { throw new Error('First start'); }, writeFileSync() {}, renameSync() {} } : require(name),
     __dirname: path.dirname(path.join(__dirname, '../main.cjs')), process: { argv: ['electron', 'app', ...(selfTest ? ['--startup-check'] : [])], platform: 'win32', arch: 'x64', execPath: '/electron' },
     URL, console: { log() {}, error() {} }, setTimeout: () => ({ unref() {} }),
   });
@@ -168,4 +168,15 @@ test('only the orb can request audio; CRM, camera, frames and external origins a
 test('startup check remains hidden and never opens CRM or requests microphone', async () => {
   const { windows, bubble } = await launch({ selfTest: true });
   assert.equal(windows.length, 1); assert.equal(bubble.visible, false); assert.equal(bubble.webContents.getURL(), policy.APP_ORIGIN + '/login');
+});
+
+test('update IPC accepts only the CRM or orb main frame at the trusted origin', async () => {
+  const { handlers, crm, bubble, event } = await launch();
+  for (const channel of ['state', 'check', 'download', 'install']) {
+    const handle = handlers.get(`nexo:update-${channel}`);
+    assert.equal((await handle(event(crm))).mode, 'development');
+    assert.equal((await handle(event(bubble))).mode, 'development');
+    assert.throws(() => handle({ sender: crm.webContents, senderFrame: { url: policy.APP_ORIGIN } }), /permitida/);
+    assert.throws(() => handle({ sender: { mainFrame: {} }, senderFrame: {} }), /permitida/);
+  }
 });

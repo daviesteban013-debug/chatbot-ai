@@ -1,6 +1,6 @@
 {
   "name": "nexo-desktop",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "private": true,
   "description": "NEXO flotante para Windows y macOS",
   "author": "Nexo.ai",
@@ -8,17 +8,40 @@
   "scripts": {
     "start": "electron .",
     "test": "node --test test/*.test.cjs",
-    "package": "electron-builder --win nsis --x64",
+    "package": "electron-builder --win nsis --x64 --publish never",
     "package:mac": "electron-builder --mac dmg --universal --publish never"
   },
-  "devDependencies": { "electron": "44.7.0", "electron-builder": "26.15.3" },
+  "devDependencies": {
+    "electron": "44.7.0",
+    "electron-builder": "26.15.3"
+  },
   "build": {
     "appId": "ai.nexo.desktop",
     "productName": "NEXO",
-    "directories": { "output": "dist" },
-    "files": ["main.cjs", "preload.cjs", "policy.cjs", "icon.png"],
-    "protocols": [{ "name": "NEXO login", "schemes": ["nexo-desktop"] }],
-    "win": { "target": "nsis", "icon": "icon.png", "signExecutable": false },
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "policy.cjs",
+      "icon.png",
+      "updater.cjs"
+    ],
+    "protocols": [
+      {
+        "name": "NEXO login",
+        "schemes": [
+          "nexo-desktop"
+        ]
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "icon.png",
+      "signExecutable": false,
+      "verifyUpdateCodeSignature": false
+    },
     "mac": {
       "target": "dmg",
       "icon": "icon-mac.png",
@@ -28,9 +51,25 @@
       "hardenedRuntime": false,
       "notarize": false,
       "artifactName": "NEXO-${version}-mac-${arch}.${ext}",
-      "extendInfo": { "NSMicrophoneUsageDescription": "NEXO usa el micrófono cuando activas la escucha para conversar y ejecutar tus comandos del CRM." }
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "NEXO usa el micrófono cuando activas la escucha para conversar y ejecutar tus comandos del CRM."
+      }
     },
-    "nsis": { "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true, "createDesktopShortcut": true },
-    "artifactName": "NEXO-Setup-${version}.${ext}"
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    },
+    "artifactName": "NEXO-Setup-${version}.${ext}",
+    "publish": {
+      "provider": "github",
+      "owner": "daviesteban013-debug",
+      "repo": "chatbot-ai",
+      "releaseType": "release"
+    }
+  },
+  "dependencies": {
+    "electron-updater": "6.8.9"
   }
 }

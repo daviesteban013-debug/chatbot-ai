@@ -54,6 +54,8 @@ jobs:
           version="${RELEASE_TAG#nexo-desktop-v}"
           gh run download "$MAC_RUN_ID" --name nexo-macos-universal --dir package
           gh release download "$RELEASE_TAG" --pattern "NEXO-Setup-$version.exe" --dir package
+          gh release download "$RELEASE_TAG" --pattern 'latest.yml' --dir package
+          gh release download "$RELEASE_TAG" --pattern "NEXO-Setup-$version.exe.blockmap" --dir package
       - name: Verify and upload both installer checksums with Mac binary
         shell: bash
         run: |
@@ -66,5 +68,18 @@ jobs:
           [[ "$mac_expected" =~ ^[a-f0-9]{64}$ ]]
           printf '%s  %s\n%s  %s\n' "$mac_expected" "$mac" "$WINDOWS_SHA256" "$win" > "SHA256SUMS-$version.txt"
           sha256sum --check "SHA256SUMS-$version.txt"
+          node <<'NODE'
+          const fs = require('node:fs'), crypto = require('node:crypto'), assert = require('node:assert/strict');
+          const version = process.env.RELEASE_TAG.replace('nexo-desktop-v', '');
+          const name = `NEXO-Setup-${version}.exe`, exe = fs.readFileSync(name), feed = fs.readFileSync('latest.yml', 'utf8');
+          assert.equal(/^version: (.+)$/m.exec(feed)?.[1], version);
+          assert.deepEqual([...feed.matchAll(/^[ \t]*(?:- )?url: (.+)$/gm)].map(m => m[1]), [name]);
+          assert.equal(/^path: (.+)$/m.exec(feed)?.[1], name);
+          const digest = crypto.createHash('sha512').update(exe).digest('base64');
+          assert.deepEqual([...feed.matchAll(/^[ \t]*sha512: (.+)$/gm)].map(m => m[1]), [digest, digest]);
+          assert.equal(Number(/^[ \t]*size: (\d+)$/m.exec(feed)?.[1]), exe.length);
+          console.log('Windows update feed matches the verified installer.');
+          NODE
+          sha256sum latest.yml "$win.blockmap" >> "SHA256SUMS-$version.txt"
           gh release upload "$RELEASE_TAG" "$mac" "SHA256SUMS-$version.txt"
           cat "SHA256SUMS-$version.txt"

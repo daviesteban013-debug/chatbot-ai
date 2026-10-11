@@ -1,11 +1,13 @@
-const { app, BrowserWindow, ipcMain, session, screen, globalShortcut, shell, Tray, Menu, nativeImage, systemPreferences } = require('electron');
+const { app, BrowserWindow, ipcMain, session, screen, globalShortcut, shell, Tray, Menu, nativeImage, systemPreferences, Notification, dialog } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const policy = require('./policy.cjs');
+const { createUpdates, REPO } = require('./updater.cjs');
 let bubble, crm, tray, pendingLoginUntil = 0, awaitingLogin = false, bubbleLoading = false;
 let preferences = { color: '#facc15', expanded: false };
 const partition = 'persist:nexo';
 const selfTest = process.argv.includes('--startup-check');
+let updates, updateTimer, updateInterval;
 function save() {
   const file = path.join(app.getPath('userData'), 'preferences.json');
   fs.writeFileSync(file + '.tmp', JSON.stringify(preferences));
@@ -138,11 +140,32 @@ else {
       try { await shell.openExternal(url); } catch { pendingLoginUntil = 0; throw new Error('No se pudo abrir el navegador'); }
     });
     ipcMain.handle('nexo:quit', event => { guard(event); app.quit(); });
+    const updateEnabled = Boolean(app.isPackaged && !selfTest);
+    updates = createUpdates({ version: app.getVersion(), platform: process.platform, enabled: updateEnabled,
+      updater: updateEnabled && process.platform === 'win32' ? require('electron-updater').autoUpdater : undefined,
+      fetchRelease: async () => {
+        const response = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, { headers: { Accept: 'application/vnd.github+json' }, signal: AbortSignal.timeout(15_000) });
+        if (!response.ok) throw new Error('Release unavailable');
+        return response.json();
+      },
+      openExternal: url => shell.openExternal(url),
+      changed: state => { for (const win of [bubble, crm]) if (win && !win.isDestroyed() && policy.trustedUrl(win.webContents.getURL())) win.webContents.send('nexo:update-state', state); },
+      available: state => {
+        if (Notification.isSupported()) { const notice = new Notification({ title: 'Nueva versión de NEXO', body: `NEXO ${state.latestVersion} está disponible. Abre el CRM para actualizar.` }); notice.on('click', () => openPanel()); notice.show(); }
+      },
+    });
+    for (const [channel, action] of [['state', 'snapshot'], ['check', 'check'], ['download', 'download'], ['install', 'install']]) {
+      ipcMain.handle(`nexo:update-${channel}`, event => { guard(event, true); return updates[action](); });
+    }
+    if (updateEnabled) {
+      updateTimer = setTimeout(() => void updates.check(), 15_000); updateTimer.unref();
+      updateInterval = setInterval(() => void updates.check(), 6 * 60 * 60_000); updateInterval.unref();
+    }
     if (!selfTest) {
       const trayIcon = nativeImage.createFromPath(path.join(__dirname, 'icon.png'));
       tray = new Tray(process.platform === 'darwin' ? trayIcon.resize({ width: 18, height: 18 }) : trayIcon);
       tray.setToolTip('NEXO · Tu agente');
-      tray.setContextMenu(Menu.buildFromTemplate([{ label: 'Abrir CRM', click: () => openPanel() }, { label: 'Hablar con NEXO', click: () => showBubble(true) }, { type: 'separator' }, { label: 'Salir y apagar micrófono', click: () => app.quit() }]));
+      tray.setContextMenu(Menu.buildFromTemplate([{ label: 'Abrir CRM', click: () => openPanel() }, { label: 'Hablar con NEXO', click: () => showBubble(true) }, { label: 'Buscar actualizaciones', click: async () => { const state = await updates.check(); openPanel(); void dialog.showMessageBox(crm, { type: 'info', title: 'Actualizaciones de NEXO', message: state.latestVersion ? `NEXO ${state.latestVersion}` : `NEXO ${state.currentVersion}`, detail: state.message }); } }, { type: 'separator' }, { label: 'Salir y apagar micrófono', click: () => app.quit() }]));
       tray.on('click', () => openPanel());
       globalShortcut.register('Alt+Shift+N', () => showBubble(!preferences.expanded));
     }
@@ -154,6 +177,6 @@ else {
       setTimeout(() => app.exit(1), 30_000).unref();
     } else openPanel('/dashboard');
   });
-  app.on('will-quit', () => globalShortcut.unregisterAll());
+  app.on('will-quit', () => { globalShortcut.unregisterAll(); clearTimeout(updateTimer); clearInterval(updateInterval); });
   app.on('window-all-closed', () => app.quit());
 }

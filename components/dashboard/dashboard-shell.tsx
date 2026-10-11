@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { DashboardSidebar } from "./sidebar";
+import { DesktopUpdates } from "@/components/pwa/desktop-updates";
 
 export function DashboardShell({ children, tenantName, fallback }: {
   children: ReactNode;
@@ -15,7 +16,7 @@ export function DashboardShell({ children, tenantName, fallback }: {
   return (
     <div className="min-h-svh bg-slate-50 text-slate-950 lg:flex">
       <DashboardSidebar tenantName={tenantName} />
-      <main className="min-w-0 flex-1">{children}</main>
+      <main className="min-w-0 flex-1"><DesktopUpdates />{children}</main>
     </div>
   );
 }
