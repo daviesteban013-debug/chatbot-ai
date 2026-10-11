@@ -1,0 +1,70 @@
+name: NEXO · Publicar instaladores verificados
+on:
+  workflow_dispatch:
+    inputs:
+      mac_run_id:
+        description: Ejecución macOS que terminó correctamente
+        required: true
+        type: string
+      source_sha:
+        description: Commit de los binarios y de la release en borrador
+        required: true
+        type: string
+      release_tag:
+        description: Etiqueta de la release en borrador
+        required: true
+        type: string
+      windows_sha256:
+        description: SHA256 del instalador Windows ya verificado
+        required: true
+        type: string
+permissions:
+  actions: read
+  contents: write
+concurrency:
+  group: nexo-publish-installers
+  cancel-in-progress: false
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      MAC_RUN_ID: ${{ inputs.mac_run_id }}
+      SOURCE_SHA: ${{ inputs.source_sha }}
+      RELEASE_TAG: ${{ inputs.release_tag }}
+      WINDOWS_SHA256: ${{ inputs.windows_sha256 }}
+    steps:
+      - name: Validate completed build and draft target
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$MAC_RUN_ID" =~ ^[0-9]+$ ]]
+          [[ "$SOURCE_SHA" =~ ^[a-f0-9]{40}$ ]]
+          [[ "$RELEASE_TAG" =~ ^nexo-desktop-v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "$WINDOWS_SHA256" =~ ^[a-f0-9]{64}$ ]]
+          gh api "repos/$GH_REPO/actions/runs/$MAC_RUN_ID" > run.json
+          gh release view "$RELEASE_TAG" --json isDraft,targetCommitish > release.json
+          node -e 'const fs=require("node:fs"),r=JSON.parse(fs.readFileSync("run.json")),d=JSON.parse(fs.readFileSync("release.json")); if(r.conclusion!=="success"||r.head_sha!==process.env.SOURCE_SHA||r.path!==".github/workflows/nexo-macos.yml"||!d.isDraft||d.targetCommitish!==process.env.SOURCE_SHA) process.exit(1)'
+      - name: Download tested Mac artifact and Windows draft asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${RELEASE_TAG#nexo-desktop-v}"
+          gh run download "$MAC_RUN_ID" --name nexo-macos-universal --dir package
+          gh release download "$RELEASE_TAG" --pattern "NEXO-Setup-$version.exe" --dir package
+      - name: Verify and upload both installer checksums with Mac binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd package
+          version="${RELEASE_TAG#nexo-desktop-v}"
+          mac="NEXO-$version-mac-universal.dmg"
+          win="NEXO-Setup-$version.exe"
+          mac_expected="$(awk -v name="$mac" '$2 == "desktop/dist/" name {print $1}' SHA256SUMS.txt)"
+          [[ "$mac_expected" =~ ^[a-f0-9]{64}$ ]]
+          printf '%s  %s\n%s  %s\n' "$mac_expected" "$mac" "$WINDOWS_SHA256" "$win" > "SHA256SUMS-$version.txt"
+          sha256sum --check "SHA256SUMS-$version.txt"
+          gh release upload "$RELEASE_TAG" "$mac" "SHA256SUMS-$version.txt"
+          cat "SHA256SUMS-$version.txt"
