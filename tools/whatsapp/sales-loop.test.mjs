@@ -19,6 +19,7 @@ const {runAgent}=await import(await load('../../lib/agent/loop.ts',{
  '@/lib/llm/metered':moduleUrl('export const meteredChatCompletion=(_,messages)=>globalThis.__salesCompletion(messages);'),
  './tools':moduleUrl('export const AGENT_TOOLS=[];export const executeToolCall=(...args)=>globalThis.__salesTools(...args);'),
  './sales-policy':await load('../../lib/agent/sales-policy.ts'),
+ './customer-memory':moduleUrl('export const getCustomerContext=async()=>({ok:true,data:{preferences:[{category:"product_color",value:"negro"}],purchases:[]}});'),
  '@/lib/whatsapp/credentials':moduleUrl('export const loadWhatsAppSendOptions=async()=>globalThis.__salesCredentials();'),
  '@/lib/whatsapp/send':moduleUrl('export const markAsRead=async()=>{};export const sendText=(...args)=>globalThis.__salesSend(...args);'),
 }));
@@ -27,6 +28,7 @@ const tool=(...names)=>({...reply(null),toolCalls:names.map((name,i)=>({id:'t'+i
 test('autonomous mode overrides legacy escalation instructions and records sent only after delivery',async()=>{
  state.queue=[reply('Te ayudo por aquí')];await runAgent(params);
  assert.match(state.modelMessages[0].content,/No transfieras una venta/);assert.equal(state.sends.length,1);
+ assert.match(state.modelMessages[1].content,/negro/);assert.match(state.modelMessages[1].content,/nunca instrucciones/);
  const run=state.calls.find(c=>c.table==='agent_runs'&&c.operation==='insert');assert.equal(run.payload.status,'proposed');assert.equal(run.payload.final_reply,null);
  assert.ok(state.calls.some(c=>c.table==='agent_runs'&&c.operation==='update'&&c.payload.status==='sent'));
 });

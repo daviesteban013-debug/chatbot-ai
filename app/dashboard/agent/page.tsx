@@ -9,6 +9,8 @@ import { agentModeLabel } from "@/lib/labels";
 import { formatCOP } from "@/lib/utils";
 import { salesPayments } from "@/lib/sales-payments";
 import { SalesPaymentsForm } from "./sales-payments-form";
+import { SalesFollowupsForm } from "./sales-followups-form";
+import { SalesActivity } from "./sales-activity";
 
 export default async function AgentPage() {
   const tenantContext = await getCurrentTenant();
@@ -17,7 +19,7 @@ export default async function AgentPage() {
   const supabase = await createClient();
   const tenantId = tenantContext.tenantId;
 
-  const { data: agent } = await supabase
+  const [{ data: agent }, { data: followupSettings, error: followupSettingsError }] = await Promise.all([supabase
     .from("agents")
     .select(
       "id, name, tone, mode, model, system_prompt, business_rules, auto_confirm_max_total, max_discount_pct, active, updated_at"
@@ -25,7 +27,10 @@ export default async function AgentPage() {
     .eq("tenant_id", tenantId)
     .eq("active", true).order("created_at", { ascending: false })
     .limit(1)
-    .maybeSingle();
+    .maybeSingle(), supabase.from("nexo_sales_followup_settings")
+      .select("enabled, delay_minutes, max_reminders")
+      .eq("tenant_id", tenantId)
+      .maybeSingle()]);
 
   return (
     <div className="mx-auto max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
@@ -50,6 +55,7 @@ export default async function AgentPage() {
           {/* Left: key params */}
           <div className="space-y-4">
             <SalesPaymentsForm canEdit={tenantContext.role === "owner"} initial={salesPayments(agent.business_rules && typeof agent.business_rules === "object" && !Array.isArray(agent.business_rules) ? agent.business_rules.sales_payments : null)} />
+            <SalesFollowupsForm canEdit={tenantContext.role === "owner"} initial={followupSettings} loadFailed={Boolean(followupSettingsError)} />
             <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/40">
               <div className="flex items-center gap-3">
                 <span className="flex size-11 items-center justify-center rounded-xl bg-slate-950 text-white">
@@ -124,6 +130,9 @@ export default async function AgentPage() {
           </div>
         </div>
       )}
+      <div className="mt-6">
+        <SalesActivity tenantId={tenantId} role={tenantContext.role} />
+      </div>
     </div>
   );
 }

@@ -651,6 +651,22 @@ export type Database = {
           },
         ];
       };
+      customer_sales_memory: {
+        Row: { id: string; tenant_id: string; customer_id: string; category: "product_color" | "product_size" | "product_category" | "contact_format" | "language"; value: string; source_conversation_id: string; source_message_id: string; evidence_quote: string; created_at: string; updated_at: string; deleted_at: string | null; deleted_source_message_id: string | null; deleted_evidence_quote: string | null };
+        Insert: never; Update: never; Relationships: [];
+      };
+      nexo_sales_followup_settings: {
+        Row: { tenant_id: string; enabled: boolean; enabled_at: string | null; delay_minutes: number; max_reminders: number; updated_at: string };
+        Insert: never; Update: never; Relationships: [];
+      };
+      nexo_sales_followups: {
+        Row: { id: string; tenant_id: string; conversation_id: string; customer_id: string; order_id: string; basis_message_id: string; reminder_no: number; due_at: string; status: "queued" | "claimed" | "sending" | "sent" | "canceled" | "blocked" | "unknown" | "failed"; reason: string | null; lease_token: string | null; lease_until: string | null; wa_message_id: string | null; dispatched_at: string | null; created_at: string; updated_at: string };
+        Insert: never; Update: never; Relationships: [];
+      };
+      nexo_sales_contact_preferences: {
+        Row: { tenant_id: string; customer_id: string; stopped_at: string; source_message_id: string };
+        Insert: never; Update: never; Relationships: [];
+      };
       nexo_work_items: {
         Row: import("./workspace").WorkItem;
         Insert: never;
@@ -1096,6 +1112,17 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      nexo_get_customer_sales_context: { Args: { p_tenant: string; p_conversation: string; p_customer: string }; Returns: Json };
+      nexo_remember_customer_preference: { Args: { p_tenant: string; p_conversation: string; p_customer: string; p_trigger: string; p_category: string; p_value: string; p_quote: string }; Returns: Json };
+      nexo_forget_customer_preference: { Args: { p_tenant: string; p_conversation: string; p_customer: string; p_trigger: string; p_category: string; p_quote: string }; Returns: Json };
+      nexo_configure_sales_followups: { Args: { p_tenant: string; p_user: string; p_enabled: boolean; p_delay: number; p_max: number }; Returns: Json };
+      nexo_cancel_sales_followup: { Args: { p_tenant: string; p_user: string; p_id: string }; Returns: Json };
+      nexo_claim_sales_followups: { Args: { p_limit?: number }; Returns: Json };
+      nexo_begin_sales_followup: { Args: { p_id: string; p_lease: string }; Returns: Json };
+      nexo_finish_sales_followup: { Args: { p_id: string; p_lease: string; p_status: string; p_reason?: string | null; p_wa_message_id?: string | null; p_body?: string | null }; Returns: Json };
+      nexo_consume_sales_worker_ticket: { Args: { p_token: string }; Returns: boolean };
+      nexo_enqueue_sales_followups: { Args: Record<string, never>; Returns: number };
+      nexo_dispatch_sales_followup_worker: { Args: Record<string, never>; Returns: undefined };
       nexo_configure_sales_payments: { Args: { p_tenant: string; p_user: string; p_link: string; p_transfer: string }; Returns: Json };
       nexo_sales_snapshot: { Args: { p_tenant: string; p_conversation: string; p_customer: string; p_order: string }; Returns: Json };
       nexo_create_whatsapp_order: { Args: { p_tenant: string; p_conversation: string; p_customer: string; p_items: Json; p_order_type: OrderType; p_payment: PaymentMethod; p_shipping: number }; Returns: Json };

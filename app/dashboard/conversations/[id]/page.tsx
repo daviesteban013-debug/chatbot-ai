@@ -16,6 +16,7 @@ import type {
   MessageDirection,
   MessageSender,
 } from "@/lib/database.types";
+import { SalesActivity } from "@/app/dashboard/agent/sales-activity";
 
 type CustomerShape = {
   id: string;
@@ -205,6 +206,9 @@ export default async function ConversationDetailPage({
             ) : null}
           </div>
         </aside>
+      </div>
+      <div className="mt-6">
+        <SalesActivity tenantId={tenantId} role={tenantContext.role} conversationId={id} />
       </div>
     </div>
   );

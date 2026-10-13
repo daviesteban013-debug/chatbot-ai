@@ -6,7 +6,7 @@ const policy=await load('../../lib/agent/sales-policy.ts');
 const payments=await load('../../lib/sales-payments.ts',{zod});
 const {orderSummaryReply,confirmedOrderReply}=await import(policy);
 const tools=await import(await load('../../lib/agent/tools.ts',{
- zod,'./sales-policy':policy,'@/lib/sales-payments':payments,
+ zod,'./sales-policy':policy,'@/lib/sales-payments':payments,'./customer-memory':await load('../../lib/agent/customer-memory.ts',{zod}),
  '@/lib/whatsapp/send':moduleUrl('export const sendImage=async()=>({});'),
  '@/lib/geo/colombia':moduleUrl('export const normalizeCity=(_,v)=>v;export const normalizeDepartment=v=>v;'),
 }));
