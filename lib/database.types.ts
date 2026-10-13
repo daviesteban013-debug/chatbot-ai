@@ -1112,6 +1112,8 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      nexo_reserve_voice: { Args: { p_id: string; p_user: string; p_tenant: string | null; p_channel: string; p_units: number }; Returns: Json };
+      nexo_finish_voice: { Args: { p_id: string; p_user: string; p_outcome: string }; Returns: undefined };
       nexo_get_customer_sales_context: { Args: { p_tenant: string; p_conversation: string; p_customer: string }; Returns: Json };
       nexo_remember_customer_preference: { Args: { p_tenant: string; p_conversation: string; p_customer: string; p_trigger: string; p_category: string; p_value: string; p_quote: string }; Returns: Json };
       nexo_forget_customer_preference: { Args: { p_tenant: string; p_conversation: string; p_customer: string; p_trigger: string; p_category: string; p_quote: string }; Returns: Json };

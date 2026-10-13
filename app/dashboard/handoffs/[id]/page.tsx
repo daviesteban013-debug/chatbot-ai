@@ -94,6 +94,7 @@ export default async function HandoffDetailPage({
         {(context.data?.length ?? 0) > 10 && <p className="mt-3 text-xs text-slate-500">Mostrando 10 registros recientes. Consulta el resto en Memoria y tareas.</p>}
       </section>
       <HandoffClient
+        canOperate={!user.is_anonymous && ["owner", "agent"].includes(tenantContext.role)}
         handoffId={handoff.id}
         status={status}
         reason={handoff.reason}

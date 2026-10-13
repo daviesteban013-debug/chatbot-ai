@@ -2,11 +2,10 @@ import { createClient } from "@/lib/supabase/server";
 import { sanitizePersonalization, spokenText } from "@/lib/jarvis-personalization";
 import { MAX_SPEECH_CHARACTERS, elevenLabsSettings } from "@/lib/jarvis-voice";
 import { elevenLabsConfig } from "@/lib/voice/elevenlabs";
-import { createSpeechBudget } from "@/lib/voice/speech-budget";
+import { reserveSpeechBudget } from "@/lib/voice/speech-budget";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
-const reserve = createSpeechBudget();
 const privateHeaders = { "Cache-Control": "private, no-store", "Vary": "Cookie", "X-Content-Type-Options": "nosniff" };
 const fail = (status: number, error: string) => Response.json({ error }, { status, headers: privateHeaders });
 
@@ -51,8 +50,9 @@ export async function POST(request: Request) {
   if (!text) return fail(400, "No hay texto para leer.");
   const profile = sanitizePersonalization({ voice: body.voice });
   const tone = ["profesional", "divertido", "directo"].includes(body.tone) ? body.tone : "cercano";
-  const release = reserve(user.id, text.length);
-  if (!release) return fail(429, "Espera unos segundos antes de pedir más audio.");
+  const reservation = await reserveSpeechBudget(user.id, text.length, "tts");
+  if (!reservation.ok) return Response.json({ error: reservation.error }, { status: reservation.status,
+    headers: { ...privateHeaders, ...(reservation.retryAfterSeconds ? { "Retry-After": String(reservation.retryAfterSeconds) } : {}) } });
   const signal = AbortSignal.any([request.signal, AbortSignal.timeout(45_000)]);
   try {
     const upstream = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${config.voiceId}/stream?output_format=mp3_44100_128`, {
@@ -61,26 +61,28 @@ export async function POST(request: Request) {
       body: JSON.stringify({ text, model_id: config.model, voice_settings: elevenLabsSettings(profile, tone, text), ...(config.model === "eleven_flash_v2_5" ? { language_code: "es" } : {}) }),
     });
     if (!upstream.ok || !upstream.body || !upstream.headers.get("content-type")?.startsWith("audio/")) {
-      await upstream.body?.cancel(); release();
+      await upstream.body?.cancel(); await reservation.finish(upstream.ok ? "unknown" : "failed");
       if (upstream.status === 401 || upstream.status === 403) return fail(502, "ElevenLabs rechazó el acceso. Revisa la clave y sus permisos.");
       if (upstream.status === 402) return fail(402, "ElevenLabs requiere un plan de pago para esta solicitud. Revisa tu plan y la voz elegida, o usa Voz del dispositivo.");
       if (upstream.status === 429) return fail(429, "ElevenLabs alcanzó su cuota o límite. Inténtalo más tarde o usa Voz del dispositivo.");
       return fail(502, "ElevenLabs no pudo generar la voz. Revisa la voz elegida y la disponibilidad del servicio.");
     }
     const reader = upstream.body.getReader();
+    let canceled = false;
     const audio = new ReadableStream<Uint8Array>({
       async pull(controller) {
         try {
           const chunk = await reader.read();
-          if (chunk.done) { release(); reader.releaseLock(); controller.close(); }
+          if (canceled) return;
+          if (chunk.done) { await reservation.finish("completed"); reader.releaseLock(); if (!canceled) controller.close(); }
           else controller.enqueue(chunk.value);
-        } catch { release(); controller.error(new Error("La generación de voz se interrumpió.")); }
+        } catch { await reservation.finish("unknown"); if (!canceled) controller.error(new Error("La generación de voz se interrumpió.")); }
       },
-      async cancel() { release(); await reader.cancel().catch(() => {}); },
+      async cancel() { canceled = true; await reader.cancel().catch(() => {}); await reservation.finish("unknown"); },
     });
     return new Response(audio, { headers: { ...privateHeaders, "Content-Type": "audio/mpeg" } });
   } catch {
-    release();
+    await reservation.finish("unknown");
     return fail(signal.aborted ? 504 : 502, "No se pudo completar el audio de ElevenLabs. Inténtalo de nuevo.");
   }
 }

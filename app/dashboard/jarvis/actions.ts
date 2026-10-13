@@ -11,6 +11,7 @@ export async function saveJarvisConfig(
 ): Promise<{ ok: true; config: JarvisConfig } | { ok: false; error: string }> {
   const tenantContext = await getCurrentTenant();
   if (!tenantContext) return { ok: false, error: "Sesión no válida." };
+  if (tenantContext.role !== "owner") return { ok: false, error: "Solo el dueño puede cambiar la configuración del negocio." };
 
   // Tabla nueva (migración 003) aún fuera de database.types.ts: cliente sin tipar, con RLS.
   const supabase = (await createClient()) as unknown as SupabaseClient;

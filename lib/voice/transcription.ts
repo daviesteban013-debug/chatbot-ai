@@ -1,10 +1,12 @@
+import type { SpeechReservation, VoiceOutcome } from "./speech-budget";
+
 const MAX_BODY = 210_000;
 const privateHeaders = { "Cache-Control": "private, no-store", "Vary": "Cookie", "X-Content-Type-Options": "nosniff" };
 const fail = (status: number, error: string) => Response.json({ error }, { status, headers: privateHeaders });
 interface Dependencies {
   user: () => Promise<{ id: string; is_anonymous?: boolean } | null>;
   key: () => string | undefined;
-  reserve: (id: string, units: number) => (() => void) | null;
+  reserve: (id: string, units: number) => Promise<SpeechReservation>;
   fetch: typeof fetch;
 }
 export function createTranscriptionHandler(deps: Dependencies) {
@@ -42,8 +44,11 @@ export function createTranscriptionHandler(deps: Dependencies) {
     const file = form.get("audio");
     const duration = Number(form.get("duration"));
     if (!(file instanceof File) || file.size < 100 || file.size > 200_000 || !["audio/webm", "audio/ogg", "audio/mp4"].includes(file.type.split(";")[0]) || !Number.isFinite(duration) || duration < 250 || duration > 12_500) return fail(400, "Envía una frase de voz de hasta 12 segundos.");
-    const release = deps.reserve(user.id, 500);
-    if (!release) return fail(429, "Espera unos segundos antes de continuar hablando.");
+    let reservation: SpeechReservation;
+    try { reservation = await deps.reserve(user.id, 500); }
+    catch { return fail(503, "No se pudo comprobar el cupo de escucha. Puedes continuar por texto."); }
+    if (!reservation.ok) return Response.json({ error: reservation.error }, { status: reservation.status,
+      headers: { ...privateHeaders, ...(reservation.retryAfterSeconds ? { "Retry-After": String(reservation.retryAfterSeconds) } : {}) } });
     const language = String(form.get("language") || "es").split("-")[0];
     const body = new FormData();
     body.set("file", file, file.type.startsWith("audio/mp4") ? "voice.m4a" : file.type.startsWith("audio/ogg") ? "voice.ogg" : "voice.webm");
@@ -51,19 +56,22 @@ export function createTranscriptionHandler(deps: Dependencies) {
     if (/^[a-z]{2}$/.test(language)) body.set("language", language);
     // A short hint helps the recognizer with the brand and CRM vocabulary.
     body.set("prompt", "Conversación en español con NEXO, un agente de CRM. Comandos habituales: NEXO, abre pedidos. Abre catálogo. Abre conversaciones. Abre aprobaciones. Abre planes y pagos. NEXO, enciéndete. NEXO, apágate.");
+    let outcome: VoiceOutcome = "unknown";
     try {
       const response = await deps.fetch("https://api.openai.com/v1/audio/transcriptions", {
         method: "POST", headers: { Authorization: `Bearer ${key}` }, body, cache: "no-store",
         signal: AbortSignal.any([request.signal, AbortSignal.timeout(20_000)]),
       });
       if (!response.ok) {
+        outcome = "failed";
         await response.body?.cancel();
         return fail(response.status === 429 ? 429 : 502, response.status === 429 ? "La API de voz alcanzó su cuota. Revisa el saldo o inténtalo más tarde." : "No se pudo reconocer tu voz. Vuelve a intentarlo.");
       }
       const data = await response.json();
       if (typeof data.text !== "string" || data.text.length > 4000) return fail(502, "El servicio devolvió una transcripción no válida.");
+      outcome = "completed";
       return Response.json({ text: data.text.trim() }, { headers: privateHeaders });
     } catch { return fail(502, "No se pudo conectar el reconocimiento de voz."); }
-    finally { release(); }
+    finally { await reservation.finish(outcome); }
   };
 }

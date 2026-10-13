@@ -122,7 +122,7 @@ export default async function ApprovalPage() {
         title="Bandeja de Aprobación"
         description="Aprueba, edita o rechaza las respuestas del agente y los pedidos pendientes."
       />
-      <ApprovalClient proposedRuns={proposedRuns} pendingOrders={pendingOrders} />
+      <ApprovalClient proposedRuns={proposedRuns} pendingOrders={pendingOrders} canOperate={["owner", "agent"].includes(tenantContext.role)} />
     </div>
   );
 }

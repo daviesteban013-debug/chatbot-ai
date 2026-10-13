@@ -15,8 +15,7 @@ const voiceUrl = await load("../../lib/jarvis-voice.ts", { "./jarvis-personaliza
 const { voiceEngine, elevenLabsSettings } = await import(voiceUrl);
 const configUrl = await load("../../lib/voice/elevenlabs.ts", { "server-only": moduleUrl("export {};") });
 const { voiceAvailability } = await import(configUrl);
-const budgetUrl = await load("../../lib/voice/speech-budget.ts");
-const { createSpeechBudget } = await import(budgetUrl);
+const budgetUrl = moduleUrl("export const reserveSpeechBudget=(...args)=>globalThis.__voiceReserve(...args);");
 const { createNeuralPlayback } = await import(await load("../../lib/neural-playback.ts"));
 const { POST } = await import(await load("../../app/api/jarvis/voice/route.ts", {
   "@/lib/supabase/server": moduleUrl("export const createClient = async () => ({ auth: { getUser: async () => globalThis.__voiceUser } });"),
@@ -42,6 +41,8 @@ beforeEach(() => {
   calls = []; players = []; revoked = [];
   globalThis.MediaSource = originalMediaSource;
   globalThis.__voiceUser = { data: { user: { id: `voice-user-${++sequence}` } }, error: null };
+  globalThis.__voiceBudgetCalls = []; globalThis.__voiceFinishes = [];
+  globalThis.__voiceReserve = async (...args) => { globalThis.__voiceBudgetCalls.push(args); return { ok: true, finish: async outcome => { globalThis.__voiceFinishes.push(outcome); } }; };
   process.env.ELEVENLABS_API_KEY = "test-private-key";
   process.env.ELEVENLABS_VOICE_ID = "voice_id_123";
   delete process.env.ELEVENLABS_MODEL;
@@ -78,19 +79,11 @@ test("older profiles keep voice preferences and default to auto; neural settings
   assert.deepEqual(elevenLabsSettings(p, "profesional", "Primero, $50"), { speed: 1, stability: 0.5, similarity_boost: 1 });
 });
 
-test("budget bounds concurrency, short sentence bursts and characters and recovers after expiry", () => {
-  const reserve = createSpeechBudget();
-  const release = reserve("user", 4000, 10000);
-  assert.ok(release); assert.equal(reserve("user", 1, 13000), null);
-  release(); reserve("user", 1, 11000)();
-  reserve("user", 15999, 13000)();
-  assert.equal(reserve("user", 1, 16000), null);
-  assert.ok(reserve("user", 1, 620000));
-  for (let i = 0; i < 3; i++) reserve("burst", 10, 10000)();
-  assert.equal(reserve("burst", 10, 10001), null);
-  const replenished = reserve("burst", 10, 12000);
-  assert.ok(replenished); assert.equal(reserve("burst", 10, 16000), null);
-  replenished(); assert.ok(reserve("burst", 10, 16000));
+test("durable quota denials and database failures stop TTS before calling the provider", async () => {
+  globalThis.__voiceReserve = async () => ({ ok: false, status: 429, error: "Cupo temporal agotado", retryAfterSeconds: 117 });
+  const quota = await POST(request()); assert.equal(quota.status,429); assert.equal(quota.headers.get("retry-after"),"117");
+  globalThis.__voiceReserve = async () => ({ ok: false, status: 503, error: "No se pudo comprobar el cupo" });
+  assert.equal((await POST(request())).status,503); assert.equal(calls.length,0);
 });
 
 test("foreign origins, missing sessions and anonymous accounts cannot spend provider credits", async () => {
@@ -134,6 +127,8 @@ test("authenticated TTS streams private MP3 and uses only server credentials, vo
   assert.equal(call.options.headers["xi-api-key"], "test-private-key");
   assert.equal(call.options.cache, "no-store");
   const body = JSON.parse(call.options.body);
+  assert.deepEqual(globalThis.__voiceBudgetCalls,[[globalThis.__voiceUser.data.user.id,4,"tts"]]);
+  assert.deepEqual(globalThis.__voiceFinishes,["completed"]);
   assert.equal(body.text, "Hola"); assert.equal(body.model_id, "eleven_multilingual_v2");
   assert.equal(body.language_code, undefined);
   assert.deepEqual(body.voice_settings, { speed: 1.2, stability: 0, similarity_boost: 1 });

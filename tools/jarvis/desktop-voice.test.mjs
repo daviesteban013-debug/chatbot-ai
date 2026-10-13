@@ -46,7 +46,7 @@ function request(overrides = {}) {
 }
 function setup(overrides = {}) {
   let calls = 0, releases = 0;
-  const handler = createTranscriptionHandler({ user: async () => ({ id: 'user1' }), key: () => 'private-test-key', reserve: () => () => { releases++; }, fetch: async (_url, options) => { calls++; assert.equal(options.body.get('model'), 'gpt-4o-mini-transcribe'); assert.equal(options.body.get('language'), 'es'); return Response.json({ text: 'Abre pedidos.' }); }, ...overrides });
+  const handler = createTranscriptionHandler({ user: async () => ({ id: 'user1' }), key: () => 'private-test-key', reserve: async () => ({ok:true,finish:async()=>{releases++;}}), fetch: async (_url, options) => { calls++; assert.equal(options.body.get('model'), 'gpt-4o-mini-transcribe'); assert.equal(options.body.get('language'), 'es'); return Response.json({ text: 'Abre pedidos.' }); }, ...overrides });
   return { handler, calls: () => calls, releases: () => releases };
 }
 test('transcription authenticates and checks origin before any provider call', async () => {
@@ -60,7 +60,7 @@ test('transcription rejects oversized uploads, unsupported media and exhausted b
   assert.equal((await deps.handler(request({ type: 'text/plain' }))).status, 400);
   assert.equal((await deps.handler(request({ duration: '90000' }))).status, 400);
   assert.equal(deps.calls(), 0);
-  assert.equal((await setup({ reserve: () => null }).handler(request())).status, 429);
+  assert.equal((await setup({ reserve: async () => ({ok:false,status:429,error:'Cupo agotado',retryAfterSeconds:60}) }).handler(request())).status, 429);
 });
 test('valid audio returns text privately; failures release budget and hide provider secrets', async () => {
   const deps = setup(); const response = await deps.handler(request());

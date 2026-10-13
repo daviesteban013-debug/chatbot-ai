@@ -24,7 +24,7 @@ const loadSendOptions = loadWhatsAppSendOptions;
 export async function takeHandoff(handoffId: string): Promise<ActionResult> {
   const user = await getCurrentUser();
   const tenantContext = await getCurrentTenant();
-  if (!user || !tenantContext) {
+  if (!user || user.is_anonymous || !tenantContext || !["owner", "agent"].includes(tenantContext.role)) {
     return { ok: false, error: "Sesión no válida. Vuelve a iniciar sesión." };
   }
 
@@ -45,7 +45,7 @@ export async function takeHandoff(handoffId: string): Promise<ActionResult> {
     return { ok: false, error: "Este handoff ya no está disponible." };
   }
 
-  const { error } = await supabase
+  const { error } = await createAdminClient()
     .from("handoffs")
     .update({ status: "taken", taken_by: user.id })
     .eq("tenant_id", tenantId)
@@ -77,7 +77,7 @@ export async function sendHumanReply(
 
   const user = await getCurrentUser();
   const tenantContext = await getCurrentTenant();
-  if (!user || !tenantContext) {
+  if (!user || user.is_anonymous || !tenantContext || !["owner", "agent"].includes(tenantContext.role)) {
     return { ok: false, error: "Sesión no válida. Vuelve a iniciar sesión." };
   }
 
@@ -180,7 +180,7 @@ export async function sendHumanReply(
 export async function resolveHandoff(handoffId: string): Promise<ActionResult> {
   const user = await getCurrentUser();
   const tenantContext = await getCurrentTenant();
-  if (!user || !tenantContext) {
+  if (!user || user.is_anonymous || !tenantContext || !["owner", "agent"].includes(tenantContext.role)) {
     return { ok: false, error: "Sesión no válida. Vuelve a iniciar sesión." };
   }
 
@@ -204,7 +204,7 @@ export async function resolveHandoff(handoffId: string): Promise<ActionResult> {
     };
   }
 
-  const { error } = await supabase
+  const { error } = await createAdminClient()
     .from("handoffs")
     .update({ status: "resolved", resolved_at: new Date().toISOString() })
     .eq("tenant_id", tenantId)
@@ -215,7 +215,7 @@ export async function resolveHandoff(handoffId: string): Promise<ActionResult> {
   }
 
   // Devolver la conversación al agente para que vuelva a responder.
-  await supabase
+  await createAdminClient()
     .from("conversations")
     .update({ status: "open" })
     .eq("tenant_id", tenantId)

@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { createSpeechBudget } from "@/lib/voice/speech-budget";
+import { reserveSpeechBudget } from "@/lib/voice/speech-budget";
 import { createTranscriptionHandler } from "@/lib/voice/transcription";
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -10,6 +10,6 @@ export const POST = createTranscriptionHandler({
     return result.error ? null : result.data.user;
   },
   key: () => process.env.OPENAI_API_KEY,
-  reserve: createSpeechBudget(),
+  reserve: (userId, units) => reserveSpeechBudget(userId, units, "stt"),
   fetch: (...args) => fetch(...args),
 });

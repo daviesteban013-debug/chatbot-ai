@@ -17,10 +17,11 @@ async function loadSendOptions(tenantId: string) { return loadWhatsAppSendOption
  */
 export async function approveReply(agentRunId: string): Promise<ActionResult> {
   const user = await getCurrentUser();
-  if (!user) return { ok: false, error: "Tu sesión expiró. Vuelve a iniciar sesión." };
+  if (!user || user.is_anonymous) return { ok: false, error: "Tu sesión expiró. Vuelve a iniciar sesión." };
 
   const tenantCtx = await getCurrentTenant();
   if (!tenantCtx) return { ok: false, error: "No encontramos tu negocio." };
+  if (!["owner", "agent"].includes(tenantCtx.role)) return { ok: false, error: "Tu acceso es de solo lectura." };
   const tenantId = tenantCtx.tenantId;
 
   const supabase = await createClient();
@@ -122,10 +123,11 @@ export async function editAndApproveReply(
   editedText: string
 ): Promise<ActionResult> {
   const user = await getCurrentUser();
-  if (!user) return { ok: false, error: "Tu sesión expiró. Vuelve a iniciar sesión." };
+  if (!user || user.is_anonymous) return { ok: false, error: "Tu sesión expiró. Vuelve a iniciar sesión." };
 
   const tenantCtx = await getCurrentTenant();
   if (!tenantCtx) return { ok: false, error: "No encontramos tu negocio." };
+  if (!["owner", "agent"].includes(tenantCtx.role)) return { ok: false, error: "Tu acceso es de solo lectura." };
   const tenantId = tenantCtx.tenantId;
 
   const supabase = await createClient();
@@ -223,10 +225,11 @@ export async function editAndApproveReply(
  */
 export async function rejectReply(agentRunId: string): Promise<ActionResult> {
   const user = await getCurrentUser();
-  if (!user) return { ok: false, error: "Tu sesión expiró. Vuelve a iniciar sesión." };
+  if (!user || user.is_anonymous) return { ok: false, error: "Tu sesión expiró. Vuelve a iniciar sesión." };
 
   const tenantCtx = await getCurrentTenant();
   if (!tenantCtx) return { ok: false, error: "No encontramos tu negocio." };
+  if (!["owner", "agent"].includes(tenantCtx.role)) return { ok: false, error: "Tu acceso es de solo lectura." };
   const tenantId = tenantCtx.tenantId;
 
   const supabase = await createClient();
@@ -257,10 +260,11 @@ export async function rejectReply(agentRunId: string): Promise<ActionResult> {
  */
 export async function approveOrder(orderId: string): Promise<ActionResult> {
   const user = await getCurrentUser();
-  if (!user) return { ok: false, error: "Tu sesión expiró. Vuelve a iniciar sesión." };
+  if (!user || user.is_anonymous) return { ok: false, error: "Tu sesión expiró. Vuelve a iniciar sesión." };
 
   const tenantCtx = await getCurrentTenant();
   if (!tenantCtx) return { ok: false, error: "No encontramos tu negocio." };
+  if (!["owner", "agent"].includes(tenantCtx.role)) return { ok: false, error: "Tu acceso es de solo lectura." };
   const tenantId = tenantCtx.tenantId;
 
   const supabase = await createClient();
@@ -293,10 +297,11 @@ export async function approveOrder(orderId: string): Promise<ActionResult> {
  */
 export async function rejectOrder(orderId: string): Promise<ActionResult> {
   const user = await getCurrentUser();
-  if (!user) return { ok: false, error: "Tu sesión expiró. Vuelve a iniciar sesión." };
+  if (!user || user.is_anonymous) return { ok: false, error: "Tu sesión expiró. Vuelve a iniciar sesión." };
 
   const tenantCtx = await getCurrentTenant();
   if (!tenantCtx) return { ok: false, error: "No encontramos tu negocio." };
+  if (!["owner", "agent"].includes(tenantCtx.role)) return { ok: false, error: "Tu acceso es de solo lectura." };
   const tenantId = tenantCtx.tenantId;
 
   const supabase = await createClient();

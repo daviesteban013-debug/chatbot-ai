@@ -1,29 +1,39 @@
-const WINDOW_MS = 10 * 60 * 1000;
-const MAX_CHARACTERS = 20_000;
-const MAX_USERS = 2000;
+import { getCurrentTenant } from "@/lib/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
 
-/** A per-process guard; serverless instances do not share this budget. */
-export function createSpeechBudget() {
-  const entries = new Map<string, { expires: number; characters: number; last: number; active: boolean; slots: number }>();
-  return (userId: string, characters: number, now = Date.now()): (() => void) | null => {
-    for (const [id, entry] of entries) if (entry.expires <= now && !entry.active) entries.delete(id);
-    let entry = entries.get(userId);
-    if (entry?.active) return null;
-    if (!entry) {
-      if (entries.size >= MAX_USERS) return null;
-      entry = { expires: now + WINDOW_MS, characters: 0, last: now, active: false, slots: 3 };
-      entries.set(userId, entry);
+export type VoiceOutcome = "completed" | "failed" | "unknown";
+export type SpeechReservation =
+  | { ok: true; finish: (outcome: VoiceOutcome) => Promise<void> }
+  | { ok: false; status: 429 | 503; error: string; retryAfterSeconds?: number };
+
+/** PostgreSQL serializes reservations across tabs, users and serverless instances. */
+export async function reserveSpeechBudget(userId: string, units: number, channel: "tts" | "stt"): Promise<SpeechReservation> {
+  const unavailable = (): SpeechReservation => ({ ok: false, status: 503, error: "No se pudo comprobar el cupo de voz. Inténtalo de nuevo; puedes continuar por texto." });
+  try {
+    const tenant = await getCurrentTenant();
+    const admin = createAdminClient();
+    const id = crypto.randomUUID();
+    const { data, error } = await admin.rpc("nexo_reserve_voice", {
+      p_id: id, p_user: userId, p_tenant: tenant?.tenantId ?? null, p_channel: channel, p_units: units,
+    }).abortSignal(AbortSignal.timeout(3000));
+    if (error || !data || typeof data !== "object" || Array.isArray(data)) return unavailable();
+    if (data.ok === false && ["quota", "busy", "rate"].includes(String(data.reason))) {
+      const retry = data.retryAfterSeconds;
+      if (typeof retry !== "number" || !Number.isInteger(retry) || retry < 1 || retry > 600) return unavailable();
+      const label = channel === "tts" ? "voz" : "escucha";
+      return { ok: false, status: 429, retryAfterSeconds: retry, error: data.reason === "quota"
+        ? `Se alcanzó el cupo temporal de ${label}${tenant ? " de este negocio" : " de tu cuenta"}. Se recupera en ${Math.ceil(retry / 60)} min; puedes seguir por texto.`
+        : `Espera ${retry} s antes de pedir más ${label}. Puedes continuar por texto.` };
     }
-    // A short spoken turn may contain two sentences and a details cue.
-    // Allow that burst while still replenishing only one request every 2s.
-    entry.slots = Math.min(3, entry.slots + Math.max(0, now - entry.last) / 2000);
-    entry.last = now;
-    if (entry.slots < 1) return null;
-    if (entry.characters + characters > MAX_CHARACTERS) return null;
-    entry.slots--;
-    entry.characters += characters;
-    entry.last = now;
-    entry.active = true;
-    return () => { entry.active = false; };
-  };
+    if (data.ok !== true || data.requestId !== id) return unavailable();
+    let finished = false;
+    return { ok: true, async finish(outcome) {
+      if (finished) return;
+      finished = true;
+      try {
+        await admin.rpc("nexo_finish_voice", { p_id: id, p_user: userId, p_outcome: outcome })
+          .abortSignal(AbortSignal.timeout(3000));
+      } catch { /* Lease expiry releases concurrency without refunding potentially billed work. */ }
+    } };
+  } catch { return unavailable(); }
 }

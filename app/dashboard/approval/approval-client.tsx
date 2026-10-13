@@ -73,15 +73,18 @@ type TabId = "replies" | "orders";
 export function ApprovalClient({
   proposedRuns,
   pendingOrders,
+  canOperate,
 }: {
   proposedRuns: ProposedRunItem[];
   pendingOrders: PendingOrderItem[];
+  canOperate: boolean;
 }) {
   const [activeTab, setActiveTab] = useState<TabId>("replies");
   const router = useRouter();
 
   return (
     <div>
+      {!canOperate && <p className="mb-4 text-sm text-slate-500">Acceso de solo lectura. Un dueño o agente puede aprobar, editar y rechazar.</p>}
       {/* Tab bar */}
       <div className="mb-6 flex items-center gap-1 border-b border-slate-200">
         <TabButton
@@ -102,9 +105,9 @@ export function ApprovalClient({
 
       {/* Tab content */}
       {activeTab === "replies" ? (
-        <RepliesList runs={proposedRuns} router={router} />
+        <RepliesList runs={proposedRuns} router={router} canOperate={canOperate} />
       ) : (
-        <OrdersList orders={pendingOrders} router={router} />
+        <OrdersList orders={pendingOrders} router={router} canOperate={canOperate} />
       )}
     </div>
   );
@@ -152,9 +155,11 @@ function TabButton({
 function RepliesList({
   runs,
   router,
+  canOperate,
 }: {
   runs: ProposedRunItem[];
   router: ReturnType<typeof useRouter>;
+  canOperate: boolean;
 }) {
   if (runs.length === 0) {
     return (
@@ -169,7 +174,7 @@ function RepliesList({
   return (
     <div className="grid gap-4">
       {runs.map((run) => (
-        <ReplyCard key={run.id} run={run} router={router} />
+        <ReplyCard key={run.id} run={run} router={router} canOperate={canOperate} />
       ))}
     </div>
   );
@@ -180,9 +185,11 @@ function RepliesList({
 function ReplyCard({
   run,
   router,
+  canOperate,
 }: {
   run: ProposedRunItem;
   router: ReturnType<typeof useRouter>;
+  canOperate: boolean;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedText, setEditedText] = useState(run.proposed_reply ?? "");
@@ -272,13 +279,13 @@ function ReplyCard({
               rows={5}
               className="text-sm"
               placeholder="Escribe la respuesta editada..."
-              disabled={isPending}
+              disabled={!canOperate || isPending}
             />
             <div className="flex items-center gap-2">
               <Button
                 size="sm"
                 onClick={handleEditAndApprove}
-                disabled={isPending || !editedText.trim()}
+                disabled={!canOperate || isPending || !editedText.trim()}
                 className="bg-emerald-600 text-white hover:bg-emerald-700"
               >
                 <Send className="size-3.5" />
@@ -291,7 +298,7 @@ function ReplyCard({
                   setIsEditing(false);
                   setEditedText(run.proposed_reply ?? "");
                 }}
-                disabled={isPending}
+                disabled={!canOperate || isPending}
               >
                 <X className="size-3.5" />
                 Cancelar
@@ -363,7 +370,7 @@ function ReplyCard({
             <Button
               size="sm"
               onClick={handleApprove}
-              disabled={isPending}
+              disabled={!canOperate || isPending}
               className="bg-emerald-600 text-white hover:bg-emerald-700"
             >
               <CheckCircle className="size-3.5" />
@@ -373,7 +380,7 @@ function ReplyCard({
               size="sm"
               variant="secondary"
               onClick={() => setIsEditing(true)}
-              disabled={isPending}
+              disabled={!canOperate || isPending}
               className="border-amber-200 text-amber-700 hover:bg-amber-50"
             >
               <Pencil className="size-3.5" />
@@ -383,7 +390,7 @@ function ReplyCard({
               size="sm"
               variant="danger"
               onClick={handleReject}
-              disabled={isPending}
+              disabled={!canOperate || isPending}
             >
               <XCircle className="size-3.5" />
               Rechazar
@@ -406,9 +413,11 @@ function ReplyCard({
 function OrdersList({
   orders,
   router,
+  canOperate,
 }: {
   orders: PendingOrderItem[];
   router: ReturnType<typeof useRouter>;
+  canOperate: boolean;
 }) {
   if (orders.length === 0) {
     return (
@@ -423,7 +432,7 @@ function OrdersList({
   return (
     <div className="grid gap-4">
       {orders.map((order) => (
-        <OrderCard key={order.id} order={order} router={router} />
+        <OrderCard key={order.id} order={order} router={router} canOperate={canOperate} />
       ))}
     </div>
   );
@@ -434,9 +443,11 @@ function OrdersList({
 function OrderCard({
   order,
   router,
+  canOperate,
 }: {
   order: PendingOrderItem;
   router: ReturnType<typeof useRouter>;
+  canOperate: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -556,7 +567,7 @@ function OrderCard({
           <Button
             size="sm"
             onClick={handleApprove}
-            disabled={isPending}
+            disabled={!canOperate || isPending}
             className="bg-emerald-600 text-white hover:bg-emerald-700"
           >
             <CheckCircle className="size-3.5" />
@@ -569,7 +580,7 @@ function OrderCard({
                 size="sm"
                 variant="danger"
                 onClick={handleReject}
-                disabled={isPending}
+                disabled={!canOperate || isPending}
               >
                 Confirmar rechazo
               </Button>
@@ -577,7 +588,7 @@ function OrderCard({
                 size="sm"
                 variant="ghost"
                 onClick={() => setConfirmReject(false)}
-                disabled={isPending}
+                disabled={!canOperate || isPending}
               >
                 Cancelar
               </Button>
@@ -587,7 +598,7 @@ function OrderCard({
               size="sm"
               variant="danger"
               onClick={() => setConfirmReject(true)}
-              disabled={isPending}
+              disabled={!canOperate || isPending}
             >
               <XCircle className="size-3.5" />
               Rechazar pedido

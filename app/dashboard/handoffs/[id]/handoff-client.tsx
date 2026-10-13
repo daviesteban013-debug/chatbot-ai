@@ -51,6 +51,7 @@ export type ThreadMessage = {
 };
 
 type Props = {
+  canOperate: boolean;
   handoffId: string;
   status: HandoffStatus;
   reason: HandoffReason;
@@ -221,7 +222,7 @@ export function HandoffClient(props: Props) {
 
         {/* Zona de acciones / entrada de mensaje */}
         <footer className="border-t border-slate-100 bg-white px-5 py-4">
-          {status === "open" ? (
+          {!props.canOperate ? <p className="text-sm text-slate-500">Acceso de solo lectura. Puedes consultar la conversación; responder y gestionar el handoff requiere un rol operativo.</p> : status === "open" ? (
             <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-slate-500">
                 Este handoff está abierto. Tómalo para responder al cliente.
