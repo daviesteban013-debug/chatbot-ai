@@ -5,13 +5,15 @@ import { Download, Share, X } from "lucide-react";
 import { createInstallRequest, isAppleMobile, type InstallPromptEvent } from "@/lib/pwa-install";
 
 interface InstallContext {
+  ready: boolean;
   installed: boolean;
   pending: boolean;
   install: () => Promise<void>;
 }
-const AppInstallContext = createContext<InstallContext>({ installed: false, pending: false, install: async () => {} });
+const AppInstallContext = createContext<InstallContext>({ ready: false, installed: false, pending: false, install: async () => {} });
 
 export function JarvisAppProvider({ children }: { children: ReactNode }) {
+  const [ready, setReady] = useState(false);
   const [installed, setInstalled] = useState(false);
   const [pending, setPending] = useState(false);
   const [canPrompt, setCanPrompt] = useState(false);
@@ -26,9 +28,10 @@ export function JarvisAppProvider({ children }: { children: ReactNode }) {
     const standalone = window.matchMedia("(display-mode: standalone)");
     const fullScreen = window.matchMedia("(display-mode: fullscreen)");
     const initialize = () => {
-      setInstalled(standalone.matches || fullScreen.matches || Boolean((navigator as Navigator & { standalone?: boolean }).standalone));
+      setInstalled(Boolean(window.nexoDesktop) || standalone.matches || fullScreen.matches || Boolean((navigator as Navigator & { standalone?: boolean }).standalone));
       setIsIOS(isAppleMobile(navigator.userAgent, navigator.maxTouchPoints));
       setOnline(navigator.onLine);
+      setReady(true);
     };
     initialize();
     const onPrompt = (event: Event) => {
@@ -87,7 +90,7 @@ export function JarvisAppProvider({ children }: { children: ReactNode }) {
   }, [pending, installed]);
 
   return (
-    <AppInstallContext.Provider value={{ installed, pending, install }}>
+    <AppInstallContext.Provider value={{ ready, installed, pending, install }}>
       {!online && <div role="status" className="relative z-[70] bg-amber-300 px-4 py-2 text-center text-sm text-zinc-950">Sin conexión. NEXO y el CRM necesitan internet.</div>}
       {children}
       <dialog ref={dialog} aria-labelledby="jarvis-install-title" aria-describedby="jarvis-install-description" onCancel={() => setInstructionsOpen(false)} onClose={() => setInstructionsOpen(false)} className="fixed inset-0 m-auto w-[calc(100%_-_2rem)] max-w-md rounded-3xl border border-yellow-300/20 bg-zinc-950 p-6 text-white shadow-2xl backdrop:bg-black/75">
@@ -117,8 +120,14 @@ export function JarvisAppProvider({ children }: { children: ReactNode }) {
   );
 }
 
+export function AppInstallOptions({ children }: { children: ReactNode }) {
+  const { ready, installed } = useContext(AppInstallContext);
+  if (!ready || installed) return null;
+  return <>{children}</>;
+}
+
 export function InstallJarvisButton({ className = "", compact = false }: { className?: string; compact?: boolean }) {
-  const { installed, pending, install } = useContext(AppInstallContext);
-  if (installed) return null;
+  const { ready, installed, pending, install } = useContext(AppInstallContext);
+  if (!ready || installed) return null;
   return <button data-pwa-install type="button" disabled={pending} onClick={install} title="Instalar la app web de NEXO" className={`inline-flex items-center justify-center gap-2 rounded-xl border border-yellow-300/25 bg-yellow-300/10 px-3 py-2 text-xs font-medium text-yellow-200 transition hover:bg-yellow-300/20 disabled:opacity-50 ${className}`}><Download className="size-4" /><span className={compact ? "sr-only sm:not-sr-only" : ""}>{pending ? "Abriendo…" : "Instalar app web"}</span></button>;
 }

@@ -7,7 +7,7 @@ import { Bot, LogOut, Settings2 } from "lucide-react";
 import { signOut } from "@/app/dashboard/actions";
 import { navItems } from "@/lib/nav";
 import { cn } from "@/lib/utils";
-import { InstallJarvisButton } from "@/components/pwa/app-provider";
+import { AppInstallOptions, InstallJarvisButton } from "@/components/pwa/app-provider";
 import { DesktopDownloadLink } from "@/components/pwa/desktop-download-link";
 import { TaskAlerts } from "./task-alerts";
 
@@ -68,7 +68,9 @@ export function DashboardSidebar({ tenantName }: { tenantName?: string }) {
       </nav>
       {desktopError && <p role="alert" className="px-5 pb-3 text-xs text-rose-300">{desktopError}</p>}
 
-      <div className="space-y-2 px-4 pb-3"><DesktopDownloadLink className="w-full" /><DesktopDownloadLink platform="mac" className="w-full" /><InstallJarvisButton className="w-full" /></div>
+      <AppInstallOptions>
+        <div className="space-y-2 px-4 pb-3"><DesktopDownloadLink className="w-full" /><DesktopDownloadLink platform="mac" className="w-full" /><InstallJarvisButton className="w-full" /></div>
+      </AppInstallOptions>
       <div className="mt-auto hidden p-4 lg:block">
         <Link
           href="/dashboard/agent"
