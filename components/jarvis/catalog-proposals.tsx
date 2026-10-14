@@ -27,17 +27,24 @@ export function CatalogProposals({ state, onDecision, compact = false }: { state
     {state.proposals.map(proposal => {
       const expired = proposal.status === "pending" && Date.parse(proposal.expires_at) <= state.now;
       const pending = proposal.status === "pending" && !expired;
-      const status = state.busy === proposal.id ? "Aplicando…" : expired ? "Propuesta vencida" : ({ pending: "Esperando tu confirmación", applied: "Cambio aplicado", canceled: "Cambio cancelado", expired: "Propuesta vencida" })[proposal.status];
+      const undone = proposal.activity?.status === "undone";
+      const status = state.busy === proposal.id ? (proposal.applied_by_nexo ? "Deshaciendo…" : "Aplicando…") : expired ? "Propuesta vencida"
+        : undone ? "Deshecho" : proposal.applied_by_nexo && proposal.status === "applied" ? "Aplicado por NEXO"
+        : ({ pending: "Esperando tu confirmación", applied: "Cambio aplicado", canceled: "Cambio cancelado", expired: "Propuesta vencida" })[proposal.status];
       return <article key={proposal.id} className={styles.card}>
-        <p className={styles.status} role="status" data-done={proposal.status === "applied"}>{status}</p>
+        <p className={styles.status} role="status" data-done={proposal.status === "applied" && !undone}>{status}</p>
         <h3>{proposal.snapshot.title}</h3>
         <ul>{proposal.snapshot.lines.map((line, index) => <Change key={index} line={line} />)}</ul>
-        <p className={styles.note}>{proposal.status === "applied" ? "Listo en tu catálogo. NEXO ya lo usa en WhatsApp." : "Nada cambia hasta que confirmes. Si alguien modifica estos productos antes, no se aplicará."}</p>
+        <p className={styles.note}>{undone ? "Se restauraron los valores anteriores." : proposal.applied_by_nexo && proposal.status === "applied" ? "Lo aplicó NEXO porque activaste esta autonomía. Puedes deshacerlo durante 7 días si nadie lo cambió después."
+          : proposal.status === "applied" ? "Listo en tu catálogo. NEXO ya lo usa en WhatsApp." : "Nada cambia hasta que confirmes. Si alguien modifica estos productos antes, no se aplicará."}</p>
         {pending && <><small className={styles.expiry}>Vence en {Math.max(1, Math.ceil((Date.parse(proposal.expires_at) - state.now) / 60000))} min</small><div className={styles.actions}>
           <button type="button" className={styles.confirm} disabled={!!state.busy || !state.verified} onClick={() => { onDecision(); void state.decide(proposal.id, "confirm"); }}>Confirmar cambio</button>
           <button type="button" disabled={!!state.busy || !state.verified} onClick={() => { onDecision(); void state.decide(proposal.id, "cancel"); }}>Cancelar</button>
         </div></>}
-        {proposal.status === "applied" && <a className={styles.link} href="/dashboard/catalog" onClick={event => { if (window.nexoDesktop) { event.preventDefault(); void window.nexoDesktop.openPanel("/dashboard/catalog").catch(() => {}); } }}>Ver catálogo ↗</a>}
+        {proposal.activity?.undoable && proposal.activity.status === "applied" && <div className={styles.actions}>
+          <button type="button" disabled={!!state.busy} onClick={() => { onDecision(); void state.undo(proposal.id, proposal.activity!.id); }}>Deshacer</button>
+        </div>}
+        {proposal.status === "applied" && !undone && <a className={styles.link} href="/dashboard/catalog" onClick={event => { if (window.nexoDesktop) { event.preventDefault(); void window.nexoDesktop.openPanel("/dashboard/catalog").catch(() => {}); } }}>Ver catálogo ↗</a>}
       </article>;
     })}
   </section>;

@@ -60,8 +60,23 @@ test("catalog changes are prepared for confirmation, only for owners and agents"
   assert.equal(catalog.tools[0].function.name, "propose_catalog_change");
   const result = await catalog.execute({ action: "stock", items: [{ sku: "TU-40", mode: "add", qty: 20 }] });
   assert.equal(result.ok, true); assert.equal(result.data.catalog_changed, false); assert.equal(result.data.requires_click_confirmation, true);
-  assert.deepEqual(state.rpcs[0], { name: "nexo_prepare_catalog_change", args: { p_tenant: "tenant-1", p_user: "user-1", p_session: "s-1", p_change: { action: "stock", items: [{ sku: "TU-40", mode: "add", qty: 20 }] } } });
+  assert.deepEqual(state.rpcs[0], { name: "nexo_catalog_change_by_nexo", args: { p_tenant: "tenant-1", p_user: "user-1", p_session: "s-1", p_change: { action: "stock", items: [{ sku: "TU-40", mode: "add", qty: 20 }] } } });
   assert.equal(catalog.proposals.length, 1);
+  assert.match(catalog.tools[0].function.description, /NO aplica nada/, "with autonomy off the model is told nothing changes");
+});
+
+test("with stock autonomy on, an applied change is reported as done and undoable; anything else still waits", async () => {
+  const catalog = prepare({ autonomy: { catalog_stock: true, catalog_availability: false } });
+  assert.match(catalog.tools[0].function.description, /stock/); assert.doesNotMatch(catalog.tools[0].function.description, /NO aplica nada/);
+  state.response = { data: { ok: true, auto: true, log_id: "66666666-6666-4666-8666-666666666666", proposal: proposal({ status: "applied", applied_by_nexo: true }) }, error: null };
+  const done = await catalog.execute({ action: "stock", items: [{ sku: "TU-40", mode: "add", qty: 20 }] });
+  assert.equal(done.data.applied_automatically, true); assert.equal(done.data.catalog_changed, true); assert.equal(done.data.requires_click_confirmation, false);
+  assert.deepEqual(catalog.proposals[0].activity, { id: "66666666-6666-4666-8666-666666666666", status: "applied", undoable: true });
+  state.response = { data: { ok: true, auto: true, proposal: proposal({ id: "77777777-7777-4777-8777-777777777777", status: "applied", applied_by_nexo: true }) }, error: null };
+  assert.equal((await catalog.execute({ action: "stock", items: [{ sku: "TU-40", mode: "add", qty: 1 }] })).ok, false, "an applied change without its undo entry is not trusted");
+  state.response = { data: { ok: true, auto: false, proposal: proposal({ id: "88888888-8888-4888-8888-888888888888", snapshot: { ...proposal().snapshot, action: "price" } }) }, error: null };
+  const price = await catalog.execute({ action: "price", items: [{ sku: "TU", price: 1000 }] });
+  assert.equal(price.data.requires_click_confirmation, true); assert.equal(price.data.catalog_changed, false);
 });
 
 test("invalid requests, foreign photos and unverifiable results never reach or leave the database as success", async () => {

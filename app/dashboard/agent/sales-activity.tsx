@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Activity, ArrowUpRight, Clock3, ShieldCheck } from "lucide-react";
+import { ArrowUpRight, Clock3, ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
 import type { Json, TenantMemberRole } from "@/lib/database.types";
@@ -116,38 +116,37 @@ export async function SalesActivity({ tenantId, role, conversationId }: {
   ].sort((a, b) => Date.parse(b.time) - Date.parse(a.time)).slice(0, 25);
   const loadFailed = Boolean(runsResult.error || followupsResult.error);
 
-  return <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/40">
-    <div className="flex items-center gap-2">
-      <Activity className="size-4 text-slate-500" />
-      <h2 className="text-sm font-semibold text-slate-900">Actividad de NEXO</h2>
+  return <section className="rounded-lg border border-line bg-surface">
+    <div className="border-b border-line px-4 py-3 sm:px-5">
+      <h2 className="text-[13px] font-semibold text-ink">Actividad en WhatsApp</h2>
+      <p className="mt-0.5 text-xs text-muted">{conversationId ? "Acciones y seguimientos de esta conversación." : "Últimas 25 respuestas y seguimientos de este negocio."} Horas de Colombia.</p>
     </div>
-    <p className="mt-2 text-sm leading-6 text-slate-500">{conversationId ? "Acciones y seguimientos de esta conversación." : "Últimas 25 respuestas y seguimientos de este negocio."} Horas de Colombia.</p>
-    {loadFailed && <p role="alert" className="mt-4 rounded-xl bg-rose-50 p-3 text-sm leading-6 text-rose-700">No se pudo cargar {runsResult.error && followupsResult.error ? "la actividad ni los seguimientos" : runsResult.error ? "la actividad de respuestas" : "los seguimientos"}. La lista puede estar incompleta. Actualiza esta página para reintentarlo.</p>}
-    {events.length ? <ol className="mt-5 space-y-3">
+    {loadFailed && <p role="alert" className="mx-4 mt-4 rounded-md border border-rose-200 bg-rose-50 p-3 text-xs leading-5 text-rose-800 sm:mx-5">No se pudo cargar {runsResult.error && followupsResult.error ? "la actividad ni los seguimientos" : runsResult.error ? "la actividad de respuestas" : "los seguimientos"}. La lista puede estar incompleta. Actualiza esta página para reintentarlo.</p>}
+    {events.length ? <ol className="divide-y divide-line">
       {events.map(event => {
         const state = event.run ? runStates[event.run.status] : followupStates[event.followup!.status];
         const labels = event.run ? actions(event.run.tool_calls) : [];
         const conversation = event.run?.conversation_id ?? event.followup?.conversation_id;
-        return <li key={event.key} className="rounded-xl border border-slate-100 bg-slate-50/60 p-4">
+        return <li key={event.key} className="px-4 py-3 sm:px-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm font-semibold text-slate-800">{event.followup ? `Recordatorio de pago ${event.followup.reminder_no}` : "Atención al cliente"}</p>
+            <p className="text-[13px] font-medium text-ink">{event.followup ? `Recordatorio de pago ${event.followup.reminder_no}` : "Atención al cliente"}</p>
             <Badge variant={state?.variant ?? "neutral"}>{state?.text ?? "Estado no disponible"}</Badge>
           </div>
-          <time dateTime={event.time} className="mt-2 block text-xs text-slate-500">{eventTime(event.time)}</time>
-          {event.run && labels.length > 0 ? <ul className="mt-3 space-y-1 text-xs leading-5 text-slate-600">{labels.slice(0, 4).map(label => <li key={label}>• {label}</li>)}{labels.length > 4 && <li>Y {labels.length - 4} acciones más.</li>}</ul> : null}
+          <time dateTime={event.time} className="mt-0.5 block text-[11px] text-muted">{eventTime(event.time)}</time>
+          {event.run && labels.length > 0 ? <ul className="mt-2 space-y-0.5 text-xs leading-5 text-ink-soft">{labels.slice(0, 4).map(label => <li key={label}>{label}</li>)}{labels.length > 4 && <li>Y {labels.length - 4} acciones más.</li>}</ul> : null}
           {event.run?.status === "error" && <p className="mt-2 text-xs leading-5 text-rose-700">Esta atención encontró un bloqueo. Revisa la conversación y el pedido antes de reintentar.</p>}
           {event.followup && <>
-            <p className="mt-3 text-xs leading-5 text-slate-600">{reasonText(event.followup)}</p>
-            {["queued", "claimed"].includes(event.followup.status) && <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-500"><Clock3 className="size-3.5" /> Programado para {eventTime(event.followup.due_at)}</p>}
+            <p className="mt-2 text-xs leading-5 text-ink-soft">{reasonText(event.followup)}</p>
+            {["queued", "claimed"].includes(event.followup.status) && <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted"><Clock3 className="size-3.5" /> Programado para {eventTime(event.followup.due_at)}</p>}
           </>}
-          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs font-medium text-slate-700">
-            {conversation && !conversationId && <Link className="inline-flex items-center gap-1 hover:text-slate-950" href={`/dashboard/conversations/${conversation}`}>Conversación <ArrowUpRight className="size-3.5" /></Link>}
-            {event.followup && <Link className="inline-flex items-center gap-1 hover:text-slate-950" href={`/dashboard/orders/${event.followup.order_id}`}>Pedido <ArrowUpRight className="size-3.5" /></Link>}
+          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-xs font-medium text-ink-soft">
+            {conversation && !conversationId && <Link className="inline-flex items-center gap-1 hover:text-ink" href={`/dashboard/conversations/${conversation}`}>Conversación <ArrowUpRight className="size-3.5" /></Link>}
+            {event.followup && <Link className="inline-flex items-center gap-1 hover:text-ink" href={`/dashboard/orders/${event.followup.order_id}`}>Pedido <ArrowUpRight className="size-3.5" /></Link>}
           </div>
           {event.followup && ["queued", "claimed"].includes(event.followup.status) && role !== "viewer" && <CancelFollowupButton id={event.followup.id} />}
         </li>;
       })}
-    </ol> : !loadFailed ? <p className="mt-5 rounded-xl bg-slate-50 p-4 text-sm leading-6 text-slate-500">Todavía no hay acciones registradas. Aquí aparecerán las respuestas y los recordatorios cuando NEXO atienda a tus clientes.</p> : null}
-    <p className="mt-4 flex items-start gap-2 text-xs leading-5 text-slate-500"><ShieldCheck className="mt-0.5 size-3.5 shrink-0" /> Los pagos siguen pendientes hasta verificarse con el proveedor o el banco. La conexión de verificación de cobros aún debe configurarse.</p>
+    </ol> : !loadFailed ? <p className="px-4 py-6 text-sm leading-6 text-muted sm:px-5">Todavía no hay acciones registradas. Aquí aparecerán las respuestas y los recordatorios cuando NEXO atienda a tus clientes.</p> : null}
+    <p className="flex items-start gap-2 border-t border-line px-4 py-3 text-xs leading-5 text-muted sm:px-5"><ShieldCheck className="mt-0.5 size-3.5 shrink-0" /> Los pagos siguen pendientes hasta verificarse con el proveedor o el banco. La conexión de verificación de cobros aún debe configurarse.</p>
   </section>;
 }

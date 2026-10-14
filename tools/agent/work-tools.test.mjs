@@ -21,10 +21,18 @@ test('memory searches always filter active records in the authenticated tenant a
 test('task proposal gets actor/session/business only from server and remains pending human confirmation',async()=>{
  const ctx=context();const result=await executeWorkTool('propose_crm_task',{title:'Revisar pedido',due_at:new Date(Date.now()+86400000).toISOString(),timezone:'America/Bogota'},ctx);
  assert.equal(result.ok,true);assert.equal(result.data.requires_click_confirmation,true);assert.equal(result.data.saved_as_active,false);
- const rpc=ctx.calls.find(c=>c[0]==='rpc');assert.equal(rpc[1],'nexo_propose_work');assert.equal(rpc[2].p_tenant,tenant);assert.equal(rpc[2].p_user,user);assert.equal(rpc[2].p_session,'work-session');
+ const rpc=ctx.calls.find(c=>c[0]==='rpc');assert.equal(rpc[1],'nexo_propose_work_by_nexo');assert.equal(rpc[2].p_tenant,tenant);assert.equal(rpc[2].p_user,user);assert.equal(rpc[2].p_session,'work-session');
 });
 test('fabricated tenant/role, ambiguous dates and invalid timezone are rejected before database writes',async()=>{
  for(const args of [{title:'X',tenant_id:crypto.randomUUID()},{title:'X',role:'owner'},{title:'X',due_at:'mañana'},{title:'X',due_at:new Date(Date.now()+86400000).toISOString(),timezone:'Bogota'}]){
   const ctx=context();assert.equal((await executeWorkTool('propose_crm_task',args,ctx)).ok,false);assert.equal(ctx.calls.length,0);
  }
+});
+test('with memory and tasks autonomy, an activated item is reported as saved and undoable; descriptions say so only when enabled',async()=>{
+ assert.doesNotMatch(workTools(tenant,'owner').map(t=>t.function.description).join(' '),/autorizó/);
+ assert.match(workTools(tenant,'owner',true).find(t=>t.function.name==='propose_crm_task').function.description,/applied_automatically/);
+ const ctx=context();const log=crypto.randomUUID();
+ ctx.supabase.rpc=(name,args)=>({abortSignal:async()=>({data:{id:crypto.randomUUID(),...args.p_input,status:'active',auto:true,log_id:log},error:null})});
+ const result=await executeWorkTool('propose_crm_task',{title:'Llamar a Ana',due_at:new Date(Date.now()+86400000).toISOString(),timezone:'America/Bogota'},ctx);
+ assert.equal(result.data.applied_automatically,true);assert.equal(result.data.saved_as_active,true);assert.equal(result.data.activity_id,log);assert.equal('auto' in result.data.proposal,false);
 });

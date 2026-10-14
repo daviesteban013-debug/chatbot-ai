@@ -11,6 +11,21 @@
   --font-sans: var(--font-inter);
 }
 
+/* Panel (CRM): neutral surfaces, 1px lines, brand yellow used sparingly. */
+@theme {
+  --color-canvas: #f6f6f4;
+  --color-surface: #ffffff;
+  --color-subtle: #f1f1ee;
+  --color-line: #e5e4df;
+  --color-line-strong: #d4d2cb;
+  --color-ink: #18181b;
+  --color-ink-soft: #3f3f46;
+  --color-muted: #71716a;
+  --color-accent: #facc15;
+  --color-accent-soft: #fef9c3;
+  --color-accent-ink: #713f12;
+}
+
 html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;

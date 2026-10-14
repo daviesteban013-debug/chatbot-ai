@@ -12,17 +12,27 @@ const ERRORS: Record<string, string> = {
   CATALOG_LIMIT: "Hay demasiadas propuestas pendientes en esta conversación. Confirma o cancela algunas primero.",
 };
 
+/** Low-risk catalog changes the owner allowed NEXO to apply on its own. */
+export type CatalogAutonomy = { catalog_stock: boolean; catalog_availability: boolean };
+
+const CONFIRM_ONLY = "NO aplica nada: exige pulsar Confirmar en la tarjeta. Nunca digas que el cambio ya está hecho.";
+function applyRule(autonomy?: CatalogAutonomy) {
+  const auto = [autonomy?.catalog_stock && "stock", autonomy?.catalog_availability && "disponibilidad"].filter(Boolean);
+  if (!auto.length) return CONFIRM_ONLY;
+  return `El dueño autorizó a NEXO a aplicar solo los cambios de ${auto.join(" y ")}: si el resultado trae applied_automatically=true ya quedó aplicado y se puede deshacer. Precios, productos nuevos y lo demás exigen pulsar Confirmar en la tarjeta; sin applied_automatically=true nunca digas que el cambio ya está hecho.`;
+}
+
 /**
  * NEXO prepares catalog changes (stock, prices, availability, new products) as proposals.
- * Nothing changes until the user presses Confirm on the card; the database re-checks
- * that the values shown are still current before applying them.
+ * Nothing changes until the user presses Confirm on the card, except low-risk changes the
+ * owner allowed NEXO to apply alone (decided in the database, logged and undoable).
  */
-export function createCatalogPreparation(ctx: WebToolContext & { userId?: string | null; sessionId: string; files: AttachedFile[] }) {
+export function createCatalogPreparation(ctx: WebToolContext & { userId?: string | null; sessionId: string; files: AttachedFile[]; autonomy?: CatalogAutonomy }) {
   const proposals: CatalogProposal[] = [];
   const enabled = Boolean(ctx.tenantId && ctx.userId && (ctx.role === "owner" || ctx.role === "agent"));
   const tools: LLMTool[] = enabled ? [{ type: "function", function: {
     name: "propose_catalog_change",
-    description: "Prepara un cambio del catálogo para que el usuario lo confirme en una tarjeta: stock (mode add suma o resta unidades que llegaron o salieron; set fija el total), precios (price exacto en COP o percent para todos los SKUs indicados, redondeado a $100), disponibilidad (active true/false) o crear un producto nuevo (opcionalmente con attachment_id de una foto adjunta en esta conversación). Usa SKUs exactos obtenidos con search_catalog. NO aplica nada: exige pulsar Confirmar en la tarjeta. Nunca digas que el cambio ya está hecho.",
+    description: "Prepara un cambio del catálogo para que el usuario lo confirme en una tarjeta: stock (mode add suma o resta unidades que llegaron o salieron; set fija el total), precios (price exacto en COP o percent para todos los SKUs indicados, redondeado a $100), disponibilidad (active true/false) o crear un producto nuevo (opcionalmente con attachment_id de una foto adjunta en esta conversación). Usa SKUs exactos obtenidos con search_catalog. " + applyRule(ctx.autonomy),
     parameters: { type: "object", additionalProperties: false, required: ["action"], properties: {
       action: { type: "string", enum: ["stock", "price", "availability", "create"] },
       percent: { type: "number", description: "Solo para price: porcentaje a aplicar, por ejemplo 10 o -15." },
@@ -51,18 +61,24 @@ export function createCatalogPreparation(ctx: WebToolContext & { userId?: string
     }
     ctx.signal?.throwIfAborted();
     try {
-      const { data, error } = await ctx.supabase.rpc("nexo_prepare_catalog_change", {
+      const { data, error } = await ctx.supabase.rpc("nexo_catalog_change_by_nexo", {
         p_tenant: ctx.tenantId, p_user: ctx.userId!, p_session: ctx.sessionId, p_change: parsed.data,
       }).abortSignal(ctx.signal ?? AbortSignal.timeout(10000));
       if (error) {
         const code = Object.keys(ERRORS).find(key => error.message.includes(key));
         return { ok: false, error: code ? ERRORS[code] : "No pude preparar el cambio. Revisa los SKUs y los valores. No se modificó el catálogo." };
       }
-      const proposal = catalogProposalSchema.safeParse((data as { proposal?: unknown } | null)?.proposal);
-      if (!proposal.success || proposal.data.session_id !== ctx.sessionId || proposal.data.status !== "pending")
+      const result = data as { proposal?: unknown; auto?: boolean; log_id?: unknown } | null;
+      const proposal = catalogProposalSchema.safeParse(result?.proposal);
+      const logId = typeof result?.log_id === "string" ? result.log_id : null;
+      const auto = result?.auto === true && proposal.success && proposal.data.status === "applied" && proposal.data.applied_by_nexo && !!logId;
+      if (!proposal.success || proposal.data.session_id !== ctx.sessionId || proposal.data.status !== (auto ? "applied" : "pending"))
         return { ok: false, error: "No se pudo verificar la propuesta. No confirmes ningún cambio." };
-      if (!proposals.some(item => item.id === proposal.data.id)) proposals.push(proposal.data);
-      return { ok: true, data: { proposal: proposal.data, requires_click_confirmation: true, catalog_changed: false } };
+      const row: CatalogProposal = auto ? { ...proposal.data, activity: { id: logId!, status: "applied", undoable: true } } : proposal.data;
+      if (!proposals.some(item => item.id === row.id)) proposals.push(row);
+      if (auto) return { ok: true, data: { proposal: row, applied_automatically: true, catalog_changed: true, requires_click_confirmation: false, undo_available: true,
+        note: "Aplicado por NEXO con la autonomía que activó el dueño. Se puede deshacer desde la tarjeta o en «Lo que hizo NEXO»." } };
+      return { ok: true, data: { proposal: row, requires_click_confirmation: true, catalog_changed: false } };
     } catch {
       ctx.signal?.throwIfAborted();
       return { ok: false, error: "No pude preparar el cambio. No se modificó el catálogo." };

@@ -93,6 +93,10 @@ test("operator evidence requires a canonical verified navigation and preserves e
     assert.equal(action.status, "approval_required");
     assert.match(action.summary, /confirmar, cancelar/);
   }
+  const automatic = operatorAction("action-3", "propose_catalog_change", { ok: true, data: { applied_automatically: true, catalog_changed: true } });
+  assert.equal(automatic.status, "completed"); assert.equal(automatic.label, "Actualizar catálogo"); assert.match(automatic.summary, /deshacerlo/);
+  assert.equal(operatorAction("action-4", "propose_catalog_change", { ok: true, data: { requires_click_confirmation: true } }).status, "approval_required");
+  assert.equal(operatorAction("action-5", "propose_crm_task", { ok: false, error: "x", data: { applied_automatically: true } }).status, "failed");
 });
 
 test("cancellation prevents navigation queries", async () => {

@@ -11,6 +11,10 @@ export const catalogProposalSchema = z.object({
   id: z.string().uuid(), session_id: z.string(), status: z.enum(["pending", "applied", "canceled", "expired"]),
   expires_at: z.string(), product_id: z.string().uuid().nullable(),
   snapshot: z.object({ action: z.enum(["stock", "price", "availability", "create"]), title: z.string(), lines: z.array(line).min(1).max(20), attachment_id: z.string().uuid().optional() }),
+  /** Applied on its own because the owner enabled autonomy for this kind of change. */
+  applied_by_nexo: z.boolean().optional().default(false),
+  /** The activity entry that allows undoing an automatic change. */
+  activity: z.object({ id: z.string().uuid(), status: z.enum(["applied", "undone"]), undoable: z.boolean() }).nullable().optional(),
 });
 export type CatalogProposal = z.infer<typeof catalogProposalSchema>;
 export type CatalogProposalLine = CatalogProposal["snapshot"]["lines"][number];

@@ -394,7 +394,15 @@ export type Database = {
         Relationships: [];
       };
       nexo_catalog_proposals: {
-        Row: { id: string; tenant_id: string; user_id: string; session_id: string; request_key: string; status: "pending" | "applied" | "canceled" | "expired"; snapshot: Json; product_id: string | null; created_at: string; expires_at: string; decided_at: string | null };
+        Row: { id: string; tenant_id: string; user_id: string; session_id: string; request_key: string; status: "pending" | "applied" | "canceled" | "expired"; snapshot: Json; product_id: string | null; created_at: string; expires_at: string; decided_at: string | null; applied_by_nexo: boolean };
+        Insert: never; Update: never; Relationships: [];
+      };
+      nexo_autonomy_settings: {
+        Row: { tenant_id: string; catalog_stock: boolean; catalog_availability: boolean; work_items: boolean; updated_by: string | null; updated_at: string };
+        Insert: never; Update: never; Relationships: [];
+      };
+      nexo_activity_log: {
+        Row: { id: string; tenant_id: string; user_id: string | null; session_id: string | null; kind: "catalog" | "work"; ref_id: string; summary: string; undo: Json; status: "applied" | "undone"; created_at: string; undone_at: string | null; undone_by: string | null };
         Insert: never; Update: never; Relationships: [];
       };
       billing_checkouts: {
@@ -1182,6 +1190,11 @@ export type Database = {
       nexo_daily_briefing: { Args: { p_tenant: string; p_user: string }; Returns: Json };
       nexo_prepare_catalog_change: { Args: { p_tenant: string; p_user: string; p_session: string; p_change: Json }; Returns: Json };
       nexo_decide_catalog_change: { Args: { p_id: string; p_user: string; p_decision: string; p_image_url?: string | null }; Returns: Json };
+      nexo_configure_autonomy: { Args: { p_tenant: string; p_user: string; p_settings: Json }; Returns: Json };
+      nexo_catalog_change_by_nexo: { Args: { p_tenant: string; p_user: string; p_session: string; p_change: Json }; Returns: Json };
+      nexo_propose_work_by_nexo: { Args: { p_tenant: string; p_user: string; p_session: string | null; p_key: string; p_input: Json }; Returns: Json };
+      nexo_undo_activity: { Args: { p_tenant: string; p_user: string; p_log: string }; Returns: Json };
+      nexo_activity_feed: { Args: { p_tenant: string; p_user: string; p_limit?: number }; Returns: Json };
       nexo_sales_metrics: { Args: { p_tenant: string; p_user: string; p_days: number }; Returns: Json };
       nexo_provision_tenant: { Args: { p_user: string; p_name: string; p_slug: string }; Returns: string };
       nexo_review_pending_order: { Args: { p_tenant: string; p_user: string; p_order: string; p_approve: boolean }; Returns: Json };

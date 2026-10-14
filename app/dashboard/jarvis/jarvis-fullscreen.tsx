@@ -29,6 +29,8 @@ import { useCatalogProposals } from "@/hooks/useCatalogProposals";
 import { CatalogProposals } from "@/components/jarvis/catalog-proposals";
 import { useDailyBriefing } from "@/hooks/useDailyBriefing";
 import { DailyBriefing } from "@/components/jarvis/daily-briefing";
+import { useNexoActivity } from "@/hooks/useNexoActivity";
+import { NexoActivity } from "@/components/dashboard/nexo-activity";
 import { buildBriefing, type Briefing } from "@/lib/briefing";
 import { OperatorTask } from "@/components/jarvis/operator-task";
 import { normalizeOperatorActions, parseOperatorNavigation, type OperatorNavigation } from "@/lib/crm-operator";
@@ -161,6 +163,7 @@ function JarvisFullscreenInner({
   const orderProposals = useOrderProposals(sessionId, messages, Boolean(userId));
   const catalogProposals = useCatalogProposals(sessionId, messages, Boolean(userId));
   const dailyBriefing = useDailyBriefing(Boolean(userId));
+  const nexoActivity = useNexoActivity(Boolean(userId) && !desktopMode, { limit: 5, version: String(messages.filter(message => message.status === "completed").length) });
   const refreshBriefing = dailyBriefing.refresh;
   const briefing = useMemo(() => dailyBriefing.data ? buildBriefing(dailyBriefing.data, { name: profile.displayName || undefined }) : null, [dailyBriefing.data, profile.displayName]);
   const [briefingHidden, setBriefingHidden] = useState(false);
@@ -356,6 +359,7 @@ function JarvisFullscreenInner({
           {userId && <CreditBalancePanel compact />}
           {operator}
           {proposals}
+          <NexoActivity tone="dark" state={nexoActivity} onOpen={href => { const destination = parseOperatorNavigation(href); if (!destination) return; pauseMicrophone(); claps.stop(); stopSpokenTurn(); void openCrmWorkspace(destination); }} />
           {navigationNotice && <p role="status" className={styles.notice}>{navigationNotice}</p>}
           {(error || voiceError || microphoneError || claps.error) && <p role="alert" className={styles.error}>{error || voiceError || microphoneError || claps.error}</p>}
           {attachments.error && <p role="alert" className={styles.error}>{attachments.error}</p>}

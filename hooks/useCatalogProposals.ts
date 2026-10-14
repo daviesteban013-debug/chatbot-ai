@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { catalogProposalSchema, type CatalogProposal } from "@/lib/catalog-proposals";
 import type { ChatMessage } from "@/types/jarvis";
+import { ACTIVITY_EVENT } from "@/hooks/useNexoActivity";
 
 /** Catalog changes prepared by NEXO in this conversation; state always comes from the database. */
 export function useCatalogProposals(sessionId: string, messages: ChatMessage[], enabled: boolean) {
@@ -39,7 +40,8 @@ export function useCatalogProposals(sessionId: string, messages: ChatMessage[], 
     const tick = setInterval(() => setNow(Date.now()), 1000);
     const update = () => { void refresh().catch(() => setVerified(false)); };
     window.addEventListener("focus", update);
-    return () => { clearInterval(tick); window.removeEventListener("focus", update); };
+    window.addEventListener(ACTIVITY_EVENT, update);
+    return () => { clearInterval(tick); window.removeEventListener("focus", update); window.removeEventListener(ACTIVITY_EVENT, update); };
   }, [enabled, refresh]);
   const decide = async (id: string, decision: "confirm" | "cancel") => {
     if (lock.current || !verified) return;
@@ -58,7 +60,23 @@ export function useCatalogProposals(sessionId: string, messages: ChatMessage[], 
       }
     } finally { lock.current = false; setBusy(null); }
   };
-  return { proposals, busy, error, verified, now, decide, refresh: async () => {
+  /** Undo a change NEXO applied on its own; the database refuses if someone changed it since. */
+  const undo = async (id: string, logId: string) => {
+    if (lock.current) return;
+    lock.current = true; setBusy(id); setError(null);
+    try {
+      const response = await fetch("/api/jarvis/activity", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ log_id: logId }), signal: AbortSignal.timeout(20000) });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "No pude deshacer el cambio.");
+    } catch (cause) {
+      if (currentSession.current === sessionId) setError(cause instanceof Error ? cause.message : "No pude deshacer el cambio.");
+    } finally {
+      lock.current = false; setBusy(null);
+      try { await refresh(); } catch { setVerified(false); }
+      window.dispatchEvent(new Event(ACTIVITY_EVENT));
+    }
+  };
+  return { proposals, busy, error, verified, now, decide, undo, refresh: async () => {
     setError(null); try { await refresh(); } catch { setVerified(false); setError("No pude actualizar los cambios del catálogo."); }
   } };
 }

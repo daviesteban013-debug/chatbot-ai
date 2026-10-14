@@ -14,14 +14,20 @@ const labels: Record<string, string> = {
   propose_business_memory: "Preparar recuerdo para revisión", propose_crm_task: "Preparar tarea para revisión",
   propose_catalog_change: "Preparar cambio de catálogo", get_sales_results: "Consultar resultados de ventas",
 };
+const autoLabels: Record<string, string> = {
+  propose_catalog_change: "Actualizar catálogo", propose_business_memory: "Guardar recuerdo", propose_crm_task: "Crear tarea",
+};
 export function operatorAction(id: string, tool: string, result?: ToolResult): OperatorAction {
   const kind = tool === "open_crm_panel" ? "navigation" : tool.startsWith("prepare_") || tool.startsWith("propose_") ? "proposal" : "read";
   const data = result?.data && typeof result.data === "object" ? result.data as Record<string, unknown> : {};
   const navigation = result?.ok ? parseOperatorNavigation(data.navigation) : null;
   const failed = result && (!result.ok || (kind === "navigation" && (!navigation || data.destination_verified !== true || data.interface_action !== "open_panel")));
-  return { id, tool, label: labels[tool] ?? "Comprobar solicitud", kind,
-    status: !result ? "running" : failed ? "failed" : kind === "proposal" ? "approval_required" : "completed",
+  // Low-risk changes the owner allowed NEXO to apply alone: done, logged and undoable.
+  const automatic = !failed && kind === "proposal" && data.applied_automatically === true;
+  return { id, tool, label: automatic ? autoLabels[tool] ?? labels[tool] ?? "Comprobar solicitud" : labels[tool] ?? "Comprobar solicitud", kind,
+    status: !result ? "running" : failed ? "failed" : automatic ? "completed" : kind === "proposal" ? "approval_required" : "completed",
     ...(result ? { summary: failed ? "No pude completar este paso. Revisa la respuesta antes de reintentar."
+      : automatic ? "Aplicado por NEXO según tu configuración. Puedes deshacerlo."
       : tool === "propose_catalog_change" ? "Cambio preparado. Revisa su tarjeta para confirmarlo o cancelarlo; aún no se aplicó."
       : tool.startsWith("propose_") ? "Propuesta preparada. Abre Memoria y tareas → Por confirmar para revisarla y activarla."
       : kind === "proposal" ? "Propuesta verificada. Revisa su tarjeta para confirmar, cancelar o pasarla a una persona."

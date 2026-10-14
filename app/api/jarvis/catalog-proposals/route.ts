@@ -20,7 +20,16 @@ export async function GET(request: NextRequest) {
     const { data, error } = await client.from("nexo_catalog_proposals").select("*")
       .eq("user_id", user.id).eq("session_id", session).order("created_at", { ascending: false }).limit(30);
     if (error) return json({ error: "No pude actualizar los cambios del catálogo." }, 503);
-    return json({ proposals: (data ?? []).map(row => catalogProposalSchema.parse(row)) });
+    // Changes NEXO applied alone carry their activity entry so the card can offer Undo.
+    const automatic = (data ?? []).filter(row => row.applied_by_nexo).map(row => row.id);
+    const activity = new Map<string, { id: string; status: "applied" | "undone"; undoable: boolean }>();
+    if (automatic.length) {
+      const { data: logs } = await client.from("nexo_activity_log").select("id,ref_id,status,created_at")
+        .eq("kind", "catalog").in("ref_id", automatic);
+      for (const log of logs ?? []) activity.set(log.ref_id, { id: log.id, status: log.status,
+        undoable: log.status === "applied" && Date.parse(log.created_at) > Date.now() - 7 * 86400000 });
+    }
+    return json({ proposals: (data ?? []).map(row => catalogProposalSchema.parse({ ...row, activity: activity.get(row.id) ?? null })) });
   } catch { return json({ error: "No pude actualizar los cambios del catálogo." }, 503); }
 }
 
