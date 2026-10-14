@@ -37,7 +37,7 @@ npm test --prefix desktop
 npm run package --prefix desktop
 ```
 
-En un Mac, `npm run package:mac --prefix desktop` genera `NEXO-0.2.3-mac-universal.dmg`. El workflow **NEXO · macOS beta** permite construirlo manualmente en GitHub Actions y comprobar el arranque del mismo DMG en máquinas Intel y Apple Silicon. Solo empaqueta los archivos declarados en `build.files`; nunca requiere las claves del backend.
+En un Mac, `npm run package:mac --prefix desktop` genera `NEXO-0.2.4-mac-universal.dmg`. El workflow **NEXO · macOS beta** permite construirlo manualmente en GitHub Actions y comprobar el arranque del mismo DMG en máquinas Intel y Apple Silicon. Solo empaqueta los archivos declarados en `build.files`; nunca requiere las claves del backend.
 
 La beta de macOS usa firma ad hoc, sin certificado Developer ID ni notarización de Apple. Gatekeeper puede bloquear su apertura. La distribución sin ese aviso requiere el certificado del editor y notarización, pendientes de configurar. No desactives las protecciones del sistema. La web sigue disponible para usar el CRM sin instalar la beta.
 
