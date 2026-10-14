@@ -1,19 +1,19 @@
 /**
- * Procesamiento en background del payload del webhook de WhatsApp.
+ * Procesamiento del payload del webhook de WhatsApp, en dos fases. Usa el
+ * cliente service-role porque no hay sesión de usuario.
  *
- * Se invoca desde `after()` en `app/api/whatsapp/route.ts`, fuera del ciclo de
- * vida del request (ya respondimos 200 a Meta). Usa el cliente service-role
- * porque no hay sesión de usuario.
- *
- * Responsabilidades:
+ * 1. `persistWebhookPayload` (antes de responder a Meta):
  *  - Resolver el tenant a partir del `phone_number_id`.
  *  - Crear/actualizar el cliente (teléfono normalizado a E.164).
  *  - Buscar o crear la conversación abierta.
  *  - Persistir el mensaje entrante de forma idempotente (`wa_message_id`).
  *  - Actualizar `conversations.last_message_at`.
- *  - Disparar el agente vendedor (integración de Fase 3).
+ *  Si algo falla, el route responde error y Meta reintenta: ningún mensaje
+ *  se pierde aunque el agente se interrumpa después.
  *
- * Nunca lanza: ya respondimos 200 y un fallo no debe provocar reintentos de Meta.
+ * 2. `runWebhookJobs` (dentro de `after()`, ya respondimos a Meta):
+ *  - Transcribir audios y disparar el agente vendedor por conversación.
+ *  Nunca lanza: un fallo aquí no debe provocar reintentos de Meta.
  */
 
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -25,7 +25,6 @@ import type { Json, MessageType } from "@/lib/database.types";
 import type {
   WhatsAppWebhookPayload,
   WhatsAppMessage,
-  WhatsAppValue,
 } from "./types";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
@@ -33,94 +32,154 @@ type AdminClient = ReturnType<typeof createAdminClient>;
 /** Código de error de Postgres para violación de restricción única. */
 const UNIQUE_VIOLATION = "23505";
 
+/** Trabajo pendiente para el agente tras persistir un mensaje entrante. */
+export type WebhookAgentJob = {
+  tenantId: string;
+  conversationId: string;
+  customerId: string;
+  customerPhone: string;
+  messageId: string;
+  waMessageId: string;
+  phoneNumberId: string;
+  audioId: string | null;
+  accessToken: string | null;
+};
+
+export type PersistResult = { jobs: WebhookAgentJob[]; failed: number };
+
 /**
- * Procesa el payload completo del webhook. Recorre entries y changes, resolviendo
- * el tenant por `phone_number_id` y delegando cada mensaje. Los fallos individuales
- * no bloquean el resto del payload.
+ * Fase síncrona (antes de responder a Meta): resuelve tenant, clientes y
+ * conversaciones y persiste cada mensaje de forma idempotente. `failed > 0`
+ * indica que el caller debe responder un error para que Meta reintente; los
+ * mensajes ya guardados se omiten en el reintento gracias a `wa_message_id`.
  */
-export async function handleWebhookPayload(
+export async function persistWebhookPayload(
   payload: WhatsAppWebhookPayload
-): Promise<void> {
-  try {
-    if (payload.object !== "whatsapp_business_account") {
-      return;
-    }
+): Promise<PersistResult> {
+  const result: PersistResult = { jobs: [], failed: 0 };
+  if (payload.object !== "whatsapp_business_account") return result;
 
-    const admin = createAdminClient();
+  const admin = createAdminClient();
 
-    for (const entry of payload.entry) {
-      for (const change of entry.changes) {
-        if (change.field !== "messages") continue;
+  for (const entry of payload.entry ?? []) {
+    for (const change of entry.changes ?? []) {
+      if (change.field !== "messages") continue;
 
-        const value = change.value;
-        const phoneNumberId = value.metadata.phone_number_id;
+      const value = change.value;
+      const phoneNumberId = value.metadata.phone_number_id;
 
-        // Resolver tenant por phone_number_id (constraint único en whatsapp_accounts).
-        const { data: waAccount } = await admin
-          .from("whatsapp_accounts")
-          .select("tenant_id")
-          .eq("phone_number_id", phoneNumberId)
-          .maybeSingle();
+      // Resolver tenant por phone_number_id (constraint único en whatsapp_accounts).
+      const { data: waAccount, error: accountError } = await admin
+        .from("whatsapp_accounts")
+        .select("tenant_id")
+        .eq("phone_number_id", phoneNumberId)
+        .maybeSingle();
 
-        if (!waAccount) {
-          console.error(
-            `[webhook] phone_number_id desconocido: ${phoneNumberId}`
-          );
-          continue;
-        }
+      if (accountError) {
+        console.error(`[webhook] No se pudo resolver phone_number_id ${phoneNumberId}:`, accountError.message);
+        result.failed += value.messages?.length ?? 0;
+        continue;
+      }
+      if (!waAccount) {
+        console.error(
+          `[webhook] phone_number_id desconocido: ${phoneNumberId}`
+        );
+        continue;
+      }
 
-        const tenantId = waAccount.tenant_id;
-        const sendOptions = await loadWhatsAppSendOptions(admin,tenantId,phoneNumberId);
-        const waAccessToken = sendOptions?.accessToken ?? null;
-        if (value.messages?.length) {
-          await admin.from("whatsapp_accounts").update({last_webhook_at:new Date().toISOString()})
-            .eq("tenant_id",tenantId).eq("phone_number_id",phoneNumberId);
-        }
+      const tenantId = waAccount.tenant_id;
+      const sendOptions = await loadWhatsAppSendOptions(admin,tenantId,phoneNumberId);
+      const waAccessToken = sendOptions?.accessToken ?? null;
+      if (value.messages?.length) {
+        await admin.from("whatsapp_accounts").update({last_webhook_at:new Date().toISOString()})
+          .eq("tenant_id",tenantId).eq("phone_number_id",phoneNumberId);
+      }
 
-        // Contactos: crear/actualizar clientes con el nombre de perfil.
-        if (value.contacts) {
-          for (const contact of value.contacts) {
-            try {
-              await upsertCustomer(
-                admin,
-                tenantId,
-                contact.wa_id,
-                contact.profile?.name
-              );
-            } catch (error) {
-              console.error(
-                `[webhook] Error en upsert de cliente ${contact.wa_id}:`,
-                error
-              );
-            }
-          }
-        }
-
-        // Mensajes entrantes.
-        if (value.messages) {
-          for (const message of value.messages) {
-            try {
-              await processIncomingMessage(admin, tenantId, message, value, waAccessToken);
-            } catch (error) {
-              console.error(
-                `[webhook] Error procesando mensaje ${message.id}:`,
-                error
-              );
-            }
-          }
-        }
-
-        // Estados de entrega (V1: solo registro).
-        if (value.statuses) {
-          for (const status of value.statuses) {
-            console.log(
-              `[webhook] Status update: ${status.id} → ${status.status}`,
-              status.errors ? JSON.stringify(status.errors) : ""
+      // Contactos: crear/actualizar clientes con el nombre de perfil.
+      if (value.contacts) {
+        for (const contact of value.contacts) {
+          try {
+            await upsertCustomer(
+              admin,
+              tenantId,
+              contact.wa_id,
+              contact.profile?.name
+            );
+          } catch (error) {
+            console.error(
+              `[webhook] Error en upsert de cliente ${contact.wa_id}:`,
+              error
             );
           }
         }
       }
+
+      // Mensajes entrantes.
+      if (value.messages) {
+        for (const message of value.messages) {
+          try {
+            const job = await persistIncomingMessage(admin, tenantId, message, phoneNumberId, waAccessToken);
+            if (job) result.jobs.push(job);
+          } catch (error) {
+            result.failed++;
+            console.error(
+              `[webhook] Error persistiendo mensaje ${message.id}:`,
+              error
+            );
+          }
+        }
+      }
+
+      // Estados de entrega (V1: solo registro).
+      if (value.statuses) {
+        for (const status of value.statuses) {
+          console.log(
+            `[webhook] Status update: ${status.id} → ${status.status}`,
+            status.errors ? JSON.stringify(status.errors) : ""
+          );
+        }
+      }
     }
+  }
+
+  return result;
+}
+
+/**
+ * Fase en background (dentro de `after()`): transcribe audios y dispara el
+ * agente. Las conversaciones se procesan en paralelo; dentro de una misma
+ * conversación los audios se transcriben en orden y el agente corre una sola
+ * vez con el último mensaje, porque su historial ya incluye los anteriores.
+ * Nunca lanza.
+ */
+export async function runWebhookJobs(jobs: WebhookAgentJob[]): Promise<void> {
+  const byConversation = new Map<string, WebhookAgentJob[]>();
+  for (const job of jobs) {
+    const key = `${job.tenantId}:${job.conversationId}`;
+    const group = byConversation.get(key);
+    if (group) group.push(job);
+    else byConversation.set(key, [job]);
+  }
+  if (!byConversation.size) return;
+
+  const admin = createAdminClient();
+  await Promise.allSettled([...byConversation.values()].map(async (group) => {
+    try {
+      for (const job of group) await transcribeIncomingAudio(admin, job);
+      await triggerAgent(admin, group[group.length - 1]);
+    } catch (error) {
+      console.error(`[webhook] Error procesando conversación ${group[0].conversationId}:`, error);
+    }
+  }));
+}
+
+/** Persiste y procesa el payload completo en un solo paso. Nunca lanza. */
+export async function handleWebhookPayload(
+  payload: WhatsAppWebhookPayload
+): Promise<void> {
+  try {
+    const { jobs } = await persistWebhookPayload(payload);
+    await runWebhookJobs(jobs);
   } catch (error) {
     console.error("[webhook] Error fatal procesando payload:", error);
   }
@@ -179,26 +238,27 @@ async function upsertCustomer(
 }
 
 /**
- * Procesa un mensaje entrante: idempotencia, resolución de conversación,
- * persistencia, transcripción de audio y disparo del agente.
+ * Persiste un mensaje entrante: idempotencia, resolución de conversación y
+ * guardado. Devuelve `null` si el mensaje ya estaba procesado.
  */
-async function processIncomingMessage(
+async function persistIncomingMessage(
   admin: AdminClient,
   tenantId: string,
   message: WhatsAppMessage,
-  _value: WhatsAppValue,
+  phoneNumberId: string,
   accessToken: string | null
-): Promise<void> {
+): Promise<WebhookAgentJob | null> {
   // 1. Idempotencia (fast path): el índice único en wa_message_id evita duplicados.
-  const { data: existing } = await admin
+  const { data: existing, error: existingError } = await admin
     .from("messages")
     .select("id")
     .eq("wa_message_id", message.id)
     .maybeSingle();
 
+  if (existingError) throw new Error(`Error verificando duplicados: ${existingError.message}`);
   if (existing) {
     console.log(`[webhook] Mensaje ${message.id} ya procesado, omitiendo.`);
-    return;
+    return null;
   }
 
   // 2. Resolver cliente (garantiza que exista aunque no viniera en contacts).
@@ -230,7 +290,7 @@ async function processIncomingMessage(
       console.log(
         `[webhook] Mensaje ${message.id} duplicado (carrera), omitiendo.`
       );
-      return;
+      return null;
     }
     throw new Error(`Error persistiendo mensaje: ${error.message}`);
   }
@@ -246,55 +306,71 @@ async function processIncomingMessage(
     `[webhook] Mensaje ${savedMessage.id} guardado para tenant ${tenantId} (conversación ${conversationId})`
   );
 
-  // 6. Transcripción de audio (antes de disparar el agente para que el
-  //    transcript esté disponible en el historial).
-  if (message.type === "audio" && message.audio?.id) {
-    try {
-      if (accessToken) {
-        const { buffer, mimeType } = await downloadMedia(message.audio.id, accessToken);
-        const transcript = await transcribeAudio(buffer, mimeType);
-        if (transcript) {
-          await admin
-            .from("messages")
-            .update({ transcript })
-            .eq("id", savedMessage.id);
-          console.log(`[webhook] Audio transcrito para mensaje ${savedMessage.id}`);
-        }
-      } else {
-        console.warn("[webhook] Sin access token para descargar audio, omitiendo transcripción.");
-      }
-    } catch (error) {
-      console.error("[webhook] Audio transcription failed:", error);
-      // Non-fatal: continue without transcript
-    }
-  }
+  return {
+    tenantId,
+    conversationId,
+    customerId,
+    customerPhone: message.from,
+    messageId: savedMessage.id,
+    waMessageId: message.id,
+    phoneNumberId,
+    audioId: message.type === "audio" ? message.audio?.id ?? null : null,
+    accessToken,
+  };
+}
 
-  // 7. Verificar que la conversación no esté en handoff antes de disparar el agente.
+/**
+ * Transcribe el audio antes de disparar el agente para que el transcript esté
+ * disponible en el historial. Un fallo no es fatal.
+ */
+async function transcribeIncomingAudio(admin: AdminClient, job: WebhookAgentJob): Promise<void> {
+  if (!job.audioId) return;
+  try {
+    if (job.accessToken) {
+      const { buffer, mimeType } = await downloadMedia(job.audioId, job.accessToken);
+      const transcript = await transcribeAudio(buffer, mimeType);
+      if (transcript) {
+        await admin
+          .from("messages")
+          .update({ transcript })
+          .eq("id", job.messageId);
+        console.log(`[webhook] Audio transcrito para mensaje ${job.messageId}`);
+      }
+    } else {
+      console.warn("[webhook] Sin access token para descargar audio, omitiendo transcripción.");
+    }
+  } catch (error) {
+    console.error("[webhook] Audio transcription failed:", error);
+    // Non-fatal: continue without transcript
+  }
+}
+
+/** Dispara el agente vendedor salvo que la conversación esté en handoff. */
+async function triggerAgent(admin: AdminClient, job: WebhookAgentJob): Promise<void> {
   const { data: convCheck } = await admin
     .from("conversations")
     .select("status")
-    .eq("id", conversationId)
-    .eq("tenant_id", tenantId)
+    .eq("id", job.conversationId)
+    .eq("tenant_id", job.tenantId)
     .maybeSingle();
 
   if (convCheck?.status === "handoff") {
     console.log(
-      `[webhook] Conversación ${conversationId} en handoff, omitiendo agente.`
+      `[webhook] Conversación ${job.conversationId} en handoff, omitiendo agente.`
     );
     return;
   }
 
-  // 8. Disparar el agente vendedor. Un fallo del agente NUNCA debe afectar la
-  //    persistencia del mensaje, por eso va en su propio try/catch.
+  // Un fallo del agente NUNCA debe afectar la persistencia del mensaje.
   try {
     await runAgent({
-      tenantId,
-      conversationId,
-      customerId,
-      customerPhone: message.from,
-      triggerMessageId: savedMessage.id,
-      waMessageId: message.id,
-      sourcePhoneNumberId: _value.metadata.phone_number_id,
+      tenantId: job.tenantId,
+      conversationId: job.conversationId,
+      customerId: job.customerId,
+      customerPhone: job.customerPhone,
+      triggerMessageId: job.messageId,
+      waMessageId: job.waMessageId,
+      sourcePhoneNumberId: job.phoneNumberId,
     });
   } catch (error) {
     console.error("[webhook] Error ejecutando el agente:", error);

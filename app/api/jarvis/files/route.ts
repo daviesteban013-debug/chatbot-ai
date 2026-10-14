@@ -14,16 +14,17 @@ async function account() {
   const { data, error } = await client.auth.getUser();
   return error || data.user?.is_anonymous ? null : data.user;
 }
+class UploadError extends Error { constructor(public status: 400 | 413, message: string) { super(message); } }
 const sameOrigin = (request: Request) => !request.headers.get("origin") || request.headers.get("origin") === new URL(request.url).origin;
 async function bytes(request: Request) {
-  if (Number(request.headers.get("content-length")) > MAX_FILE_BYTES) throw new Error("El archivo supera los 3 MB.");
+  if (Number(request.headers.get("content-length")) > MAX_FILE_BYTES) throw new UploadError(413, "El archivo supera los 3 MB.");
   const reader = request.body?.getReader();
-  if (!reader) throw new Error("Selecciona un archivo con contenido.");
+  if (!reader) throw new UploadError(400, "Selecciona un archivo con contenido.");
   const chunks: Uint8Array[] = []; let size = 0;
   try {
-    while (true) { const { done, value } = await reader.read(); if (done) break; size += value.byteLength; if (size > MAX_FILE_BYTES) throw new Error("El archivo supera los 3 MB."); chunks.push(value); }
+    while (true) { const { done, value } = await reader.read(); if (done) break; size += value.byteLength; if (size > MAX_FILE_BYTES) throw new UploadError(413, "El archivo supera los 3 MB."); chunks.push(value); }
   } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
-  if (!size) throw new Error("El archivo está vacío.");
+  if (!size) throw new UploadError(400, "El archivo está vacío.");
   const content = new Uint8Array(size); let offset = 0;
   for (const chunk of chunks) { content.set(chunk, offset); offset += chunk.length; }
   return content;
@@ -38,7 +39,10 @@ export async function POST(request: Request) {
     const mime: Record<string, string> = { pdf: "application/pdf", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp", xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", csv: "text/csv", txt: "text/plain", md: "text/markdown" };
     if (!mime[ext]) return fail(415, "Puedes adjuntar PDF, PNG, JPG, WebP, XLSX, CSV, DOCX, TXT o MD.");
     let content: Uint8Array;
-    try { content = await bytes(request); } catch (error) { return fail(413, (error as Error).message); }
+    try { content = await bytes(request); } catch (error) {
+      if (error instanceof UploadError) return fail(error.status, error.message);
+      return fail(400, "No se pudo leer el archivo. Inténtalo de nuevo.");
+    }
     let parsed;
     try { parsed = await parseFile(content, name, request.signal); } catch (error) { return fail(422, (error as Error).message); }
     if (request.signal.aborted) return fail(400, "La carga fue cancelada.");

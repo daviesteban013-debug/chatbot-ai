@@ -3,13 +3,14 @@
  *
  * GET  → Handshake de verificación del endpoint (devuelve el `hub.challenge`).
  * POST → Recepción de mensajes entrantes. Valida la firma `X-Hub-Signature-256`,
- *        responde 200 de inmediato y procesa en background con `after()` de
+ *        persiste los mensajes (500 si falla, para que Meta reintente),
+ *        responde 200 y ejecuta el agente en background con `after()` de
  *        Next.js 16 (fuera del ciclo de vida del request).
  */
 
 import { NextRequest, NextResponse, after } from "next/server";
 import { verifyWebhookSignature, verifyWebhookToken } from "@/lib/whatsapp/verify";
-import { handleWebhookPayload } from "@/lib/whatsapp/webhook-handler";
+import { persistWebhookPayload, runWebhookJobs, type PersistResult } from "@/lib/whatsapp/webhook-handler";
 import type { WhatsAppWebhookPayload } from "@/lib/whatsapp/types";
 
 // El webhook siempre debe ejecutarse por request (nunca cacheado/estático).
@@ -69,10 +70,23 @@ export async function POST(request: NextRequest) {
     return new NextResponse("Invalid JSON", { status: 400 });
   }
 
-  // Responder 200 a Meta de inmediato y procesar en background.
-  after(async () => {
-    await handleWebhookPayload(payload);
-  });
+  // Persistir antes de responder: si falla, Meta reintenta y la idempotencia
+  // por `wa_message_id` evita duplicar lo que ya quedó guardado.
+  let persisted: PersistResult;
+  try {
+    persisted = await persistWebhookPayload(payload);
+  } catch (error) {
+    console.error("[webhook] Error persistiendo payload:", error);
+    return new NextResponse("Retry later", { status: 500 });
+  }
 
+  // El agente corre en background para los mensajes ya guardados.
+  if (persisted.jobs.length) {
+    after(() => runWebhookJobs(persisted.jobs));
+  }
+
+  if (persisted.failed) {
+    return new NextResponse("Retry later", { status: 500 });
+  }
   return new NextResponse("OK", { status: 200 });
 }

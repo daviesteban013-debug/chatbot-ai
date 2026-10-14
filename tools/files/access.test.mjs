@@ -63,7 +63,7 @@ test("foreign origins, anonymous users and auth failures cannot parse or store u
 test("unsupported extensions and oversized streams are rejected before parsing", async () => {
   assert.equal((await POST(request("x", "x.xls"))).status, 415);
   assert.equal((await POST(request(new Uint8Array(3 * 1024 * 1024 + 1)))).status, 413);
-  assert.equal((await POST(request(""))).status, 413); assert.equal(state.parsed, 0);
+  assert.equal((await POST(request(""))).status, 400); assert.equal(state.parsed, 0);
 });
 test("uploads use server-generated paths and private metadata; failed inserts clean up the object", async () => {
   const response = await POST(request("data", "../ventas.txt")); assert.equal(response.status, 201);
