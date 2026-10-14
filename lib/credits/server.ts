@@ -23,9 +23,16 @@ export async function getCreditBalance(account: CreditAccount): Promise<CreditBa
   return data as unknown as CreditBalance;
 }
 
+/** Fixed reservation per image input: base64 bytes say nothing about vision tokens. */
+const IMAGE_RESERVATION = 2_000;
+
 /** Conservative reservation, never a charge: final billing uses only reported usage. */
 export function inputReservation(messages: LLMMessage[], tools?: LLMTool[]): number {
-  return new TextEncoder().encode(JSON.stringify({ messages, tools })).length + 512 + messages.length * 32;
+  let images = 0;
+  const text = messages.map(message => Array.isArray(message.content)
+    ? { ...message, content: message.content.map(part => part.type === "image_url" ? (images++, { type: part.type }) : part) }
+    : message);
+  return new TextEncoder().encode(JSON.stringify({ messages: text, tools })).length + 512 + messages.length * 32 + images * IMAGE_RESERVATION;
 }
 
 export async function reserveCredits(account: CreditAccount, inputTokens: number, outputTokens: number) {

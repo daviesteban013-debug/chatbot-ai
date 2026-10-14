@@ -159,6 +159,8 @@ export type Product = {
   wholesale_min_qty: number | null;
   active: boolean;
   created_at: string;
+  image_url: string | null;
+  updated_at: string;
 }
 
 export type ProductVariant = {
@@ -1172,6 +1174,9 @@ export type Database = {
       nexo_begin_sales_followup: { Args: { p_id: string; p_lease: string }; Returns: Json };
       nexo_finish_sales_followup: { Args: { p_id: string; p_lease: string; p_status: string; p_reason?: string | null; p_wa_message_id?: string | null; p_body?: string | null }; Returns: Json };
       nexo_consume_sales_worker_ticket: { Args: { p_token: string }; Returns: boolean };
+      nexo_save_product: { Args: { p_tenant: string; p_user: string; p_product: Json }; Returns: Json };
+      nexo_import_products: { Args: { p_tenant: string; p_user: string; p_products: Json; p_mode: string }; Returns: Json };
+      nexo_archive_product: { Args: { p_tenant: string; p_user: string; p_product: string }; Returns: Json };
       nexo_claim_mp_checkout: { Args: { p_tenant: string; p_user: string; p_mode: string; p_kind: string; p_plan: string; p_annual: boolean; p_amount: number }; Returns: Json };
       nexo_apply_mp_payment: { Args: { p_payment_id: string; p_checkout: string; p_mode: string; p_status: string; p_amount: number; p_currency: string; p_raw?: Json }; Returns: Json };
       nexo_sync_mp_preapproval: { Args: { p_checkout: string; p_preapproval_id: string; p_status: string; p_mode: string }; Returns: Json };

@@ -42,6 +42,11 @@ export function configuredModel(fallback?: string): string {
   return connection(process.env.LLM_MODEL?.trim() || fallback).model
 }
 
+/** Image inputs are only sent to the OpenAI provider; compatible endpoints fall back to OCR text. */
+export function supportsVision(): boolean {
+  return connection().provider === 'openai'
+}
+
 /** Contains no credentials or custom endpoints; safe for local diagnostics. */
 export function llmStatus() {
   const config = connection()

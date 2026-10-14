@@ -433,6 +433,7 @@ type ProductJoin = {
   price_retail: number;
   price_wholesale: number | null;
   wholesale_min_qty: number | null;
+  image_url?: string | null;
 };
 
 type VariantJoin = {
@@ -452,7 +453,7 @@ type VariantJoin = {
 type ResolvedVariant = { variant: VariantJoin; product: ProductJoin | null };
 
 const VARIANT_SELECT =
-  "id, product_id, sku, color, size, price_override, stock_qty, reserved_qty, image_url, active, products(id, name, price_retail, price_wholesale, wholesale_min_qty)";
+  "id, product_id, sku, color, size, price_override, stock_qty, reserved_qty, image_url, active, products(id, name, price_retail, price_wholesale, wholesale_min_qty, image_url)";
 
 // ---------- Helpers de negocio ----------
 
@@ -731,7 +732,7 @@ export async function searchCatalog(
   let builder = ctx.supabase
     .from("products")
     .select(
-      "id, sku, name, description, category, price_retail, price_wholesale, wholesale_min_qty"
+      "id, sku, name, description, category, price_retail, price_wholesale, wholesale_min_qty, image_url"
     )
     .eq("tenant_id", ctx.tenantId)
     .eq("active", true)
@@ -792,6 +793,7 @@ export async function searchCatalog(
     };
     if (p.price_wholesale != null) out.price_wholesale = p.price_wholesale;
     if (p.wholesale_min_qty != null) out.wholesale_min_qty = p.wholesale_min_qty;
+    if (p.image_url) out.image_url = p.image_url;
     return out;
   });
 
@@ -1285,7 +1287,8 @@ async function sendProductMedia(
     return { ok: false, error: `Variante no encontrada: ${sku}` };
   }
 
-  const imageUrl = found.variant.image_url;
+  // The variant photo wins; otherwise the product photo from the catalog editor.
+  const imageUrl = found.variant.image_url || found.product?.image_url || null;
   if (!imageUrl) {
     return { ok: false, error: `No hay imagen disponible para ${sku}` };
   }

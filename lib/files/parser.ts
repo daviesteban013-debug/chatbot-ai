@@ -6,7 +6,8 @@ import { rm } from "node:fs/promises";
 import type { ParsedFile } from "./types";
 
 let active = 0;
-export function parseFile(data: Uint8Array, name: string, signal: AbortSignal): Promise<ParsedFile> {
+/** `maxBytes` defaults to the 3 MB chat limit; the catalog import allows up to 10 MB. */
+export function parseFile(data: Uint8Array, name: string, signal: AbortSignal, options: { maxBytes?: number } = {}): Promise<ParsedFile> {
   if (active >= 2) return Promise.reject(new Error("El lector está ocupado. Inténtalo en unos segundos."));
   if (signal.aborted) return Promise.reject(new Error("La carga fue cancelada."));
   active++;
@@ -14,7 +15,7 @@ export function parseFile(data: Uint8Array, name: string, signal: AbortSignal): 
     let worker: Worker;
     try {
       worker = new Worker(path.join(process.cwd(), "lib/files/parser-worker.cjs"), {
-        workerData: { data, name }, resourceLimits: { maxOldGenerationSizeMb: 256, stackSizeMb: 4 },
+        workerData: { data, name, maxBytes: options.maxBytes }, resourceLimits: { maxOldGenerationSizeMb: 256, stackSizeMb: 4 },
       });
     } catch { active--; reject(new Error("No se pudo iniciar el lector de archivos.")); return; }
     let settled = false, ocrDirectory: string | undefined;

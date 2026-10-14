@@ -6,11 +6,16 @@
 
 export interface LLMMessage {
   role: 'system' | 'user' | 'assistant' | 'tool'
-  content: string | null
+  content: string | LLMContentPart[] | null
   tool_calls?: LLMToolCall[]
   tool_call_id?: string
   name?: string
 }
+
+/** Image input (vision). Only the OpenAI provider accepts it; see supportsVision(). */
+export type LLMContentPart =
+  | { type: 'text'; text: string }
+  | { type: 'image_url'; image_url: { url: string; detail?: 'low' | 'high' | 'auto' } }
 
 export interface LLMToolCall {
   id: string
