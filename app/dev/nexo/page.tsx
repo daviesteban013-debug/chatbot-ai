@@ -5,6 +5,6 @@ import { jarvisDefaults } from "@/lib/jarvis";
 import { personalizationDefaults } from "@/lib/jarvis-personalization";
 export default async function Page({ searchParams }: { searchParams: Promise<{ experience?: string }> }) {
   if (process.env.NODE_ENV !== "development") notFound();
-  if ((await searchParams).experience === "1") return <JarvisView initial={jarvisDefaults} initialProfile={{ ...personalizationDefaults, voice: { ...personalizationDefaults.voice, enabled: false } }} voiceAvailability={{ elevenLabs: false }} justPaid={false} claimError={null} />;
+  if ((await searchParams).experience === "1") return <JarvisView initial={jarvisDefaults} initialProfile={{ ...personalizationDefaults, voice: { ...personalizationDefaults.voice, enabled: false } }} voiceAvailability={{ elevenLabs: false }} />;
   return <NexoDesktopPreview />;
 }

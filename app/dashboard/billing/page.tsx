@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getCurrentTenant } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { mercadoPagoMode } from "@/lib/mercadopago/client";
-import { plans } from "@/lib/plans";
+import { activePlan } from "@/lib/billing/entitlement";
 import { BillingView } from "./billing-view";
 
 export const metadata = { title: "Planes y pagos · Nexo.ai" };
@@ -20,11 +20,10 @@ async function readBilling(tenantId: string) {
   ]);
   if (error || pendingError) throw new Error("Pagos no disponibles.");
   const sameMode = row.billing_mode === mode;
-  const activeUntil = sameMode && row.plan_active_until && Date.parse(row.plan_active_until) > Date.now() ? row.plan_active_until : null;
-  const plan = plans.find(p => p.id === row.plan);
+  const plan = activePlan(row, mode);
   return {
     mode,
-    current: activeUntil && plan ? { planId: plan.id, plan: plan.name, activeUntil, annual: row.plan_period === "annual" } : null,
+    current: plan && row.plan_active_until ? { planId: plan.id, plan: plan.name, activeUntil: row.plan_active_until, annual: row.plan_period === "annual" } : null,
     subscription: sameMode && row.mp_preapproval_status ? { status: row.mp_preapproval_status } : null,
     pendingPayment: Boolean(pending?.length),
   };

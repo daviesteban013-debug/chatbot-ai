@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Bot, Check, CheckCircle2, MessageCircle, Save, Sparkles, TriangleAlert, Wand2 } from "lucide-react";
-import { plans } from "@/lib/plans";
+import { Bot, Check, MessageCircle, Save, Sparkles, Wand2 } from "lucide-react";
 import type { JarvisConfig as Config } from "@/lib/jarvis";
 import { saveJarvisConfig } from "./actions";
 
@@ -26,12 +25,11 @@ const abilities = [
 
 const field = "w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-yellow-300 focus:ring-2 focus:ring-yellow-300/20";
 
-export function JarvisStudio({ initial, plan, justPaid, claimError, onSaved }: { initial: Config; plan?: string; justPaid: boolean; claimError: string | null; onSaved?: (config: Config) => void }) {
+export function JarvisStudio({ initial, onSaved }: { initial: Config; onSaved?: (config: Config) => void }) {
   const [cfg, setCfg] = useState<Config>(initial);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [pending, startSave] = useTransition();
-  const planInfo = plans.find((p) => p.id === plan);
 
   const set = <K extends keyof Config>(k: K, v: Config[K]) => {
     setSaved(false);
@@ -55,19 +53,6 @@ export function JarvisStudio({ initial, plan, justPaid, claimError, onSaved }: {
   return (
     <div className="landing-root cyber-grid-pattern min-h-svh px-4 py-8 sm:px-8">
       <div className="mx-auto max-w-6xl">
-        {justPaid && (
-          <div role="status" className="mb-6 flex items-center gap-3 rounded-2xl border border-yellow-300/40 bg-yellow-300/10 p-4 text-sm text-yellow-100">
-            <CheckCircle2 className="size-5 shrink-0 text-yellow-300" />
-            <span>¡Pago recibido{planInfo ? ` — plan ${planInfo.name} activo` : ""}! Ahora dale personalidad a tu agente.</span>
-          </div>
-        )}
-        {claimError && (
-          <div role="alert" className="mb-6 flex items-center gap-3 rounded-2xl border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-200">
-            <TriangleAlert className="size-5 shrink-0 text-red-300" />
-            <span>No pudimos activar tu plan: {claimError}</span>
-          </div>
-        )}
-
         <header>
           <p className="landing-eyebrow">NEXO · Estudio del agente</p>
           <h1 className="landing-title">Diseña el asistente de tu negocio.</h1>
@@ -146,7 +131,7 @@ export function JarvisStudio({ initial, plan, justPaid, claimError, onSaved }: {
                 <Bubble me>¿Tienen domicilio?</Bubble>
                 <Bubble>{tone.sample}</Bubble>
               </div>
-              <p className="border-t border-white/10 px-5 py-3 text-[11px] text-zinc-500">Vista previa ilustrativa · {cfg.abilities.length} capacidades activas{planInfo ? ` · Plan ${planInfo.name}` : ""}</p>
+              <p className="border-t border-white/10 px-5 py-3 text-[11px] text-zinc-500">Vista previa ilustrativa · {cfg.abilities.length} capacidades activas</p>
             </div>
           </aside>
         </div>

@@ -37,7 +37,6 @@ export default async function HomePage({
       <LandingNavbar />
       <main id="contenido" className="relative z-10">
         <NexoHero />
-        <DesktopDownloadSection />
         <SocialProof />
         <DemoSection />
         <ProblemSolution />
@@ -45,6 +44,7 @@ export default async function HomePage({
         <HowItWorks />
         <Testimonials />
         <Pricing />
+        <DesktopDownloadSection />
         <Faq />
         <FinalCta />
       </main>

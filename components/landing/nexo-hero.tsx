@@ -5,7 +5,6 @@ import dynamic from "next/dynamic";
 import { useState } from "react";
 import { ArrowDown, ArrowRight, AudioLines, Check, MessageCircle, Package, Users } from "lucide-react";
 import styles from "./nexo-hero.module.css";
-import { DesktopDownloadLink } from "@/components/pwa/desktop-download-link";
 
 const LiquidAvatar = dynamic(() => import("@/components/jarvis/liquid-avatar").then(module => module.JarvisLiquidAvatar), {
   ssr: false,
@@ -25,12 +24,10 @@ export function NexoHero() {
     <div className={styles.layout}>
       <div className={styles.copy}>
         <p className={styles.eyebrow}><span /> TU TIENDA ONLINE. TU AGENTE.</p>
-        <h1 id="hero-title">Todo empieza<br />con <span>NEXO.</span></h1>
+        <h1 id="hero-title">Tu tienda vende<br />por WhatsApp <span>24/7.</span></h1>
         <p className={styles.description}>Tu vendedor de IA para ecommerce.<br /><span>Vende por WhatsApp con tu catálogo: responde por tallas y stock, cotiza el envío y deja cada pedido listo para pagar.</span></p>
         <div className={styles.actions}>
-          <Link href="/signup" className="landing-primary">Conoce a NEXO <ArrowRight size={17} /></Link>
-          <DesktopDownloadLink />
-          <DesktopDownloadLink platform="mac" />
+          <Link href="/signup" className="landing-primary">Empieza gratis <ArrowRight size={17} /></Link>
           <a href="#demo" className={styles.secondary}>Explora la demo <ArrowDown size={15} /></a>
         </div>
         <p className={styles.note}><Check size={13} /> Empieza gratis <span>·</span> Sin tarjeta</p>

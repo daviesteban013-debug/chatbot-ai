@@ -39,7 +39,6 @@ interface FullscreenProps {
   voiceAvailability: VoiceAvailability;
   onProfileChange: (profile: JarvisPersonalization) => void;
   plan?: string;
-  justPaid: boolean;
   onSwitchToStudio?: () => void;
 }
 
@@ -50,7 +49,6 @@ export function JarvisFullscreenExperience({
   voiceAvailability,
   onProfileChange,
   plan,
-  justPaid,
   onSwitchToStudio,
 }: FullscreenProps) {
   return (
@@ -62,7 +60,6 @@ export function JarvisFullscreenExperience({
         voiceAvailability={voiceAvailability}
         onProfileChange={onProfileChange}
         plan={plan}
-        justPaid={justPaid}
         onSwitchToStudio={onSwitchToStudio}
       />
     </JarvisAvatarProvider>
@@ -76,7 +73,6 @@ function JarvisFullscreenInner({
   voiceAvailability,
   onProfileChange,
   plan,
-  justPaid,
   onSwitchToStudio,
 }: FullscreenProps) {
   const desktopMode = useDesktopMode();
@@ -160,7 +156,6 @@ function JarvisFullscreenInner({
   const orderProposals = useOrderProposals(sessionId, messages, Boolean(userId));
   useEffect(() => { const sync = () => setFileSession(sessionId); sync(); }, [sessionId]);
 
-  const hasWelcomedRef = useRef(false);
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const powerOn = useCallback(() => {
     clapStopRef.current();
@@ -244,15 +239,6 @@ function JarvisFullscreenInner({
     }
   }, [messages, panel]);
 
-  // Mensaje de bienvenida inicial de Jarvis al cargar tras el pago
-  useEffect(() => {
-    if (isPoweredOn && justPaid && !hasWelcomedRef.current && messages.length === 0) {
-      hasWelcomedRef.current = true;
-      const welcomePrompt = `¡Hola! Acabo de activar mi suscripción a ${plan ? `Plan ${plan}` : "tu plan"}. Actívate e inicia la configuración de mi negocio.`;
-      sendMessage(welcomePrompt);
-    }
-  }, [isPoweredOn, justPaid, messages.length, plan, sendMessage]);
-
   // Alternar micrófono
   const toggleRecording = () => {
     if (microphoneArmed) {
@@ -332,7 +318,6 @@ function JarvisFullscreenInner({
           {userId && <CreditBalancePanel compact />}
           {operator}
           {proposals}
-          {justPaid && <p className={styles.notice}>Tu plan está activo. Enciende a NEXO para comenzar.</p>}
           {navigationNotice && <p role="status" className={styles.notice}>{navigationNotice}</p>}
           {(error || voiceError || microphoneError || claps.error) && <p role="alert" className={styles.error}>{error || voiceError || microphoneError || claps.error}</p>}
           {attachments.error && <p role="alert" className={styles.error}>{attachments.error}</p>}

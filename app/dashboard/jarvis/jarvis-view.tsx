@@ -14,16 +14,12 @@ export function JarvisView({
   userId,
   voiceAvailability,
   plan,
-  justPaid,
-  claimError,
 }: {
   initial: JarvisConfig;
   initialProfile: JarvisPersonalization;
   userId?: string;
   voiceAvailability: VoiceAvailability;
   plan?: string;
-  justPaid: boolean;
-  claimError: string | null;
 }) {
   const [mode, setMode] = useState<"fullscreen" | "studio">("fullscreen");
   const [config, setConfig] = useState(initial);
@@ -38,7 +34,6 @@ export function JarvisView({
         voiceAvailability={voiceAvailability}
         onProfileChange={setProfile}
         plan={plan}
-        justPaid={justPaid}
         onSwitchToStudio={() => setMode("studio")}
       />
     );
@@ -61,9 +56,6 @@ export function JarvisView({
       <JarvisStudio
         initial={config}
         onSaved={setConfig}
-        plan={plan}
-        justPaid={justPaid}
-        claimError={claimError}
       />
     </div>
   );

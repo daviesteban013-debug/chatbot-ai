@@ -27,7 +27,7 @@ export function FinalCta() {
           Empieza gratis <ArrowRight className="size-4" />
         </Link>
         <p className="relative mt-5 flex flex-wrap justify-center gap-x-5 gap-y-2 text-xs font-medium text-zinc-800">
-          {["Sin tarjeta de crédito", "Configuración en 3 minutos", "Soporte dedicado"].map((text) => (
+          {["Sin tarjeta de crédito", "Sin programar", "Cancelas cuando quieras"].map((text) => (
             <span key={text} className="flex items-center gap-1.5">
               <Check className="size-3.5 stroke-[2.5]" />
               {text}

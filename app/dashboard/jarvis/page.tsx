@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { jarvisDefaults, sanitizeJarvisConfig } from "@/lib/jarvis";
 import { JarvisView } from "./jarvis-view";
 import { voiceAvailability } from "@/lib/voice/elevenlabs";
+import { activePlan, type BillingRow } from "@/lib/billing/entitlement";
+import { mercadoPagoMode } from "@/lib/mercadopago/client";
 
 export const metadata = { title: "NEXO · Asistente IA 3D" };
 
@@ -25,12 +27,7 @@ export default async function JarvisPage() {
     ? sanitizeJarvisConfig(row.config)
     : { ...jarvisDefaults, business: tenantContext?.tenant?.name ?? "" };
 
-  // El plan vigente sale de la BD (recién actualizado si el pago se reclamó arriba).
-  let currentPlan: string | null = null;
-  if (!currentPlan && tenantContext) {
-    const { data } = await supabase.from("tenants").select("plan").eq("id", tenantContext.tenantId).maybeSingle();
-    currentPlan = (data as { plan?: string } | null)?.plan ?? null;
-  }
+  const currentPlan = tenantContext ? await planLabel(supabase, tenantContext.tenantId) : undefined;
 
   return (
     <JarvisView
@@ -39,9 +36,16 @@ export default async function JarvisPage() {
       initialProfile={sanitizePersonalization(user?.user_metadata?.jarvis_personalization)}
       userId={user?.id}
       voiceAvailability={voiceAvailability()}
-      plan={currentPlan ?? undefined}
-      justPaid={false}
-      claimError={null}
+      plan={currentPlan}
     />
   );
+}
+
+/** The plan in force (same rule as the credits), not the last one stored on the business. */
+async function planLabel(supabase: SupabaseClient, tenantId: string): Promise<string | undefined> {
+  const { data } = await supabase.from("tenants").select("plan,plan_active_until,billing_mode,mp_preapproval_status").eq("id", tenantId).maybeSingle();
+  if (!data) return undefined;
+  let mode = "test";
+  try { mode = mercadoPagoMode(); } catch { /* Invalid configuration shows the trial label. */ }
+  return activePlan(data as BillingRow, mode)?.name ?? "de prueba";
 }
