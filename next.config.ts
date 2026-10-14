@@ -16,7 +16,7 @@ const PARSER_FILES = [
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ["pdf-parse", "exceljs", "mammoth", "papaparse", "tesseract.js", "sharp", "@tesseract.js-data/spa", "@tesseract.js-data/eng"],
-  outputFileTracingIncludes: { "/api/jarvis/files{,/**}": PARSER_FILES, "/api/catalog/{import,images}": PARSER_FILES },
+  outputFileTracingIncludes: { "/api/jarvis/files{,/**}": PARSER_FILES, "/api/catalog/{import,images}": PARSER_FILES, "/api/jarvis/catalog-proposals": PARSER_FILES },
   // Product photos live in the public Supabase bucket "product-images".
   images: { remotePatterns: [{ protocol: "https", hostname: "*.supabase.co", pathname: "/storage/v1/object/public/product-images/**" }] },
   async headers() {

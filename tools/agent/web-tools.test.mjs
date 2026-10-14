@@ -28,7 +28,7 @@ const run = (name, args = {}, extra = {}) => executeWebToolCall(name, args, cont
 test("web membership enables only CRM reads; guessed WhatsApp writes and missing membership never reach the database", async () => {
   assert.equal(webCrmTools("business-a", null).length, 0);
   assert.equal(webCrmTools(null, "owner").length, 0);
-  assert.equal(webCrmTools("business-a", "viewer").length, 10);
+  assert.equal(webCrmTools("business-a", "viewer").length, 11, "reads only: CRM, catalog and sales results");
   for (const name of ["confirm_order", "create_draft_order", "send_product_media", "escalate_to_human", "unknown"]) assert.equal((await run(name, { order_id: "known-order" })).ok, false);
   assert.equal((await run("get_business_overview", {}, { role: null })).ok, false);
   assert.equal(state.queries.length, 0);

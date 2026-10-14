@@ -90,6 +90,7 @@ const { createAgentExecutor } = await import(await load("../../lib/agent/executo
   "./work-tools": await load("../../lib/agent/work-tools.ts", { zod: import.meta.resolve("zod"), "@/lib/workspace": await load("../../lib/workspace.ts", { zod: import.meta.resolve("zod") }) }),
   "./team": team,
   "./order-actions": moduleUrl("export const createOrderPreparation=()=>globalThis.__agentPreparation();"),
+  "./catalog-actions": moduleUrl("export const createCatalogPreparation=()=>({tools:[],proposals:[],execute:async()=>({ok:false})});"),
   "./navigation": navigation,
   "./operator-activity": activity,
   "@/lib/crm-operator": operator,

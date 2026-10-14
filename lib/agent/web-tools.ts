@@ -21,6 +21,7 @@ const ordersSearch = z.object({
 }).strict().refine(value => !value.since || !value.until || Date.parse(value.since) < Date.parse(value.until), "El inicio debe ser anterior al final.");
 const overviewInput = z.object({ days: z.number().int().min(1).max(90).default(7) }).strict();
 const catalogInput = z.object({ query: z.string().trim().min(1).max(100), category: z.string().min(1).max(100).optional(), max_results: z.number().int().min(1).max(10).default(5) }).strict();
+const salesInput = z.object({ period: z.enum(["today", "yesterday", "7", "30", "90"]) }).strict();
 const stockInput = z.object({ variant_sku: z.string().trim().min(1).max(100), qty: z.number().int().min(1).max(10000).default(1) }).strict();
 
 export const WEB_CRM_TOOLS: LLMTool[] = [
@@ -45,6 +46,13 @@ export const WEB_CRM_TOOLS: LLMTool[] = [
       name: "get_business_overview",
       description: "Cuenta clientes, productos activos, pedidos recientes y pedidos pendientes del negocio. days define una ventana móvil de hasta 90 días; no equivale a días de calendario. Devuelve fechas exactas. No calcula ventas cobradas ni suma importes de una muestra.",
       parameters: { type: "object", properties: { days: { type: "integer", minimum: 1, maximum: 90 } }, additionalProperties: false },
+    },
+  },
+  {
+    type: "function", function: {
+      name: "get_sales_results",
+      description: "Resultados de ventas del negocio en días de calendario de Colombia: today (hoy hasta ahora), yesterday, o los últimos 7, 30 o 90 días, comparados con el periodo anterior de igual duración. Devuelve ventas confirmadas (pedidos confirmados por el cliente, pagados o no), vendido por NEXO, cobrado, recuperado con seguimientos, conversaciones, conversión, casos de atención humana y productos más vendidos. Importes en COP. Úsala para preguntas de ventas, cobros o resultados; no sumes pedidos a mano.",
+      parameters: { type: "object", properties: { period: { type: "string", enum: ["today", "yesterday", "7", "30", "90"] } }, required: ["period"], additionalProperties: false },
     },
   },
 ];
@@ -114,6 +122,14 @@ export async function executeWebToolCall(name: string, args: Record<string, unkn
         .abortSignal(ctx.signal ?? AbortSignal.timeout(10000));
       if (error || count === null) return { ok: false, error: "No se pudieron consultar los pedidos." };
       return { ok: true, data: { orders: data ?? [], total_matches: count, truncated: count > (data?.length ?? 0), currency: "COP" } };
+    }
+    if (name === "get_sales_results") {
+      const parsed = salesInput.safeParse(args);
+      if (!parsed.success) return { ok: false, error: "Indica el periodo: today, yesterday, 7, 30 o 90." };
+      const { data, error } = await ctx.supabase.rpc("nexo_sales_period", { p_tenant: ctx.tenantId, p_period: parsed.data.period })
+        .abortSignal(ctx.signal ?? AbortSignal.timeout(10000));
+      if (error || !data) return { ok: false, error: "No se pudieron consultar los resultados de ventas." };
+      return { ok: true, data: { ...(data as Record<string, unknown>), currency: "COP", sales_definition: "confirmed_orders_paid_or_unpaid" } };
     }
     const parsed = overviewInput.safeParse(args);
     if (!parsed.success) return { ok: false, error: "Indica un periodo entre 1 y 90 días." };

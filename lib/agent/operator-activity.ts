@@ -12,6 +12,7 @@ const labels: Record<string, string> = {
   calculate_sheet_column: "Calcular datos del archivo",
   search_business_memory: "Consultar memoria confirmada", list_crm_tasks: "Consultar tareas",
   propose_business_memory: "Preparar recuerdo para revisión", propose_crm_task: "Preparar tarea para revisión",
+  propose_catalog_change: "Preparar cambio de catálogo", get_sales_results: "Consultar resultados de ventas",
 };
 export function operatorAction(id: string, tool: string, result?: ToolResult): OperatorAction {
   const kind = tool === "open_crm_panel" ? "navigation" : tool.startsWith("prepare_") || tool.startsWith("propose_") ? "proposal" : "read";
@@ -21,6 +22,7 @@ export function operatorAction(id: string, tool: string, result?: ToolResult): O
   return { id, tool, label: labels[tool] ?? "Comprobar solicitud", kind,
     status: !result ? "running" : failed ? "failed" : kind === "proposal" ? "approval_required" : "completed",
     ...(result ? { summary: failed ? "No pude completar este paso. Revisa la respuesta antes de reintentar."
+      : tool === "propose_catalog_change" ? "Cambio preparado. Revisa su tarjeta para confirmarlo o cancelarlo; aún no se aplicó."
       : tool.startsWith("propose_") ? "Propuesta preparada. Abre Memoria y tareas → Por confirmar para revisarla y activarla."
       : kind === "proposal" ? "Propuesta verificada. Revisa su tarjeta para confirmar, cancelar o pasarla a una persona."
       : kind === "navigation" ? "Destino verificado; la pantalla se abrirá al terminar la respuesta."

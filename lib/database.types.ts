@@ -393,6 +393,10 @@ export type Database = {
         };
         Relationships: [];
       };
+      nexo_catalog_proposals: {
+        Row: { id: string; tenant_id: string; user_id: string; session_id: string; request_key: string; status: "pending" | "applied" | "canceled" | "expired"; snapshot: Json; product_id: string | null; created_at: string; expires_at: string; decided_at: string | null };
+        Insert: never; Update: never; Relationships: [];
+      };
       billing_checkouts: {
         Row: BillingCheckout;
         Insert: never;
@@ -1174,6 +1178,10 @@ export type Database = {
       nexo_begin_sales_followup: { Args: { p_id: string; p_lease: string }; Returns: Json };
       nexo_finish_sales_followup: { Args: { p_id: string; p_lease: string; p_status: string; p_reason?: string | null; p_wa_message_id?: string | null; p_body?: string | null }; Returns: Json };
       nexo_consume_sales_worker_ticket: { Args: { p_token: string }; Returns: boolean };
+      nexo_sales_period: { Args: { p_tenant: string; p_period: string }; Returns: Json };
+      nexo_daily_briefing: { Args: { p_tenant: string; p_user: string }; Returns: Json };
+      nexo_prepare_catalog_change: { Args: { p_tenant: string; p_user: string; p_session: string; p_change: Json }; Returns: Json };
+      nexo_decide_catalog_change: { Args: { p_id: string; p_user: string; p_decision: string; p_image_url?: string | null }; Returns: Json };
       nexo_sales_metrics: { Args: { p_tenant: string; p_user: string; p_days: number }; Returns: Json };
       nexo_provision_tenant: { Args: { p_user: string; p_name: string; p_slug: string }; Returns: string };
       nexo_review_pending_order: { Args: { p_tenant: string; p_user: string; p_order: string; p_approve: boolean }; Returns: Json };

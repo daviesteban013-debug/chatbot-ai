@@ -43,6 +43,7 @@ const { createAgentExecutor } = await import(await load("../../lib/agent/executo
   "@/lib/files/tools": files,
   "./team": team,
   "./order-actions": url("export const createOrderPreparation=()=>({tools:[],proposals:[],execute:async()=>({ok:false})});"),
+  "./catalog-actions": url("export const createCatalogPreparation=()=>({tools:[],proposals:[],execute:async()=>({ok:false})});"),
   "./navigation": url("export const crmNavigationTools=()=>[]; export const executeCrmNavigation=()=>{throw new Error('Business navigation should not run')};"),
   "./operator-activity": await load("../../lib/agent/operator-activity.ts", { "@/lib/crm-operator": operator }),
   "@/lib/crm-operator": operator,
