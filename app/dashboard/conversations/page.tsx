@@ -3,9 +3,11 @@ import { redirect } from "next/navigation";
 import { MessageSquare } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentTenant } from "@/lib/auth";
+import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { Panel } from "@/components/dashboard/panel";
 import {
   conversationStatusLabel,
   conversationStatusVariant,
@@ -44,37 +46,40 @@ export default async function ConversationsPage() {
   });
 
   return (
-    <div className="mx-auto max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+    <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
       <PageHeader
         title="Conversaciones"
         description="Chats de tus clientes ordenados por actividad reciente."
       />
 
       {rows.length > 0 ? (
-        <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm shadow-slate-200/40">
-          <ul className="divide-y divide-slate-100">
+        <Panel className="overflow-hidden">
+          <div className="hidden items-center gap-3 border-b border-line px-4 py-2 text-xs font-medium text-muted sm:flex sm:px-5">
+            <span className="flex-1 pl-11">Cliente y último mensaje</span>
+            <span className="w-28 shrink-0">Estado</span>
+            <span className="w-28 shrink-0 text-right">Actividad</span>
+          </div>
+          <ul className="divide-y divide-line">
             {rows.map(({ conversation, customer, last }) => (
               <li key={conversation.id}>
                 <Link
                   href={`/dashboard/conversations/${conversation.id}`}
-                  className="flex items-center gap-4 px-5 py-4 transition hover:bg-slate-50"
+                  className="flex items-center gap-3 px-4 py-2.5 transition hover:bg-subtle/60 sm:px-5"
                 >
-                  <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-slate-950 text-sm font-semibold text-white">
-                    {(customer?.name ?? customer?.phone ?? "?")
-                      .replace(/\s/g, "")
-                      .slice(0, 2)
-                      .toUpperCase()}
-                  </span>
+                  <Avatar
+                    name={customer?.name ?? customer?.phone ?? "?"}
+                    className="size-8 text-xs"
+                  />
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="truncate text-sm font-semibold text-slate-900">
+                    <div className="flex items-baseline gap-2">
+                      <p className="truncate text-[13px] font-medium text-ink">
                         {customer?.name ?? "Cliente sin nombre"}
                       </p>
-                      <span className="truncate text-xs text-slate-400">
+                      <span className="hidden truncate text-[11px] tabular-nums text-muted sm:inline">
                         {customer?.phone}
                       </span>
                     </div>
-                    <p className="mt-0.5 truncate text-sm text-slate-500">
+                    <p className="mt-0.5 truncate text-[13px] text-muted">
                       {last?.body?.trim()
                         ? last.body
                         : last
@@ -82,7 +87,7 @@ export default async function ConversationsPage() {
                           : "Sin mensajes todavía"}
                     </p>
                   </div>
-                  <div className="hidden shrink-0 flex-col items-end gap-1.5 sm:flex">
+                  <span className="hidden w-28 shrink-0 sm:block">
                     <Badge
                       variant={
                         conversationStatusVariant[
@@ -94,15 +99,15 @@ export default async function ConversationsPage() {
                         conversation.status as ConversationStatus
                       ]}
                     </Badge>
-                    <span className="text-[11px] text-slate-400">
-                      {timeAgo(conversation.last_message_at)}
-                    </span>
-                  </div>
+                  </span>
+                  <span className="shrink-0 whitespace-nowrap text-right text-[11px] text-muted sm:w-28">
+                    {timeAgo(conversation.last_message_at)}
+                  </span>
                 </Link>
               </li>
             ))}
           </ul>
-        </div>
+        </Panel>
       ) : (
         <EmptyState
           icon={MessageSquare}

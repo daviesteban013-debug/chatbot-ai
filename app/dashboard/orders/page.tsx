@@ -6,6 +6,7 @@ import { getCurrentTenant } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { Panel } from "@/components/dashboard/panel";
 import {
   Table,
   TableBody,
@@ -60,7 +61,7 @@ export default async function OrdersPage({
   const rows = orders ?? [];
 
   return (
-    <div className="mx-auto max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+    <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
       <PageHeader
         title="Pedidos"
         description={
@@ -72,7 +73,7 @@ export default async function OrdersPage({
           customerFilter ? (
             <Link
               href="/dashboard/orders"
-              className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
+              className="inline-flex h-8 items-center rounded-md border border-line bg-surface px-3 text-[13px] font-medium text-ink transition-colors hover:bg-subtle"
             >
               Ver todos
             </Link>
@@ -81,31 +82,31 @@ export default async function OrdersPage({
       />
 
       {rows.length > 0 ? (
-        <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm shadow-slate-200/40">
-          <Table>
+        <Panel className="overflow-hidden">
+          <Table className="text-[13px]">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="pl-5">Cliente</TableHead>
+                <TableHead className="pl-4 sm:pl-5">Cliente</TableHead>
                 <TableHead>Estado</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead className="text-right">Total</TableHead>
-                <TableHead>Pago</TableHead>
-                <TableHead className="pr-5">Creado</TableHead>
+                <TableHead className="hidden sm:table-cell">Tipo</TableHead>
+                <TableHead className="hidden md:table-cell">Pago</TableHead>
+                <TableHead className="hidden sm:table-cell">Creado</TableHead>
+                <TableHead className="pr-4 text-right sm:pr-5">Total</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {rows.map((order) => {
                 const customer = singleJoin(order.customers as CustomerShape);
                 return (
-                  <TableRow key={order.id} className="group">
-                    <TableCell className="pl-5">
+                  <TableRow key={order.id}>
+                    <TableCell className="max-w-[16rem] pl-4 sm:pl-5">
                       <Link
                         href={`/dashboard/orders/${order.id}`}
-                        className="font-medium text-slate-900 transition group-hover:text-blue-700"
+                        className="block truncate font-medium text-ink hover:underline"
                       >
                         {customer?.name ?? customer?.phone ?? "Cliente"}
                       </Link>
-                      <span className="block text-xs text-slate-400">
+                      <span className="block text-[11px] text-muted tabular-nums">
                         {customer?.phone}
                       </span>
                     </TableCell>
@@ -114,26 +115,26 @@ export default async function OrdersPage({
                         {orderStatusLabel[order.status as OrderStatus]}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-slate-600">
+                    <TableCell className="hidden sm:table-cell">
                       {orderTypeLabel[order.order_type as OrderType]}
                     </TableCell>
-                    <TableCell className="text-right font-semibold text-slate-900">
-                      {formatCOP(order.total)}
-                    </TableCell>
-                    <TableCell className="text-slate-600">
+                    <TableCell className="hidden md:table-cell">
                       {order.payment_method
                         ? paymentMethodLabel[order.payment_method as PaymentMethod]
-                        : "—"}
+                        : <span className="text-muted">—</span>}
                     </TableCell>
-                    <TableCell className="pr-5 text-slate-500">
+                    <TableCell className="hidden whitespace-nowrap text-muted tabular-nums sm:table-cell">
                       {formatDateTime(order.created_at)}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap pr-4 text-right font-medium text-ink tabular-nums sm:pr-5">
+                      {formatCOP(order.total)}
                     </TableCell>
                   </TableRow>
                 );
               })}
             </TableBody>
           </Table>
-        </div>
+        </Panel>
       ) : (
         <EmptyState
           icon={ShoppingBag}

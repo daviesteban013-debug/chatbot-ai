@@ -14,7 +14,7 @@ export function DashboardShell({ children, tenantName, fallback }: {
   if (pathname === "/dashboard/jarvis" || pathname.startsWith("/dashboard/jarvis/")) return <>{children}</>;
   if (fallback) return <>{fallback}</>;
   return (
-    <div className="min-h-svh bg-slate-50 text-slate-950 lg:flex">
+    <div className="min-h-svh bg-canvas text-ink lg:flex">
       <DashboardSidebar tenantName={tenantName} />
       <main className="min-w-0 flex-1"><DesktopUpdates />{children}</main>
     </div>

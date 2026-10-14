@@ -1,9 +1,7 @@
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 
-/**
- * Estado vacío reutilizable: ícono suave, mensaje amistoso y acción opcional.
- */
+/** Estado vacío: qué falta y qué hacer, sin adornos. */
 export function EmptyState({
   icon: Icon,
   title,
@@ -18,19 +16,11 @@ export function EmptyState({
   className?: string;
 }) {
   return (
-    <div
-      className={`flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-14 text-center ${className ?? ""}`}
-    >
-      <span className="mb-4 flex size-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
-        <Icon className="size-6" />
-      </span>
-      <p className="text-sm font-semibold text-slate-800">{title}</p>
-      {description ? (
-        <p className="mt-1 max-w-sm text-sm leading-6 text-slate-500">
-          {description}
-        </p>
-      ) : null}
-      {action ? <div className="mt-5">{action}</div> : null}
+    <div className={`flex flex-col items-center justify-center rounded-lg border border-dashed border-line-strong bg-surface px-6 py-12 text-center ${className ?? ""}`}>
+      <Icon className="mb-3 size-5 text-muted" strokeWidth={1.75} aria-hidden="true" />
+      <p className="text-sm font-medium text-ink">{title}</p>
+      {description ? <p className="mt-1 max-w-sm text-sm leading-6 text-muted">{description}</p> : null}
+      {action ? <div className="mt-4">{action}</div> : null}
     </div>
   );
 }

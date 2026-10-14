@@ -5,17 +5,17 @@ import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
   CheckCircle2,
-  Clock,
   Lock,
   MessageSquare,
   Phone,
   Send,
   UserPlus,
-  UserCheck,
 } from "lucide-react";
+import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Panel, PanelHeader } from "@/components/dashboard/panel";
 import {
   handoffPriorityLabel,
   handoffPriorityVariant,
@@ -77,6 +77,9 @@ const reasonVariant: Record<HandoffReason, BadgeVariant> = {
   pedido_alto_valor: "warning",
   otro: "neutral",
 };
+
+/** Fila etiqueta/valor del panel de detalle. */
+const detailRow = "flex items-center justify-between gap-4 px-4 py-2.5 sm:px-5";
 
 export function HandoffClient(props: Props) {
   const {
@@ -178,26 +181,21 @@ export function HandoffClient(props: Props) {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
+    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
       {/* Panel de conversación */}
-      <section className="flex min-h-[70vh] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm shadow-slate-200/40">
-        <header className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
-          <div className="min-w-0">
-            <h1 className="truncate text-base font-semibold text-slate-950">
-              {customerName}
-            </h1>
-            <p className="flex items-center gap-1 truncate text-xs text-slate-500">
-              <Phone className="size-3" /> {customerPhone}
-            </p>
-          </div>
-          <Badge variant={handoffStatusVariant[status]}>
-            {handoffStatusLabel[status]}
-          </Badge>
-        </header>
+      <Panel className="flex h-[75vh] min-h-[32rem] flex-col overflow-hidden">
+        <PanelHeader
+          title="Conversación"
+          actions={
+            <span className="text-xs tabular-nums text-muted">
+              {messages.length} {messages.length === 1 ? "mensaje" : "mensajes"}
+            </span>
+          }
+        />
 
         <div
           ref={scrollRef}
-          className="flex-1 space-y-3 overflow-y-auto bg-slate-50/60 p-5"
+          className="flex-1 space-y-2 overflow-y-auto bg-subtle/50 p-4 sm:p-5"
         >
           {messages.length > 0 ? (
             messages.map((message) => (
@@ -206,39 +204,39 @@ export function HandoffClient(props: Props) {
           ) : (
             <div className="flex h-full items-center justify-center">
               <div className="text-center">
-                <MessageSquare className="mx-auto mb-2 size-6 text-slate-300" />
-                <p className="text-sm text-slate-400">Sin mensajes registrados</p>
+                <MessageSquare className="mx-auto mb-2 size-5 text-muted" strokeWidth={1.75} />
+                <p className="text-[13px] text-muted">Sin mensajes registrados</p>
               </div>
             </div>
           )}
         </div>
 
         {error ? (
-          <div className="flex items-center gap-2 border-t border-rose-100 bg-rose-50 px-5 py-2.5 text-xs text-rose-700">
+          <div className="flex items-center gap-2 border-t border-rose-200 bg-rose-50 px-4 py-2.5 text-xs text-rose-800 sm:px-5">
             <AlertTriangle className="size-3.5 shrink-0" />
             {error}
           </div>
         ) : null}
 
         {/* Zona de acciones / entrada de mensaje */}
-        <footer className="border-t border-slate-100 bg-white px-5 py-4">
-          {!props.canOperate ? <p className="text-sm text-slate-500">Acceso de solo lectura. Puedes consultar la conversación; responder y gestionar el handoff requiere un rol operativo.</p> : status === "open" ? (
+        <footer className="border-t border-line bg-surface px-4 py-3 sm:px-5">
+          {!props.canOperate ? <p className="flex items-center gap-2 text-[13px] text-muted"><Lock className="size-3.5 shrink-0" />Acceso de solo lectura. Puedes consultar la conversación; responder y gestionar el handoff requiere un rol operativo.</p> : status === "open" ? (
             <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm text-slate-500">
+              <p className="text-[13px] text-muted">
                 Este handoff está abierto. Tómalo para responder al cliente.
               </p>
               <Button
                 type="button"
+                size="sm"
                 onClick={handleTake}
                 disabled={isPending}
-                className="bg-blue-600 text-white hover:bg-blue-700 focus-visible:ring-blue-600"
               >
                 <UserPlus className="size-4" />
                 {isPending ? "Tomando…" : "Tomar handoff"}
               </Button>
             </div>
           ) : status === "taken" && isMine ? (
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               <div className="flex items-end gap-2">
                 <Textarea
                   value={draft}
@@ -246,14 +244,14 @@ export function HandoffClient(props: Props) {
                   onKeyDown={handleKeyDown}
                   rows={2}
                   placeholder="Escribe tu respuesta al cliente…"
-                  className="flex-1 resize-none"
+                  className="flex-1 resize-none text-[13px]"
                   disabled={isPending}
                 />
                 <Button
                   type="button"
                   onClick={handleSend}
                   disabled={isPending || !draft.trim()}
-                  className="shrink-0 bg-slate-950 text-white hover:bg-slate-800"
+                  className="shrink-0"
                 >
                   <Send className="size-4" />
                   Enviar
@@ -261,7 +259,7 @@ export function HandoffClient(props: Props) {
               </div>
 
               {confirmingResolve ? (
-                <div className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5">
+                <div className="flex flex-wrap items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
                   <span className="text-xs font-medium text-amber-800">
                     ¿Resolver este handoff y devolverlo al agente?
                   </span>
@@ -280,7 +278,6 @@ export function HandoffClient(props: Props) {
                       size="sm"
                       onClick={handleResolve}
                       disabled={isPending}
-                      className="bg-emerald-600 text-white hover:bg-emerald-700 focus-visible:ring-emerald-600"
                     >
                       <CheckCircle2 className="size-4" />
                       Sí, resolver
@@ -288,146 +285,124 @@ export function HandoffClient(props: Props) {
                   </div>
                 </div>
               ) : (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setConfirmingResolve(true)}
-                  disabled={isPending}
-                  className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
-                >
-                  <CheckCircle2 className="size-4" />
-                  Resolver y liberar
-                </Button>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-[11px] text-muted">Enter envía · Shift+Enter agrega una línea</p>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setConfirmingResolve(true)}
+                    disabled={isPending}
+                  >
+                    <CheckCircle2 className="size-4 text-emerald-600" />
+                    Resolver y liberar
+                  </Button>
+                </div>
               )}
             </div>
           ) : status === "taken" ? (
-            <div className="flex items-center gap-2 text-sm text-slate-500">
-              <Lock className="size-4 shrink-0 text-slate-400" />
+            <div className="flex items-center gap-2 text-[13px] text-muted">
+              <Lock className="size-3.5 shrink-0" />
               Tomado por{" "}
-              <span className="font-medium text-slate-800">
+              <span className="font-medium text-ink">
                 {takenByName ?? "otro operador"}
               </span>
             </div>
           ) : (
-            <div className="flex items-center gap-2 text-sm text-slate-500">
-              <CheckCircle2 className="size-4 shrink-0 text-emerald-500" />
+            <div className="flex items-center gap-2 text-[13px] text-muted">
+              <CheckCircle2 className="size-3.5 shrink-0 text-emerald-600" />
               Handoff resuelto. La conversación volvió al agente.
             </div>
           )}
         </footer>
-      </section>
+      </Panel>
 
       {/* Panel de información del handoff */}
-      <aside className="space-y-4">
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/40">
-          <h2 className="mb-4 text-sm font-semibold text-slate-900">
-            Detalle del handoff
-          </h2>
+      <aside className="space-y-5">
+        <Panel>
+          <PanelHeader title="Detalle del handoff" />
 
-          <dl className="space-y-4 text-sm">
-            <div>
-              <dt className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                Motivo
-              </dt>
-              <dd className="mt-1">
+          <dl className="divide-y divide-line text-[13px]">
+            <div className="px-4 py-3 sm:px-5">
+              <dt className="text-xs text-muted">Resumen del agente</dt>
+              <dd className="mt-1 leading-6 text-ink-soft">{summary}</dd>
+            </div>
+
+            <div className={detailRow}>
+              <dt className="text-muted">Motivo</dt>
+              <dd>
                 <Badge variant={reasonVariant[reason]}>
                   {handoffReasonLabel[reason]}
                 </Badge>
               </dd>
             </div>
 
-            <div>
-              <dt className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                Resumen del agente
-              </dt>
-              <dd className="mt-1 leading-6 text-slate-700">{summary}</dd>
-            </div>
-
-            <div>
-              <dt className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                Prioridad
-              </dt>
-              <dd className="mt-1">
+            <div className={detailRow}>
+              <dt className="text-muted">Prioridad</dt>
+              <dd>
                 <Badge variant={handoffPriorityVariant[priority]}>
                   {handoffPriorityLabel[priority]}
                 </Badge>
               </dd>
             </div>
 
-            <div>
-              <dt className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                Estado
-              </dt>
-              <dd className="mt-1">
+            <div className={detailRow}>
+              <dt className="text-muted">Estado</dt>
+              <dd>
                 <Badge variant={handoffStatusVariant[status]}>
                   {handoffStatusLabel[status]}
                 </Badge>
               </dd>
             </div>
 
-            <div className="flex items-start gap-2 border-t border-slate-100 pt-4">
-              <Clock className="mt-0.5 size-4 shrink-0 text-slate-400" />
-              <div>
-                <dt className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                  Creado
-                </dt>
-                <dd className="mt-0.5 text-slate-700">
-                  {formatDateTime(createdAt)}
-                  <span className="ml-1 text-slate-400">· {timeAgo(createdAt)}</span>
-                </dd>
-              </div>
+            <div className={cn(detailRow, "items-start")}>
+              <dt className="text-muted">Creado</dt>
+              <dd className="text-right">
+                <span className="block font-medium text-ink">{formatDateTime(createdAt)}</span>
+                <span className="block text-[11px] text-muted">{timeAgo(createdAt)}</span>
+              </dd>
             </div>
 
             {resolvedAt ? (
-              <div className="flex items-start gap-2">
-                <UserCheck className="mt-0.5 size-4 shrink-0 text-emerald-500" />
-                <div>
-                  <dt className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                    Resuelto
-                  </dt>
-                  <dd className="mt-0.5 text-slate-700">
-                    {formatDateTime(resolvedAt)}
-                  </dd>
-                </div>
+              <div className={detailRow}>
+                <dt className="text-muted">Resuelto</dt>
+                <dd className="text-right font-medium text-ink">
+                  {formatDateTime(resolvedAt)}
+                </dd>
               </div>
             ) : null}
 
             {status === "taken" ? (
-              <div className="flex items-start gap-2">
-                <UserCheck className="mt-0.5 size-4 shrink-0 text-slate-400" />
-                <div>
-                  <dt className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                    Tomado por
-                  </dt>
-                  <dd className="mt-0.5 text-slate-700">
-                    {isMine ? "Tú" : (takenByName ?? "otro operador")}
-                  </dd>
-                </div>
+              <div className={detailRow}>
+                <dt className="text-muted">Tomado por</dt>
+                <dd className="min-w-0 truncate text-right font-medium text-ink">
+                  {isMine ? "Tú" : (takenByName ?? "otro operador")}
+                </dd>
               </div>
             ) : null}
           </dl>
-        </div>
+        </Panel>
 
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/40">
-          <h2 className="mb-3 text-sm font-semibold text-slate-900">Cliente</h2>
-          <div className="flex items-center gap-3">
-            <span className="flex size-11 items-center justify-center rounded-xl bg-slate-950 text-sm font-semibold text-white">
-              {customerName.replace(/\s/g, "").slice(0, 2).toUpperCase()}
-            </span>
+        <Panel>
+          <PanelHeader title="Cliente" />
+          <div className="flex items-center gap-3 px-4 py-3 sm:px-5">
+            <Avatar name={customerName} />
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-slate-900">
+              <p className="truncate text-[13px] font-medium text-ink">
                 {customerName}
               </p>
-              <p className="flex items-center gap-1 truncate text-xs text-slate-500">
+              <p className="flex items-center gap-1 truncate text-xs tabular-nums text-muted">
                 <Phone className="size-3" /> {customerPhone}
               </p>
             </div>
           </div>
           {customerCity ? (
-            <p className="mt-3 text-xs text-slate-500">Ciudad: {customerCity}</p>
+            <div className={cn(detailRow, "border-t border-line text-[13px]")}>
+              <span className="text-muted">Ciudad</span>
+              <span className="font-medium text-ink">{customerCity}</span>
+            </div>
           ) : null}
-        </div>
+        </Panel>
       </aside>
     </div>
   );
@@ -440,26 +415,26 @@ function MessageBubble({ message }: { message: ThreadMessage }) {
     <div className={cn("flex", outbound ? "justify-end" : "justify-start")}>
       <div
         className={cn(
-          "max-w-[75%] rounded-2xl px-4 py-2.5 text-sm shadow-sm",
+          "max-w-[75%] rounded-lg px-3 py-2 text-[13px]",
           outbound
-            ? "rounded-br-sm bg-slate-950 text-white"
-            : "rounded-bl-sm border border-slate-200 bg-white text-slate-800"
+            ? "bg-ink text-white"
+            : "border border-line bg-surface text-ink"
         )}
       >
         {message.type !== "text" && message.media_url ? (
           <p
             className={cn(
               "mb-1 text-[11px] uppercase tracking-wide",
-              outbound ? "text-slate-400" : "text-slate-400"
+              outbound ? "text-white/60" : "text-muted"
             )}
           >
             {message.type}
           </p>
         ) : null}
         {message.body?.trim() ? (
-          <p className="whitespace-pre-wrap leading-6">{message.body}</p>
+          <p className="whitespace-pre-wrap leading-relaxed">{message.body}</p>
         ) : message.transcript ? (
-          <p className="whitespace-pre-wrap leading-6 italic opacity-90">
+          <p className="whitespace-pre-wrap leading-relaxed italic opacity-90">
             {message.transcript}
           </p>
         ) : message.media_url ? null : (
@@ -467,8 +442,8 @@ function MessageBubble({ message }: { message: ThreadMessage }) {
         )}
         <p
           className={cn(
-            "mt-1 text-[10px]",
-            outbound ? "text-slate-400" : "text-slate-400"
+            "mt-1 text-[10px] tabular-nums",
+            outbound ? "text-white/60" : "text-muted"
           )}
         >
           {outbound ? (message.sender === "human" ? "Humano · " : "Agente · ") : ""}

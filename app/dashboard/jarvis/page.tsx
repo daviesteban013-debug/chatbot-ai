@@ -8,7 +8,7 @@ import { voiceAvailability } from "@/lib/voice/elevenlabs";
 import { activePlan, type BillingRow } from "@/lib/billing/entitlement";
 import { mercadoPagoMode } from "@/lib/mercadopago/client";
 
-export const metadata = { title: "NEXO · Asistente IA 3D" };
+export const metadata = { title: "NEXO" };
 
 export default async function JarvisPage() {
   const tenantContext = await getCurrentTenant();

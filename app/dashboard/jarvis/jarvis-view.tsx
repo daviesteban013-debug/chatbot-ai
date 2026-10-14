@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles } from "lucide-react";
+import { NexoMark } from "@/components/brand/nexo-mark";
 import type { JarvisConfig } from "@/lib/jarvis";
 import type { JarvisPersonalization } from "@/lib/jarvis-personalization";
 import type { VoiceAvailability } from "@/lib/jarvis-voice";
@@ -41,15 +41,15 @@ export function JarvisView({
 
   return (
     <div>
-      {/* Botón flotante para volver a la experiencia 3D inmersiva con voz */}
+      {/* Volver a la pantalla de NEXO con voz */}
       <div className="fixed bottom-6 right-6 z-50">
         <button
           type="button"
           onClick={() => setMode("fullscreen")}
-          className="flex items-center gap-2 rounded-2xl border border-yellow-400/40 bg-zinc-950/90 px-5 py-3 text-xs font-bold text-yellow-300 shadow-[0_0_30px_rgba(250,204,21,0.25)] backdrop-blur-xl transition hover:scale-105 hover:bg-yellow-400 hover:text-zinc-950"
+          className="flex items-center gap-2 rounded-md border border-white/15 bg-zinc-900 px-3.5 py-2 text-[13px] font-medium text-zinc-100 transition hover:bg-zinc-800"
         >
-          <Sparkles className="size-4 animate-pulse" />
-          <span>Abrir NEXO 3D con Voz (Pantalla Completa)</span>
+          <NexoMark className="size-5" />
+          <span>Volver a NEXO</span>
         </button>
       </div>
 

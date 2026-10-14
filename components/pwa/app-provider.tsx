@@ -126,8 +126,9 @@ export function AppInstallOptions({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-export function InstallJarvisButton({ className = "", compact = false }: { className?: string; compact?: boolean }) {
+export function InstallJarvisButton({ className = "", compact = false, tone = "dark" }: { className?: string; compact?: boolean; tone?: "dark" | "light" }) {
   const { ready, installed, pending, install } = useContext(AppInstallContext);
   if (!ready || installed) return null;
-  return <button data-pwa-install type="button" disabled={pending} onClick={install} title="Instalar la app web de NEXO" className={`inline-flex items-center justify-center gap-2 rounded-xl border border-yellow-300/25 bg-yellow-300/10 px-3 py-2 text-xs font-medium text-yellow-200 transition hover:bg-yellow-300/20 disabled:opacity-50 ${className}`}><Download className="size-4" /><span className={compact ? "sr-only sm:not-sr-only" : ""}>{pending ? "Abriendo…" : "Instalar app web"}</span></button>;
+  const look = tone === "light" ? "rounded-md px-2.5 py-1.5 text-ink-soft hover:bg-subtle hover:text-ink justify-start" : "rounded-xl border border-yellow-300/25 bg-yellow-300/10 px-3 py-2 text-yellow-200 hover:bg-yellow-300/20 justify-center";
+  return <button data-pwa-install type="button" disabled={pending} onClick={install} title="Instalar la app web de NEXO" className={`inline-flex items-center gap-2 text-xs font-medium transition disabled:opacity-50 ${look} ${className}`}><Download className="size-4" /><span className={compact ? "sr-only sm:not-sr-only" : ""}>{pending ? "Abriendo…" : "Instalar app web"}</span></button>;
 }

@@ -6,6 +6,8 @@ import { getCurrentTenant, getCurrentUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { signOut } from "./actions";
 
+export const metadata = { title: "NEXO" };
+
 export default async function DashboardLayout({
   children,
 }: {
@@ -37,20 +39,18 @@ export default async function DashboardLayout({
  */
 function NoTenantScreen({ email }: { email: string }) {
   return (
-    <div className="flex min-h-svh items-center justify-center bg-slate-50 px-4">
-      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-        <span className="mx-auto mb-4 flex size-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 ring-1 ring-amber-100">
-          <LifeBuoy className="size-6" />
-        </span>
-        <h1 className="text-xl font-semibold tracking-tight text-slate-950">
+    <div className="flex min-h-svh items-center justify-center bg-canvas px-4">
+      <div className="w-full max-w-md rounded-lg border border-line bg-surface p-8 text-center">
+        <LifeBuoy className="mx-auto mb-4 size-6 text-muted" strokeWidth={1.75} />
+        <h1 className="text-xl font-semibold tracking-tight text-ink">
           Todavía no tienes un negocio configurado
         </h1>
-        <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-500">
+        <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-muted">
           Tu cuenta
           {email ? (
             <>
               {" "}
-              <span className="font-medium text-slate-700">{email}</span>
+              <span className="font-medium text-ink-soft">{email}</span>
             </>
           ) : null}{" "}
           existe, pero no está asociada a ningún tenant. Cierra sesión e intenta
@@ -60,7 +60,7 @@ function NoTenantScreen({ email }: { email: string }) {
           <Button
             type="submit"
             size="lg"
-            className="w-full bg-slate-950 text-white hover:bg-slate-800"
+            className="w-full"
           >
             Cerrar sesión
           </Button>

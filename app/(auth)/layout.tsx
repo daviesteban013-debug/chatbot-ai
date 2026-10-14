@@ -23,6 +23,6 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
       </section>
       <section className={styles.card} aria-label="Acceso a tu cuenta">{children}</section>
     </main>
-    <footer className={styles.footer}>Nexo.ai · Tu negocio, acompañado.</footer>
+    <footer className={styles.footer}>NEXO · Tu negocio, acompañado.</footer>
   </div>;
 }

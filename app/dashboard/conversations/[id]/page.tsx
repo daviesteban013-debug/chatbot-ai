@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, MessageSquare, Phone, User } from "lucide-react";
+import { MessageSquare, Phone } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentTenant } from "@/lib/auth";
+import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/dashboard/empty-state";
+import { PageHeader } from "@/components/dashboard/page-header";
+import { Panel, PanelHeader } from "@/components/dashboard/panel";
 import {
   conversationStatusLabel,
   conversationStatusVariant,
@@ -58,37 +61,41 @@ export default async function ConversationDetailPage({
   const customer = singleJoin(conversation.customers as CustomerShape);
   const thread = messages ?? [];
 
+  const statusBadge = (
+    <Badge
+      variant={
+        conversationStatusVariant[
+          conversation.status as ConversationStatus
+        ]
+      }
+    >
+      {conversationStatusLabel[conversation.status as ConversationStatus]}
+    </Badge>
+  );
+
   return (
-    <div className="mx-auto max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-      <Link
-        href="/dashboard/conversations"
-        className="mb-4 inline-flex items-center gap-1 text-xs font-medium text-slate-500 transition hover:text-slate-900"
-      >
-        <ArrowLeft className="size-3.5" /> Conversaciones
-      </Link>
+    <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+      <PageHeader
+        title={customer?.name ?? "Cliente sin nombre"}
+        description={customer?.phone}
+        backHref="/dashboard/conversations"
+        backLabel="Conversaciones"
+        actions={statusBadge}
+      />
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
         {/* Thread */}
-        <section className="flex min-h-[60vh] flex-col rounded-2xl border border-slate-200/80 bg-white shadow-sm shadow-slate-200/40">
-          <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
-            <div className="min-w-0">
-              <h1 className="truncate text-base font-semibold text-slate-950">
-                {customer?.name ?? "Cliente sin nombre"}
-              </h1>
-              <p className="truncate text-xs text-slate-500">{customer?.phone}</p>
-            </div>
-            <Badge
-              variant={
-                conversationStatusVariant[
-                  conversation.status as ConversationStatus
-                ]
-              }
-            >
-              {conversationStatusLabel[conversation.status as ConversationStatus]}
-            </Badge>
-          </div>
+        <Panel className="flex min-h-[60vh] flex-col overflow-hidden">
+          <PanelHeader
+            title="Mensajes"
+            actions={
+              <span className="text-xs tabular-nums text-muted">
+                {thread.length} {thread.length === 1 ? "mensaje" : "mensajes"}
+              </span>
+            }
+          />
 
-          <div className="flex-1 space-y-3 overflow-y-auto bg-slate-50/60 p-5">
+          <div className="flex-1 space-y-2 overflow-y-auto bg-subtle/50 p-4 sm:p-5">
             {thread.length > 0 ? (
               thread.map((message) => {
                 const outbound =
@@ -101,28 +108,28 @@ export default async function ConversationDetailPage({
                   >
                     <div
                       className={cn(
-                        "max-w-[75%] rounded-2xl px-4 py-2.5 text-sm shadow-sm",
+                        "max-w-[75%] rounded-lg px-3 py-2 text-[13px]",
                         outbound
-                          ? "rounded-br-sm bg-slate-950 text-white"
-                          : "rounded-bl-sm border border-slate-200 bg-white text-slate-800"
+                          ? "bg-ink text-white"
+                          : "border border-line bg-surface text-ink"
                       )}
                     >
                       {message.type !== "text" && message.media_url ? (
                         <p
                           className={cn(
                             "mb-1 text-[11px] uppercase tracking-wide",
-                            outbound ? "text-slate-400" : "text-slate-400"
+                            outbound ? "text-white/60" : "text-muted"
                           )}
                         >
                           {message.type}
                         </p>
                       ) : null}
                       {message.body?.trim() ? (
-                        <p className="whitespace-pre-wrap leading-6">
+                        <p className="whitespace-pre-wrap leading-relaxed">
                           {message.body}
                         </p>
                       ) : message.transcript ? (
-                        <p className="whitespace-pre-wrap leading-6 italic opacity-90">
+                        <p className="whitespace-pre-wrap leading-relaxed italic opacity-90">
                           {message.transcript}
                         </p>
                       ) : message.media_url ? null : (
@@ -130,8 +137,8 @@ export default async function ConversationDetailPage({
                       )}
                       <p
                         className={cn(
-                          "mt-1 text-[10px]",
-                          outbound ? "text-slate-400" : "text-slate-400"
+                          "mt-1 text-[10px] tabular-nums",
+                          outbound ? "text-white/60" : "text-muted"
                         )}
                       >
                         {outbound ? (sender === "human" ? "Humano · " : "Agente · ") : ""}
@@ -149,65 +156,49 @@ export default async function ConversationDetailPage({
               />
             )}
           </div>
-        </section>
+        </Panel>
 
         {/* Customer info */}
-        <aside className="space-y-4">
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/40">
-            <h2 className="mb-4 text-sm font-semibold text-slate-900">Cliente</h2>
-            <div className="flex items-center gap-3">
-              <span className="flex size-12 items-center justify-center rounded-xl bg-slate-950 text-sm font-semibold text-white">
-                {(customer?.name ?? customer?.phone ?? "?")
-                  .replace(/\s/g, "")
-                  .slice(0, 2)
-                  .toUpperCase()}
-              </span>
+        <aside className="space-y-5">
+          <Panel>
+            <PanelHeader title="Cliente" />
+            <div className="flex items-center gap-3 px-4 py-3 sm:px-5">
+              <Avatar name={customer?.name ?? customer?.phone ?? "?"} />
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-slate-900">
+                <p className="truncate text-[13px] font-medium text-ink">
                   {customer?.name ?? "Cliente sin nombre"}
                 </p>
-                <p className="flex items-center gap-1 truncate text-xs text-slate-500">
+                <p className="flex items-center gap-1 truncate text-xs tabular-nums text-muted">
                   <Phone className="size-3" /> {customer?.phone ?? "—"}
                 </p>
               </div>
             </div>
-            <dl className="mt-5 space-y-3 border-t border-slate-100 pt-4 text-sm">
-              <div className="flex items-center gap-2 text-slate-600">
-                <User className="size-4 text-slate-400" />
-                <dt className="text-slate-500">Ciudad:</dt>
-                <dd className="ml-auto font-medium text-slate-800">
+            <dl className="divide-y divide-line border-t border-line text-[13px]">
+              <div className="flex items-center justify-between gap-4 px-4 py-2.5 sm:px-5">
+                <dt className="text-muted">Ciudad</dt>
+                <dd className="text-right font-medium text-ink">
                   {customer?.city ?? "—"}
                 </dd>
               </div>
-              <div className="flex items-center gap-2">
-                <dt className="text-slate-500">Estado:</dt>
-                <dd className="ml-auto">
-                  <Badge
-                    variant={
-                      conversationStatusVariant[
-                        conversation.status as ConversationStatus
-                      ]
-                    }
-                  >
-                    {conversationStatusLabel[
-                      conversation.status as ConversationStatus
-                    ]}
-                  </Badge>
-                </dd>
+              <div className="flex items-center justify-between gap-4 px-4 py-2.5 sm:px-5">
+                <dt className="text-muted">Estado</dt>
+                <dd>{statusBadge}</dd>
               </div>
             </dl>
             {customer?.id ? (
-              <Link
-                href={`/dashboard/orders?customer=${customer.id}`}
-                className="mt-5 block w-full rounded-lg border border-slate-200 px-3 py-2 text-center text-xs font-medium text-slate-700 transition hover:bg-slate-50"
-              >
-                Ver pedidos del cliente
-              </Link>
+              <div className="border-t border-line px-4 py-3 sm:px-5">
+                <Link
+                  href={`/dashboard/orders?customer=${customer.id}`}
+                  className="block w-full rounded-md border border-line px-3 py-1.5 text-center text-xs font-medium text-ink-soft transition hover:bg-subtle hover:text-ink"
+                >
+                  Ver pedidos del cliente
+                </Link>
+              </div>
             ) : null}
-          </div>
+          </Panel>
         </aside>
       </div>
-      <div className="mt-6">
+      <div className="mt-5">
         <SalesActivity tenantId={tenantId} role={tenantContext.role} conversationId={id} />
       </div>
     </div>

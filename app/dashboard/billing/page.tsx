@@ -5,7 +5,7 @@ import { mercadoPagoMode } from "@/lib/mercadopago/client";
 import { activePlan } from "@/lib/billing/entitlement";
 import { BillingView } from "./billing-view";
 
-export const metadata = { title: "Planes y pagos · Nexo.ai" };
+export const metadata = { title: "Planes y pagos · NEXO" };
 const ID = /^[\w-]{1,64}$/;
 const id = (value: unknown) => typeof value === "string" && ID.test(value) ? value : undefined;
 

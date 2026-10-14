@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { CatalogManager } from "@/components/catalog/catalog-manager";
 import type { CatalogProduct } from "@/lib/catalog/types";
 
-export const metadata = { title: "Catálogo · Nexo.ai" };
+export const metadata = { title: "Catálogo · NEXO" };
 
 export default async function CatalogPage() {
   const tenantContext = await getCurrentTenant();
@@ -25,7 +25,7 @@ export default async function CatalogPage() {
   })) as CatalogProduct[];
 
   return (
-    <div className="mx-auto max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+    <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
       <PageHeader title="Catálogo" description="Los productos, fotos, precios y stock que NEXO ofrece a tus clientes por WhatsApp." />
       <CatalogManager products={rows} canEdit={tenantContext.role !== "viewer"} />
     </div>

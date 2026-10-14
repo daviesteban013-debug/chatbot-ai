@@ -1,10 +1,16 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentTenant, getCurrentUser } from "@/lib/auth";
-import { singleJoin } from "@/lib/labels";
+import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/dashboard/page-header";
+import { Panel, PanelHeader, PanelLink, StatusDot } from "@/components/dashboard/panel";
+import {
+  handoffReasonLabel,
+  handoffStatusLabel,
+  handoffStatusVariant,
+  singleJoin,
+} from "@/lib/labels";
 import { HandoffClient, type ThreadMessage } from "./handoff-client";
 import type { HandoffStatus } from "@/lib/database.types";
 import { workDate } from "@/lib/workspace";
@@ -78,21 +84,36 @@ export default async function HandoffDetailPage({
   }));
 
   return (
-    <div className="mx-auto max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-      <Link
-        href="/dashboard/handoffs"
-        className="mb-4 inline-flex items-center gap-1 text-xs font-medium text-slate-500 transition hover:text-slate-900"
-      >
-        <ArrowLeft className="size-3.5" /> Handoffs
-      </Link>
+    <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+      <PageHeader
+        title={customer?.name ?? "Cliente sin nombre"}
+        description={`${handoffReasonLabel[handoff.reason]} · ${customer?.phone ?? "—"}`}
+        backHref="/dashboard/handoffs"
+        backLabel="Handoffs"
+        actions={
+          <Badge variant={handoffStatusVariant[status]}>
+            {handoffStatusLabel[status]}
+          </Badge>
+        }
+      />
 
-      <section className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 p-5" aria-label="Memoria y tareas del cliente">
-        <div className="flex items-center justify-between gap-3"><h2 className="font-semibold text-slate-900">Contexto para continuar la atención</h2><Link className="text-xs font-medium text-amber-800 underline" href="/dashboard/workspace">Memoria y tareas</Link></div>
-        {context.error ? <p role="alert" className="mt-2 text-sm text-rose-700">No pude cargar los recuerdos y tareas del cliente.</p>
-          : !context.data?.length ? <p className="mt-2 text-sm text-slate-600">Este cliente todavía no tiene recuerdos o tareas confirmados.</p>
-          : <ul className="mt-3 grid gap-3 sm:grid-cols-2">{context.data.slice(0, 10).map(item => <li key={item.id} className="rounded-xl bg-white/80 p-3"><p className="text-xs text-amber-800">{item.kind === "memory" ? "Recuerdo confirmado" : "Tarea pendiente"}</p><h3 className="mt-1 text-sm font-semibold">{item.title}</h3><p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-600">{item.body}</p><p className="mt-2 text-xs text-slate-500">{item.due_at ? `Vence ${workDate(item.due_at, item.timezone)} · ${item.timezone}` : `Actualizado ${workDate(item.updated_at, "America/Bogota")}`}</p></li>)}</ul>}
-        {(context.data?.length ?? 0) > 10 && <p className="mt-3 text-xs text-slate-500">Mostrando 10 registros recientes. Consulta el resto en Memoria y tareas.</p>}
-      </section>
+      <Panel className="mb-5" aria-label="Memoria y tareas del cliente">
+        <PanelHeader
+          title="Contexto para continuar la atención"
+          actions={<PanelLink href="/dashboard/workspace">Memoria y tareas</PanelLink>}
+        />
+        {context.error ? <p role="alert" className="px-4 py-3 text-[13px] text-rose-700 sm:px-5">No pude cargar los recuerdos y tareas del cliente.</p>
+          : !context.data?.length ? <p className="px-4 py-3 text-[13px] text-muted sm:px-5">Este cliente todavía no tiene recuerdos o tareas confirmados.</p>
+          : <ul className="grid gap-2 p-4 sm:grid-cols-2 sm:p-5">{context.data.slice(0, 10).map(item => (
+            <li key={item.id} className="rounded-md border border-line p-3">
+              <StatusDot tone={item.kind === "memory" ? "neutral" : "warn"}>{item.kind === "memory" ? "Recuerdo confirmado" : "Tarea pendiente"}</StatusDot>
+              <h3 className="mt-1.5 text-[13px] font-medium text-ink">{item.title}</h3>
+              <p className="mt-0.5 whitespace-pre-wrap break-words text-[13px] leading-5 text-ink-soft">{item.body}</p>
+              <p className="mt-2 text-[11px] text-muted">{item.due_at ? `Vence ${workDate(item.due_at, item.timezone)} · ${item.timezone}` : `Actualizado ${workDate(item.updated_at, "America/Bogota")}`}</p>
+            </li>
+          ))}</ul>}
+        {(context.data?.length ?? 0) > 10 && <p className="border-t border-line px-4 py-2.5 text-xs text-muted sm:px-5">Mostrando 10 registros recientes. Consulta el resto en Memoria y tareas.</p>}
+      </Panel>
       <HandoffClient
         canOperate={!user.is_anonymous && ["owner", "agent"].includes(tenantContext.role)}
         handoffId={handoff.id}

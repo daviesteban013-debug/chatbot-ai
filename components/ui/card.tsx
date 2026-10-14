@@ -7,7 +7,7 @@ export function Card({ className, ...props }: DivProps) {
   return (
     <div
       className={cn(
-        "bg-white rounded-xl shadow-sm border border-slate-200",
+        "bg-surface rounded-lg border border-line",
         className
       )}
       {...props}
@@ -28,7 +28,7 @@ export function CardTitle({ className, ...props }: DivProps) {
   return (
     <h3
       className={cn(
-        "text-slate-900 font-semibold text-base sm:text-lg leading-tight",
+        "text-ink font-semibold text-[15px] leading-tight",
         className
       )}
       {...props}
@@ -38,7 +38,7 @@ export function CardTitle({ className, ...props }: DivProps) {
 
 export function CardDescription({ className, ...props }: DivProps) {
   return (
-    <p className={cn("text-slate-500 text-sm", className)} {...props} />
+    <p className={cn("text-muted text-sm", className)} {...props} />
   );
 }
 
@@ -55,7 +55,7 @@ export function CardFooter({ className, ...props }: DivProps) {
   return (
     <div
       className={cn(
-        "flex items-center p-5 sm:p-6 pt-0 border-t border-slate-100",
+        "flex items-center p-5 sm:p-6 pt-0 border-t border-line",
         className
       )}
       {...props}

@@ -10,17 +10,17 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClasses: Record<Variant, string> = {
-  default: "bg-slate-900 text-white hover:bg-slate-800",
+  default: "bg-ink text-white hover:bg-ink-soft",
   secondary:
-    "bg-white border border-slate-200 text-slate-900 hover:bg-slate-50",
-  ghost: "hover:bg-slate-100 text-slate-700",
+    "bg-surface border border-line text-ink hover:bg-subtle",
+  ghost: "hover:bg-subtle text-ink-soft",
   danger: "bg-rose-600 text-white hover:bg-rose-700",
 };
 
 const sizeClasses: Record<Size, string> = {
-  sm: "h-8 px-3 text-sm",
-  md: "h-10 px-4 text-sm",
-  lg: "h-11 px-5 text-base",
+  sm: "h-8 px-3 text-[13px]",
+  md: "h-9 px-3.5 text-sm",
+  lg: "h-10 px-4 text-sm",
 };
 
 export function Button({
@@ -34,9 +34,9 @@ export function Button({
     <button
       type={type}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-lg font-medium",
+        "inline-flex items-center justify-center gap-2 rounded-md font-medium",
         "transition-colors duration-150",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2",
         "disabled:opacity-50 disabled:pointer-events-none",
         variantClasses[variant],
         sizeClasses[size],

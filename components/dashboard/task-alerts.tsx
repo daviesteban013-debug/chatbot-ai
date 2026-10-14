@@ -23,6 +23,6 @@ export function TaskAlerts({ onOpen }: { onOpen?: () => void }) {
   }, []);
   if (!count) return null;
   const content = <><CalendarClock size={15}/><span>{count} {count === 1 ? "tarea vencida" : "tareas vencidas"}</span></>;
-  const style = "inline-flex items-center gap-2 rounded-xl border border-amber-300/40 bg-amber-100 px-3 py-2 text-xs font-semibold text-amber-900";
+  const style = "inline-flex items-center gap-2 rounded-md border border-amber-300/60 bg-amber-50 px-2.5 py-1.5 text-xs font-medium text-amber-900";
   return onOpen ? <button type="button" className={style} onClick={onOpen}>{content}</button> : <Link href="/dashboard/workspace" className={style}>{content}</Link>;
 }

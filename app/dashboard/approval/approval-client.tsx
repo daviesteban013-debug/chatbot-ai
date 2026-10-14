@@ -10,8 +10,6 @@ import {
   MessageSquare,
   Pencil,
   Send,
-  ShoppingBag,
-  Sparkles,
   X,
   XCircle,
 } from "lucide-react";
@@ -19,8 +17,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/dashboard/empty-state";
+import { Panel, PanelHeader, Segmented } from "@/components/dashboard/panel";
 import { formatCOP, formatDateTime, timeAgo } from "@/lib/utils";
-import { paymentMethodLabel, orderTypeLabel } from "@/lib/labels";
+import { agentModeLabel, paymentMethodLabel, orderTypeLabel } from "@/lib/labels";
 import {
   approveReply,
   editAndApproveReply,
@@ -84,23 +83,18 @@ export function ApprovalClient({
 
   return (
     <div>
-      {!canOperate && <p className="mb-4 text-sm text-slate-500">Acceso de solo lectura. Un dueño o agente puede aprobar, editar y rechazar.</p>}
       {/* Tab bar */}
-      <div className="mb-6 flex items-center gap-1 border-b border-slate-200">
-        <TabButton
-          active={activeTab === "replies"}
-          onClick={() => setActiveTab("replies")}
-          icon={Sparkles}
-          label="Respuestas propuestas"
-          count={proposedRuns.length}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <Segmented
+          label="Tipo de aprobación"
+          value={activeTab}
+          onChange={(value) => setActiveTab(value as TabId)}
+          options={[
+            { value: "replies", label: "Respuestas propuestas", count: proposedRuns.length },
+            { value: "orders", label: "Pedidos pendientes", count: pendingOrders.length },
+          ]}
         />
-        <TabButton
-          active={activeTab === "orders"}
-          onClick={() => setActiveTab("orders")}
-          icon={ShoppingBag}
-          label="Pedidos pendientes"
-          count={pendingOrders.length}
-        />
+        {!canOperate && <p className="text-xs text-muted">Acceso de solo lectura. Un dueño o agente puede aprobar, editar y rechazar.</p>}
       </div>
 
       {/* Tab content */}
@@ -110,43 +104,6 @@ export function ApprovalClient({
         <OrdersList orders={pendingOrders} router={router} canOperate={canOperate} />
       )}
     </div>
-  );
-}
-
-// ---------- Tab button ----------
-
-function TabButton({
-  active,
-  onClick,
-  icon: Icon,
-  label,
-  count,
-}: {
-  active: boolean;
-  onClick: () => void;
-  icon: typeof Sparkles;
-  label: string;
-  count: number;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`relative -mb-px flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors rounded-t-lg
-        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/10
-        ${active ? "text-slate-900" : "text-slate-500 hover:text-slate-700"}`}
-    >
-      <Icon className="size-4" />
-      {label}
-      <Badge variant={count > 0 ? "warning" : "neutral"} className="ml-0.5 text-[11px]">
-        {count}
-      </Badge>
-      <span
-        className={`absolute left-0 right-0 -bottom-px h-0.5 rounded-full transition-opacity ${
-          active ? "bg-slate-900 opacity-100" : "opacity-0"
-        }`}
-      />
-    </button>
   );
 }
 
@@ -164,9 +121,9 @@ function RepliesList({
   if (runs.length === 0) {
     return (
       <EmptyState
-        icon={Sparkles}
+        icon={MessageSquare}
         title="Sin respuestas propuestas"
-        description="El agente no tiene propuestas esperando aprobación. Las respuestas aparecerán aquí cuando el modo copiloto genere sugerencias."
+        description="No hay respuestas esperando aprobación. Aparecen aquí cuando el agente trabaja en modo copiloto."
       />
     );
   }
@@ -237,34 +194,27 @@ function ReplyCard({
   }
 
   return (
-    <article className="rounded-2xl border border-slate-200/80 bg-white shadow-sm shadow-slate-200/40 overflow-hidden">
+    <Panel as="article" className="overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between gap-3 px-5 py-3 border-b border-slate-100 bg-slate-50/50">
-        <div className="flex items-center gap-3 min-w-0">
-          <MessageSquare className="size-4 text-slate-400 shrink-0" />
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-slate-900 truncate">
-              {run.customer_name ?? run.customer_phone}
-            </p>
-            <p className="text-xs text-slate-500">{run.customer_phone}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Badge variant="info" className="text-[11px]">
-            {run.mode}
-          </Badge>
-          <span className="text-[11px] text-slate-400">{timeAgo(run.created_at)}</span>
-        </div>
-      </div>
+      <PanelHeader
+        title={run.customer_name ?? run.customer_phone}
+        description={<span className="tabular-nums">{run.customer_phone}</span>}
+        actions={
+          <>
+            <Badge variant="neutral">{modeName(run.mode)}</Badge>
+            <span className="whitespace-nowrap text-[11px] text-muted">{timeAgo(run.created_at)}</span>
+          </>
+        }
+      />
 
-      <div className="px-5 py-4 space-y-4">
+      <div className="space-y-3 px-4 py-3 sm:px-5">
         {/* Trigger message */}
         {run.trigger_message_body ? (
-          <div className="rounded-xl bg-blue-50 border border-blue-100 px-4 py-3">
-            <p className="text-[11px] font-semibold text-blue-600 uppercase tracking-wide mb-1">
+          <div className="border-l-2 border-line-strong pl-3">
+            <p className="mb-0.5 text-[11px] font-medium text-muted">
               Mensaje del cliente
             </p>
-            <p className="text-sm text-blue-900 leading-relaxed whitespace-pre-wrap">
+            <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-ink-soft">
               {run.trigger_message_body}
             </p>
           </div>
@@ -272,21 +222,20 @@ function ReplyCard({
 
         {/* Proposed reply or edit textarea */}
         {isEditing ? (
-          <div className="space-y-3">
+          <div className="space-y-2">
             <Textarea
               value={editedText}
               onChange={(e) => setEditedText(e.target.value)}
               rows={5}
-              className="text-sm"
+              className="text-[13px] leading-relaxed"
               placeholder="Escribe la respuesta editada..."
               disabled={!canOperate || isPending}
             />
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 size="sm"
                 onClick={handleEditAndApprove}
                 disabled={!canOperate || isPending || !editedText.trim()}
-                className="bg-emerald-600 text-white hover:bg-emerald-700"
               >
                 <Send className="size-3.5" />
                 {isPending ? "Enviando..." : "Enviar editado"}
@@ -306,11 +255,11 @@ function ReplyCard({
             </div>
           </div>
         ) : (
-          <div className="rounded-xl bg-slate-50 border border-slate-200/60 px-4 py-3">
-            <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">
+          <div className="rounded-md border border-line bg-subtle px-3 py-2.5">
+            <p className="mb-0.5 text-[11px] font-medium text-muted">
               Respuesta propuesta
             </p>
-            <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-wrap">
+            <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-ink">
               {run.proposed_reply?.trim() || "(respuesta vacía)"}
             </p>
           </div>
@@ -322,89 +271,80 @@ function ReplyCard({
             <button
               type="button"
               onClick={() => setShowTools(!showTools)}
-              className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-700 transition-colors"
+              aria-expanded={showTools}
+              className="flex items-center gap-1 text-xs font-medium text-muted transition-colors hover:text-ink"
             >
               {showTools ? (
                 <ChevronDown className="size-3.5" />
               ) : (
                 <ChevronRight className="size-3.5" />
               )}
-              Tools ejecutadas ({toolCalls.length})
+              Herramientas usadas <span className="tabular-nums">({toolCalls.length})</span>
             </button>
             {showTools ? (
-              <div className="mt-2 space-y-2">
+              <ul className="mt-2 divide-y divide-line rounded-md border border-line text-xs">
                 {toolCalls.map((tc, idx) => (
-                  <div
-                    key={idx}
-                    className="rounded-lg bg-slate-50 border border-slate-100 px-3 py-2 text-xs"
-                  >
-                    <p className="font-semibold text-slate-700">{tc.name}</p>
+                  <li key={idx} className="px-3 py-2">
+                    <p className="font-mono font-medium text-ink-soft">{tc.name}</p>
                     {tc.args ? (
-                      <p className="mt-0.5 text-slate-500 break-all">
-                        Args: {typeof tc.args === "string" ? tc.args : JSON.stringify(tc.args, null, 0)}
+                      <p className="mt-0.5 break-all font-mono text-[11px] text-muted">
+                        Argumentos: {typeof tc.args === "string" ? tc.args : JSON.stringify(tc.args, null, 0)}
                       </p>
                     ) : null}
                     {tc.result ? (
-                      <p className="mt-0.5 text-slate-500 break-all">
-                        Result: {typeof tc.result === "string" ? tc.result : JSON.stringify(tc.result, null, 0)}
+                      <p className="mt-0.5 break-all font-mono text-[11px] text-muted">
+                        Resultado: {typeof tc.result === "string" ? tc.result : JSON.stringify(tc.result, null, 0)}
                       </p>
                     ) : null}
-                  </div>
+                  </li>
                 ))}
-              </div>
+              </ul>
             ) : null}
           </div>
         ) : null}
 
         {/* Error */}
-        {error ? (
-          <div className="flex items-start gap-2 rounded-lg bg-rose-50 border border-rose-200 px-3 py-2">
-            <XCircle className="size-4 text-rose-500 mt-0.5 shrink-0" />
-            <p className="text-xs text-rose-700">{error}</p>
-          </div>
-        ) : null}
-
-        {/* Action buttons */}
-        {!isEditing ? (
-          <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
-            <Button
-              size="sm"
-              onClick={handleApprove}
-              disabled={!canOperate || isPending}
-              className="bg-emerald-600 text-white hover:bg-emerald-700"
-            >
-              <CheckCircle className="size-3.5" />
-              {isPending ? "Procesando..." : "Aprobar"}
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => setIsEditing(true)}
-              disabled={!canOperate || isPending}
-              className="border-amber-200 text-amber-700 hover:bg-amber-50"
-            >
-              <Pencil className="size-3.5" />
-              Editar
-            </Button>
-            <Button
-              size="sm"
-              variant="danger"
-              onClick={handleReject}
-              disabled={!canOperate || isPending}
-            >
-              <XCircle className="size-3.5" />
-              Rechazar
-            </Button>
-            <Link
-              href={`/dashboard/conversations/${run.conversation_id}`}
-              className="ml-auto text-xs font-medium text-slate-500 hover:text-slate-900 transition-colors"
-            >
-              Ver conversación →
-            </Link>
-          </div>
-        ) : null}
+        {error ? <ErrorNote message={error} /> : null}
       </div>
-    </article>
+
+      {/* Action buttons */}
+      {!isEditing ? (
+        <div className="flex flex-wrap items-center gap-2 border-t border-line px-4 py-3 sm:px-5">
+          <Button
+            size="sm"
+            onClick={handleApprove}
+            disabled={!canOperate || isPending}
+          >
+            <CheckCircle className="size-3.5" />
+            {isPending ? "Procesando..." : "Aprobar"}
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => setIsEditing(true)}
+            disabled={!canOperate || isPending}
+          >
+            <Pencil className="size-3.5" />
+            Editar
+          </Button>
+          <Button
+            size="sm"
+            variant="danger"
+            onClick={handleReject}
+            disabled={!canOperate || isPending}
+          >
+            <XCircle className="size-3.5" />
+            Rechazar
+          </Button>
+          <Link
+            href={`/dashboard/conversations/${run.conversation_id}`}
+            className="ml-auto text-xs font-medium text-muted transition-colors hover:text-ink"
+          >
+            Ver conversación
+          </Link>
+        </div>
+      ) : null}
+    </Panel>
   );
 }
 
@@ -478,74 +418,71 @@ function OrderCard({
     });
   }
 
+  const hasDetails = Boolean(order.payment_method || order.shipping_city || order.shipping_address);
+
   return (
-    <article className="rounded-2xl border border-slate-200/80 bg-white shadow-sm shadow-slate-200/40 overflow-hidden">
+    <Panel as="article" className="overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between gap-3 px-5 py-3 border-b border-slate-100 bg-slate-50/50">
-        <div className="flex items-center gap-3 min-w-0">
-          <ShoppingBag className="size-4 text-slate-400 shrink-0" />
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-slate-900 truncate">
-              {order.customer_name ?? order.customer_phone}
-            </p>
-            <p className="text-xs text-slate-500">
-              {orderTypeLabel[order.order_type]} · {formatDateTime(order.created_at)}
-            </p>
-          </div>
-        </div>
-        <div className="text-right shrink-0">
-          <p className="text-base font-bold text-slate-900">{formatCOP(order.total)}</p>
-          <Badge variant="warning" className="text-[11px] mt-0.5">
-            Pendiente de aprobación
-          </Badge>
-        </div>
+      <PanelHeader
+        title={order.customer_name ?? order.customer_phone}
+        description={
+          <>
+            {orderTypeLabel[order.order_type]} · <span className="tabular-nums">{formatDateTime(order.created_at)}</span>
+          </>
+        }
+        actions={
+          <>
+            <Badge variant="warning">Pendiente de aprobación</Badge>
+            <span className="text-sm font-semibold text-ink tabular-nums">{formatCOP(order.total)}</span>
+          </>
+        }
+      />
+
+      {/* Items table */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-[13px]">
+          <thead>
+            <tr className="text-left text-xs text-muted">
+              <th className="px-4 py-2 font-medium sm:px-5">Producto</th>
+              <th className="px-3 py-2 text-right font-medium">Cant.</th>
+              <th className="hidden px-3 py-2 text-right font-medium sm:table-cell">P. unit.</th>
+              <th className="px-4 py-2 text-right font-medium sm:px-5">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line border-t border-line">
+            {order.items.map((item, idx) => (
+              <tr key={idx}>
+                <td className="px-4 py-2 text-ink sm:px-5">{item.name_snapshot}</td>
+                <td className="whitespace-nowrap px-3 py-2 text-right text-ink-soft tabular-nums">{item.qty}</td>
+                <td className="hidden whitespace-nowrap px-3 py-2 text-right text-muted tabular-nums sm:table-cell">{formatCOP(item.unit_price)}</td>
+                <td className="whitespace-nowrap px-4 py-2 text-right font-medium text-ink tabular-nums sm:px-5">
+                  {formatCOP(item.unit_price * item.qty)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
-      <div className="px-5 py-4 space-y-4">
-        {/* Items table */}
-        <div className="rounded-lg border border-slate-200 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-xs text-slate-500 uppercase tracking-wide">
-              <tr>
-                <th className="text-left px-3 py-2 font-semibold">Producto</th>
-                <th className="text-center px-3 py-2 font-semibold">Cant.</th>
-                <th className="text-right px-3 py-2 font-semibold">P. unit.</th>
-                <th className="text-right px-3 py-2 font-semibold">Subtotal</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {order.items.map((item, idx) => (
-                <tr key={idx} className="text-slate-700">
-                  <td className="px-3 py-2">{item.name_snapshot}</td>
-                  <td className="px-3 py-2 text-center">{item.qty}</td>
-                  <td className="px-3 py-2 text-right">{formatCOP(item.unit_price)}</td>
-                  <td className="px-3 py-2 text-right font-medium">
-                    {formatCOP(item.unit_price * item.qty)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Shipping & payment info */}
-        <div className="grid gap-3 sm:grid-cols-2 text-sm">
+      {/* Shipping & payment info */}
+      {hasDetails ? (
+        <div className="grid gap-3 border-t border-line px-4 py-3 text-[13px] sm:grid-cols-2 sm:px-5">
           {order.payment_method ? (
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-0.5">
+              <p className="mb-0.5 text-[11px] font-medium text-muted">
                 Método de pago
               </p>
-              <p className="text-slate-800">
+              <p className="text-ink">
                 {paymentMethodLabel[order.payment_method]}
               </p>
             </div>
           ) : null}
           {(order.shipping_city || order.shipping_address) ? (
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-0.5">
+              <p className="mb-0.5 text-[11px] font-medium text-muted">
                 Envío
               </p>
-              <p className="text-slate-800">
+              <p className="text-ink">
                 {[order.recipient_name, order.shipping_address, order.shipping_city, order.shipping_department]
                   .filter(Boolean)
                   .join(", ")}
@@ -553,22 +490,17 @@ function OrderCard({
             </div>
           ) : null}
         </div>
+      ) : null}
 
-        {/* Error */}
-        {error ? (
-          <div className="flex items-start gap-2 rounded-lg bg-rose-50 border border-rose-200 px-3 py-2">
-            <XCircle className="size-4 text-rose-500 mt-0.5 shrink-0" />
-            <p className="text-xs text-rose-700">{error}</p>
-          </div>
-        ) : null}
+      {/* Error + action buttons */}
+      <div className="space-y-3 border-t border-line px-4 py-3 sm:px-5">
+        {error ? <ErrorNote message={error} /> : null}
 
-        {/* Action buttons */}
-        <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             size="sm"
             onClick={handleApprove}
             disabled={!canOperate || isPending}
-            className="bg-emerald-600 text-white hover:bg-emerald-700"
           >
             <CheckCircle className="size-3.5" />
             {isPending ? "Procesando..." : "Aprobar pedido"}
@@ -607,17 +539,32 @@ function OrderCard({
 
           <Link
             href={`/dashboard/orders/${order.id}`}
-            className="ml-auto text-xs font-medium text-slate-500 hover:text-slate-900 transition-colors"
+            className="ml-auto text-xs font-medium text-muted transition-colors hover:text-ink"
           >
-            Ver detalle →
+            Ver detalle
           </Link>
         </div>
       </div>
-    </article>
+    </Panel>
   );
 }
 
 // ---------- Helpers ----------
+
+/** Short Spanish name of the agent mode ("Copiloto" instead of "copilot"). */
+function modeName(mode: string) {
+  const label = agentModeLabel[mode];
+  return label ? label.split(" (")[0] : mode;
+}
+
+function ErrorNote({ message }: { message: string }) {
+  return (
+    <div className="flex items-start gap-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2">
+      <XCircle className="mt-0.5 size-3.5 shrink-0 text-rose-600" />
+      <p className="text-xs text-rose-800">{message}</p>
+    </div>
+  );
+}
 
 type ParsedToolCall = {
   name: string;

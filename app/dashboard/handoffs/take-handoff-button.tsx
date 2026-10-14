@@ -22,11 +22,12 @@ export function TakeHandoffButton({ handoffId }: { handoffId: string }) {
     <Button
       type="button"
       size="sm"
+      variant="secondary"
       onClick={handleTake}
       disabled={isPending}
-      className="bg-blue-600 text-white hover:bg-blue-700 focus-visible:ring-blue-600"
+      className="h-7 gap-1.5 px-2.5 text-xs"
     >
-      <UserPlus className="size-4" />
+      <UserPlus className="size-3.5" />
       {isPending ? "Tomando…" : "Tomar"}
     </Button>
   );

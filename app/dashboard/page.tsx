@@ -1,21 +1,17 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import {
-  ArrowUpRight,
-  CheckCircle,
-  MessageSquare,
-  ShoppingBag,
-  Sparkles,
-  UserPlus,
-} from "lucide-react";
+import { MessageSquare, ShoppingBag } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentTenant, getCurrentUser } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { CreditBalancePanel } from "@/components/dashboard/credit-balance";
 import { SalesResults } from "@/components/dashboard/sales-results";
+import { Panel, PanelHeader, PanelLink, Stat, StatGrid, StatusDot } from "@/components/dashboard/panel";
+import { HomeActivity } from "@/components/dashboard/home-activity";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { metricPeriod, type SalesMetrics } from "@/lib/sales-metrics";
+import { buildBriefing, type BriefingData } from "@/lib/briefing";
 import {
   orderStatusLabel,
   orderStatusVariant,
@@ -25,6 +21,18 @@ import {
 } from "@/lib/labels";
 import { formatCOP, timeAgo } from "@/lib/utils";
 import type { ConversationStatus, OrderStatus } from "@/lib/database.types";
+
+/** Greeting and date in Colombia time, independent of the server's timezone. */
+function today() {
+  const now = new Date();
+  const hour = Number(new Intl.DateTimeFormat("en-US", { timeZone: "America/Bogota", hour: "numeric", hourCycle: "h23" }).format(now));
+  return {
+    greeting: hour < 12 ? "Buenos días" : hour < 19 ? "Buenas tardes" : "Buenas noches",
+    date: now.toLocaleDateString("es-CO", { timeZone: "America/Bogota", weekday: "long", day: "numeric", month: "long" }),
+  };
+}
+
+const TONE = { good: "good", warning: "warn", info: "neutral" } as const;
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const period = metricPeriod((await searchParams).periodo);
@@ -36,6 +44,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   if (!tenantContext) redirect("/login");
 
   const supabase = await createClient();
+  const admin = createAdminClient();
   const tenantId = tenantContext.tenantId;
 
   // Métricas reales del tenant (RLS + filtro explícito por tenant_id).
@@ -46,6 +55,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     { count: pendingApproval },
     { data: recentOrders },
     { data: recentConversations },
+    { data: results },
+    { data: briefingData },
   ] = await Promise.all([
     supabase
       .from("orders")
@@ -73,217 +84,146 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       )
       .eq("tenant_id", tenantId)
       .order("created_at", { ascending: false })
-      .limit(5),
+      .limit(6),
     supabase
       .from("conversations")
       .select("id, status, last_message_at, customers(id, name, phone)")
       .eq("tenant_id", tenantId)
       .order("last_message_at", { ascending: false })
       .limit(5),
+    // Results and the daily briefing are computed in the database for any member (viewers included).
+    admin.rpc("nexo_sales_metrics", { p_tenant: tenantId, p_user: user.id, p_days: period }),
+    admin.rpc("nexo_daily_briefing", { p_tenant: tenantId, p_user: user.id }),
   ]);
 
-  // Results are computed in the database for any member (viewers included).
-  const { data: results } = await createAdminClient().rpc("nexo_sales_metrics", { p_tenant: tenantId, p_user: user.id, p_days: period });
-
   const tenantName = tenantContext.tenant?.name ?? "tu negocio";
-
-  const metrics = [
-    {
-      label: "Pedidos totales",
-      value: totalOrders ?? 0,
-      icon: ShoppingBag,
-      href: "/dashboard/orders",
-      tint: "bg-slate-950 text-white",
-    },
-    {
-      label: "Conversaciones abiertas",
-      value: openConversations ?? 0,
-      icon: MessageSquare,
-      href: "/dashboard/conversations",
-      tint: "bg-emerald-50 text-emerald-600",
-    },
-    {
-      label: "Handoffs abiertos",
-      value: openHandoffs ?? 0,
-      icon: UserPlus,
-      href: "/dashboard/handoffs",
-      tint: "bg-amber-50 text-amber-600",
-    },
-    {
-      label: "Pedidos por aprobar",
-      value: pendingApproval ?? 0,
-      icon: CheckCircle,
-      href: "/dashboard/approval",
-      tint: "bg-blue-50 text-blue-600",
-    },
-  ];
+  const { greeting, date } = today();
+  const name = user.email?.split("@")[0] ?? "";
+  // "Ayer vendiste…" links to this same page; the rest point to where the work is.
+  const attention = briefingData ? buildBriefing(briefingData as unknown as BriefingData).items.map(item => item.action?.href === "/dashboard" ? { ...item, action: undefined } : item) : [];
 
   return (
-    <div className="mx-auto max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-      <header className="mb-7">
-        <p className="text-xs font-medium text-slate-400">
-          {new Date().toLocaleDateString("es-CO", {
-            weekday: "long",
-            day: "numeric",
-            month: "long",
-          })}
-        </p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">
-          Hola, {user.email?.split("@")[0] ?? "equipo"} 👋
-        </h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Este es el resumen en vivo de <span className="font-medium text-slate-700">{tenantName}</span>.
-        </p>
+    <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+      <header className="mb-6 flex flex-wrap items-end justify-between gap-3 border-b border-line pb-5">
+        <div>
+          <p className="text-xs text-muted first-letter:uppercase">{date}</p>
+          <h1 className="mt-1 text-xl font-semibold tracking-tight text-ink">{greeting}{name ? `, ${name}` : ""}</h1>
+          <p className="mt-1 text-sm text-muted">Resumen de <span className="font-medium text-ink-soft">{tenantName}</span></p>
+        </div>
       </header>
 
-      {/* Métricas */}
+      <div className="mb-5 grid gap-5 xl:grid-cols-[1.25fr_.75fr]">
+        <Panel aria-labelledby="today-title">
+          <PanelHeader id="today-title" title="Para hoy" description="Lo que necesita tu atención, con datos del CRM en hora de Colombia" />
+          {attention.length ? (
+            <ul className="divide-y divide-line">
+              {attention.map(item => (
+                <li key={item.id} className="flex items-center justify-between gap-3 px-4 py-2.5 sm:px-5">
+                  <StatusDot tone={TONE[item.tone]}><span className="text-[13px] text-ink">{item.text}</span></StatusDot>
+                  {item.action ? (
+                    <Link href={item.action.href} className="shrink-0 rounded-md border border-line px-2 py-1 text-xs font-medium text-ink-soft transition hover:bg-subtle hover:text-ink">
+                      {item.action.label}
+                    </Link>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="px-4 py-6 text-sm text-muted sm:px-5">No pude preparar el resumen de hoy. Los contadores de al lado siguen al día.</p>
+          )}
+        </Panel>
+        <StatGrid className="grid-cols-2 self-start">
+          <Stat label="Conversaciones abiertas" value={openConversations ?? 0} href="/dashboard/conversations" />
+          <Stat label="Esperan un asesor" value={openHandoffs ?? 0} href="/dashboard/handoffs" />
+          <Stat label="Pedidos por aprobar" value={pendingApproval ?? 0} href="/dashboard/approval" />
+          <Stat label="Pedidos totales" value={totalOrders ?? 0} href="/dashboard/orders" />
+        </StatGrid>
+      </div>
+
       {results ? <SalesResults metrics={results as unknown as SalesMetrics} /> : null}
-      <CreditBalancePanel />
-      <section className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-        {metrics.map(({ label, value, icon: Icon, href, tint }) => (
-          <Link
-            key={label}
-            href={href}
-            className="group rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/40 transition hover:border-slate-300 hover:shadow-md"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <span
-                className={`flex size-10 items-center justify-center rounded-xl ${tint}`}
-              >
-                <Icon className="size-5" />
-              </span>
-              <ArrowUpRight className="size-4 text-slate-300 transition group-hover:text-slate-500" />
-            </div>
-            <p className="mt-4 text-3xl font-semibold tracking-tight text-slate-950">
-              {value}
-            </p>
-            <p className="mt-1 text-xs text-slate-500">{label}</p>
-          </Link>
-        ))}
-      </section>
 
-      <section className="my-6 grid gap-6 xl:grid-cols-[1.35fr_.65fr]">
-        {/* Pedidos recientes */}
-        <article className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/40 sm:p-6">
-          <div className="mb-5 flex items-center justify-between">
-            <div>
-              <h2 className="font-semibold text-slate-950">Pedidos recientes</h2>
-              <p className="mt-1 text-xs text-slate-500">
-                Los últimos 5 pedidos creados
-              </p>
-            </div>
-            <Link
-              href="/dashboard/orders"
-              className="text-xs font-medium text-slate-500 transition hover:text-slate-900"
-            >
-              Ver todos
-            </Link>
-          </div>
+      <div className="grid gap-5 xl:grid-cols-[1.25fr_.75fr] xl:items-start">
+        <Panel aria-labelledby="orders-title">
+          <PanelHeader id="orders-title" title="Pedidos recientes" description="Los últimos 6 pedidos" actions={<PanelLink href="/dashboard/orders">Ver todos</PanelLink>} />
           {recentOrders && recentOrders.length > 0 ? (
-            <ul className="divide-y divide-slate-100">
-              {recentOrders.map((order) => {
-                const customer = singleJoin(order.customers as CustomerShape);
-                return (
-                  <li key={order.id}>
-                    <Link
-                      href={`/dashboard/orders/${order.id}`}
-                      className="flex items-center gap-3 py-3 transition hover:bg-slate-50/70"
-                    >
-                      <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-xs font-semibold text-slate-600">
-                        {(customer?.name ?? customer?.phone ?? "?")
-                          .slice(0, 2)
-                          .toUpperCase()}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-medium text-slate-800">
-                          {customer?.name ?? customer?.phone ?? "Cliente"}
-                        </span>
-                        <span className="block text-xs text-slate-500">
-                          {timeAgo(order.created_at)}
-                        </span>
-                      </span>
-                      <Badge variant={orderStatusVariant[order.status as OrderStatus]}>
-                        {orderStatusLabel[order.status as OrderStatus]}
-                      </Badge>
-                      <span className="w-28 shrink-0 text-right text-sm font-semibold text-slate-900">
-                        {formatCOP(order.total)}
-                      </span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          ) : (
-            <EmptyState
-              icon={ShoppingBag}
-              title="Todavía no hay pedidos"
-              description="Cuando el agente concrete ventas, aparecerán aquí en tiempo real."
-            />
-          )}
-        </article>
-
-        {/* Conversaciones recientes */}
-        <article className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/40 sm:p-6">
-          <div className="mb-5 flex items-center justify-between">
-            <div>
-              <h2 className="font-semibold text-slate-950">
-                <span className="inline-flex items-center gap-1.5">
-                  <Sparkles className="size-4 text-yellow-500" /> Conversaciones
-                </span>
-              </h2>
-              <p className="mt-1 text-xs text-slate-500">Actividad más reciente</p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-[13px]">
+                <thead>
+                  <tr className="text-left text-xs text-muted">
+                    <th className="px-4 py-2 font-medium sm:px-5">Cliente</th>
+                    <th className="px-3 py-2 font-medium">Estado</th>
+                    <th className="hidden px-3 py-2 font-medium sm:table-cell">Creado</th>
+                    <th className="px-4 py-2 text-right font-medium sm:px-5">Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line border-t border-line">
+                  {recentOrders.map((order) => {
+                    const customer = singleJoin(order.customers as CustomerShape);
+                    return (
+                      <tr key={order.id} className="transition hover:bg-subtle/60">
+                        <td className="max-w-[14rem] px-4 py-2.5 sm:px-5">
+                          <Link href={`/dashboard/orders/${order.id}`} className="block truncate font-medium text-ink hover:underline">
+                            {customer?.name ?? customer?.phone ?? "Cliente"}
+                          </Link>
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <Badge variant={orderStatusVariant[order.status as OrderStatus]}>
+                            {orderStatusLabel[order.status as OrderStatus]}
+                          </Badge>
+                        </td>
+                        <td className="hidden whitespace-nowrap px-3 py-2.5 text-muted sm:table-cell">{timeAgo(order.created_at)}</td>
+                        <td className="whitespace-nowrap px-4 py-2.5 text-right font-medium tabular-nums text-ink sm:px-5">{formatCOP(order.total)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-          </div>
-          {recentConversations && recentConversations.length > 0 ? (
-            <ul className="space-y-4">
-              {recentConversations.map((conversation) => {
-                const customer = singleJoin(
-                  conversation.customers as CustomerShape
-                );
-                return (
-                  <li key={conversation.id} className="flex items-start gap-3">
-                    <span className="mt-1.5 size-2 shrink-0 rounded-full bg-emerald-500" />
-                    <Link
-                      href={`/dashboard/conversations/${conversation.id}`}
-                      className="min-w-0 flex-1 group"
-                    >
-                      <p className="truncate text-sm font-medium text-slate-800 group-hover:text-slate-950">
-                        {customer?.name ?? customer?.phone ?? "Cliente"}
-                      </p>
-                      <p className="text-xs text-slate-500">
-                        {timeAgo(conversation.last_message_at)}
-                      </p>
-                    </Link>
-                    <Badge
-                      variant={
-                        conversationStatusVariant[
-                          conversation.status as ConversationStatus
-                        ]
-                      }
-                    >
-                      {conversationStatusLabel[
-                        conversation.status as ConversationStatus
-                      ]}
-                    </Badge>
-                  </li>
-                );
-              })}
-            </ul>
           ) : (
-            <EmptyState
-              icon={MessageSquare}
-              title="Sin conversaciones"
-              description="Aún no hay chats de clientes para este negocio."
-            />
+            <div className="p-4 sm:p-5">
+              <EmptyState
+                icon={ShoppingBag}
+                title="Todavía no hay pedidos"
+                description="Cuando NEXO cierre ventas por WhatsApp, aparecerán aquí."
+              />
+            </div>
           )}
-          <Link
-            href="/dashboard/conversations"
-            className="mt-5 flex w-full items-center justify-center gap-1 border-t border-slate-100 pt-4 text-xs font-medium text-slate-600 transition hover:text-slate-950"
-          >
-            Ver todas <ArrowUpRight className="size-3.5" />
-          </Link>
-        </article>
-      </section>
+        </Panel>
+
+        <div className="space-y-5">
+          <HomeActivity canConfigure={tenantContext.role === "owner"} enabled={tenantContext.role !== "viewer"} />
+
+          <Panel aria-labelledby="conversations-title">
+            <PanelHeader id="conversations-title" title="Conversaciones" description="Actividad más reciente" actions={<PanelLink href="/dashboard/conversations">Ver todas</PanelLink>} />
+            {recentConversations && recentConversations.length > 0 ? (
+              <ul className="divide-y divide-line">
+                {recentConversations.map((conversation) => {
+                  const customer = singleJoin(conversation.customers as CustomerShape);
+                  return (
+                    <li key={conversation.id}>
+                      <Link href={`/dashboard/conversations/${conversation.id}`} className="flex items-center gap-3 px-4 py-2.5 transition hover:bg-subtle/60 sm:px-5">
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-[13px] font-medium text-ink">{customer?.name ?? customer?.phone ?? "Cliente"}</span>
+                          <span className="block text-[11px] text-muted">{timeAgo(conversation.last_message_at)}</span>
+                        </span>
+                        <Badge variant={conversationStatusVariant[conversation.status as ConversationStatus]}>
+                          {conversationStatusLabel[conversation.status as ConversationStatus]}
+                        </Badge>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <div className="p-4 sm:p-5">
+                <EmptyState icon={MessageSquare} title="Sin conversaciones" description="Aún no hay chats de clientes para este negocio." />
+              </div>
+            )}
+          </Panel>
+
+          <CreditBalancePanel />
+        </div>
+      </div>
     </div>
   );
 }
