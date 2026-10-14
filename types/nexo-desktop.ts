@@ -21,6 +21,8 @@ export interface NexoDesktop {
   installUpdate?(): Promise<DesktopUpdateState>;
   onUpdateState?(callback: (state: DesktopUpdateState) => void): () => void;
   onPreferences(callback: (preferences: DesktopPreferences) => void): () => void;
+  /** NEXO 0.2.4+: a system notification that opens the given CRM panel when clicked. */
+  notify?(notice: { title: string; body: string; href?: string }): Promise<boolean>;
 }
 declare global {
   interface Window { nexoDesktop?: NexoDesktop }

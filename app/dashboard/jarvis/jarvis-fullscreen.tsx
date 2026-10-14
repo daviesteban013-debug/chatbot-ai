@@ -31,6 +31,8 @@ import { useDailyBriefing } from "@/hooks/useDailyBriefing";
 import { DailyBriefing } from "@/components/jarvis/daily-briefing";
 import { useNexoActivity } from "@/hooks/useNexoActivity";
 import { DotField } from "@/components/brand/dot-field";
+import { useProactive, type Announcement } from "@/hooks/useProactive";
+import { ProactiveAlerts, ProactiveInvite, ProactiveSettingsPanel, RoutineSummary } from "@/components/jarvis/proactive";
 import { NexoActivity } from "@/components/dashboard/nexo-activity";
 import { buildBriefing, type Briefing } from "@/lib/briefing";
 import { OperatorTask } from "@/components/jarvis/operator-task";
@@ -168,12 +170,31 @@ function JarvisFullscreenInner({
   const refreshBriefing = dailyBriefing.refresh;
   const briefing = useMemo(() => dailyBriefing.data ? buildBriefing(dailyBriefing.data, { name: profile.displayName || undefined }) : null, [dailyBriefing.data, profile.displayName]);
   const [briefingHidden, setBriefingHidden] = useState(false);
+  // In the bubble the briefing card appears when it matters (first power-on of the day, the
+  // morning routine or «resumen»); the rest of the time "Hoy en tu negocio" shows the key figures.
+  const [bubbleBriefing, setBubbleBriefing] = useState(false);
   const briefingRef = useRef<Briefing | null>(null);
   useEffect(() => { briefingRef.current = briefing; }, [briefing]);
   useEffect(() => { const sync = () => setFileSession(sessionId); sync(); }, [sessionId]);
 
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const avatarRef = useRef<HTMLDivElement>(null);
+  const voiceOnRef = useRef(isVoiceOutputEnabled);
+  const busyRef = useRef(false);
+  useEffect(() => { voiceOnRef.current = isVoiceOutputEnabled; }, [isVoiceOutputEnabled]);
+  // What NEXO noticed on its own: system notification when you are elsewhere, voice if you asked for it.
+  const announce = useCallback(({ alerts, routine, quiet, settings }: Announcement) => {
+    if (routine?.id === "morning") { setBriefingHidden(false); setBubbleBriefing(true); }
+    const lines = routine ? [routine.headline] : alerts.map(alert => alert.text);
+    if (!lines.length || quiet) return;
+    const title = routine ? routine.title : alerts.length === 1 ? "NEXO" : `NEXO · ${alerts.length} avisos nuevos`;
+    const href = routine ? (routine.id === "weekly" ? "/dashboard" : undefined) : alerts.length === 1 ? alerts[0].href : undefined;
+    if (settings.system && window.nexoDesktop?.notify && !document.hasFocus())
+      void window.nexoDesktop.notify({ title, body: lines.join("\n").slice(0, 240), ...(href ? { href } : {}) }).catch(() => {});
+    if (settings.voice && poweredRef.current && voiceOnRef.current && !busyRef.current)
+      speak(routine ? routine.headline : alerts.length === 1 ? alerts[0].text : `Tienes ${alerts.length} avisos nuevos. ${alerts[0].text}.`);
+  }, [speak]);
+  const proactive = useProactive(desktopMode && Boolean(userId), userId, announce, profile.displayName || undefined);
   const powerOn = useCallback(() => {
     clapStopRef.current();
     setPanel(null);
@@ -190,7 +211,7 @@ function JarvisFullscreenInner({
       let spoken = false;
       const key = `nexo-briefing-spoken:${userId ?? "public"}:${today.date}`;
       try { spoken = localStorage.getItem(key) === "1"; localStorage.setItem(key, "1"); } catch { /* Private mode: speak it. */ }
-      if (!spoken) greeting = today.headline;
+      if (!spoken) { greeting = today.headline; setBubbleBriefing(true); }
     }
     setCommandNotice(greeting);
     speak(greeting);
@@ -219,6 +240,7 @@ function JarvisFullscreenInner({
       setInput("");
       setTurnStart(null);
       setBriefingHidden(false);
+      setBubbleBriefing(true);
       void refreshBriefing();
       const text = briefingRef.current?.headline ?? (userId ? "Estoy preparando tu resumen del día; aparecerá aquí en unos segundos." : "Inicia sesión con tu negocio para ver tu resumen del día.");
       setCommandNotice(text);
@@ -250,6 +272,7 @@ function JarvisFullscreenInner({
   }, [setInput, powerOn, powerOff, stopVoice, stopSpokenTurn, cancelResponse, openCrmWorkspace, isLoading, attachments.pending, messages.length, sendMessage, refreshBriefing, speak, userId]);
 
   const microphoneBlocked = isLoading || voiceBusy || attachments.pending || panel !== null;
+  useEffect(() => { busyRef.current = isLoading || voiceBusy; }, [isLoading, voiceBusy]);
   const { supported: speechSupported, listening: isRecording, armed: microphoneArmed, error: microphoneError, start: startMicrophone, stop: stopMicrophone, pause: pauseMicrophone } = useJarvisMicrophone(profile.voice.locale, submitInstruction, microphoneBlocked);
   useEffect(() => {
     microphoneStopRef.current = stopMicrophone;
@@ -317,7 +340,8 @@ function JarvisFullscreenInner({
   }, [panel, isLoading, voiceBusy, stopSpokenTurn, cancelResponse]);
 
   const decisionStarted = () => { stopMicrophone(); claps.stop(); stopSpokenTurn(); cancelResponse(); };
-  const briefingCard = briefing && !briefingHidden ? <DailyBriefing briefing={briefing} compact={desktopMode} onDismiss={() => setBriefingHidden(true)}
+  const openFromCard = (href: string) => { const destination = parseOperatorNavigation(href); if (!destination) return; pauseMicrophone(); claps.stop(); stopSpokenTurn(); void openCrmWorkspace(destination); };
+  const briefingCard = briefing && !briefingHidden && (!desktopMode || bubbleBriefing) ? <DailyBriefing briefing={briefing} compact={desktopMode} onDismiss={() => setBriefingHidden(true)}
     onOpen={href => { const destination = parseOperatorNavigation(href); if (!destination) return; pauseMicrophone(); claps.stop(); stopSpokenTurn(); void openCrmWorkspace(destination); }} /> : null;
   const proposals = <>
     {briefingCard}
@@ -325,7 +349,19 @@ function JarvisFullscreenInner({
     <CatalogProposals compact={desktopMode} state={catalogProposals} onDecision={decisionStarted} />
   </>;
   const operator = <OperatorTask actions={operatorActions} busy={isLoading} compact={desktopMode} onOpen={destination => { pauseMicrophone(); claps.stop(); stopSpokenTurn(); void openCrmWorkspace(destination); }} />;
-  if (desktopMode) return <DesktopBubble hasProposals={orderProposals.proposals.length > 0 || catalogProposals.proposals.length > 0 || Boolean(briefingCard) || operatorActions.length > 0} operator={operator} proposals={proposals} powered={isPoweredOn} listening={isRecording} armed={microphoneArmed} busy={isLoading || voiceBusy} speaking={voiceSpeaking}
+  const invite = proactive.ready && !proactive.settings.asked;
+  const nightly = proactive.routine && proactive.routine.id !== "morning" ? proactive.routine : null;
+  const proactiveCards = <>
+    {invite && <ProactiveInvite onEnable={() => proactive.update({ alerts: true })} onLater={() => proactive.update({})} />}
+    <ProactiveAlerts alerts={proactive.alerts} onOpen={openFromCard} onDismiss={proactive.dismiss} onClear={proactive.clear} />
+    {nightly && <RoutineSummary card={nightly} onOpen={openFromCard} onClose={proactive.closeRoutine} />}
+  </>;
+  const facts = dailyBriefing.data;
+  if (desktopMode) return <DesktopBubble hasProposals={orderProposals.proposals.length > 0 || catalogProposals.proposals.length > 0 || Boolean(briefingCard) || operatorActions.length > 0 || proactive.alerts.length > 0 || Boolean(nightly) || invite}
+    alerts={proactiveCards} unread={proactive.alerts.length} latestAlert={proactive.alerts[0]?.text ?? null}
+    settingsPanel={<ProactiveSettingsPanel settings={proactive.settings} update={proactive.update} systemAvailable={typeof window !== "undefined" && Boolean(window.nexoDesktop?.notify)} />}
+    today={facts ? { sales: facts.today.sales, orders: facts.today.orders, unpaid: facts.unpaid.count, unpaidTotal: facts.unpaid.total, waiting: facts.handoffs.count } : null}
+    operator={operator} proposals={proposals} powered={isPoweredOn} listening={isRecording} armed={microphoneArmed} busy={isLoading || voiceBusy} speaking={voiceSpeaking}
     activity={activity} reply={latest?.content || commandNotice} navigationNotice={navigationNotice} error={error || voiceError || microphoneError} input={input} voice={isVoiceOutputEnabled} readyToPlay={readyToPlay}
     onPower={isPoweredOn ? powerOff : powerOn} onMicrophone={toggleRecording} onVoice={() => { stopSpokenTurn(); setIsVoiceOutputEnabled(value => !value); }}
     onStop={() => { stopSpokenTurn(); cancelResponse(); }} onResume={() => { pauseMicrophone(); resume(); }}

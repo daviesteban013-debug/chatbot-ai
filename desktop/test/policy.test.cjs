@@ -1,7 +1,15 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { APP_ORIGIN, trustedUrl, panelUrl, color, googleUrl, callbackUrl } = require('../policy.cjs');
-const { microphoneConsent } = require('../policy.cjs');
+const { microphoneConsent, notice } = require('../policy.cjs');
+test('proactive alerts accept short plain text and only CRM panels as destinations', () => {
+  assert.deepEqual(notice({ title: 'NEXO', body: 'Ana espera un asesor', href: '/dashboard/handoffs' }), { title: 'NEXO', body: 'Ana espera un asesor', href: '/dashboard/handoffs' });
+  assert.equal(notice({ title: ' NEXO\u202e ', body: 'Pagó\u0007 Ana' }).title, 'NEXO');
+  assert.equal(notice({ title: 'NEXO', body: 'Pagó\u0007 Ana' }).body, 'Pagó Ana');
+  for (const bad of [null, [], 'texto', { title: '', body: 'x' }, { title: 'x', body: '' }, { title: 'x'.repeat(81), body: 'x' }, { title: 'x', body: 'x'.repeat(241) },
+    { title: 'x', body: 'x', href: 'https://evil.test' }, { title: 'x', body: 'x', href: '/dashboard/orders?next=evil' }, { title: 'x', body: 'x', icon: 'file:///etc/passwd' }])
+    assert.throws(() => notice(bad), /no válido|permitido/);
+});
 test('macOS asks for microphone consent once, only when undetermined', async () => {
   let requests = 0;
   const preferences = { getMediaAccessStatus: type => { assert.equal(type, 'microphone'); return 'not-determined'; }, askForMediaAccess: async type => { assert.equal(type, 'microphone'); requests++; return true; } };

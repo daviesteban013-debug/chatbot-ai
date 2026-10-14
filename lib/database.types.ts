@@ -1188,6 +1188,7 @@ export type Database = {
       nexo_consume_sales_worker_ticket: { Args: { p_token: string }; Returns: boolean };
       nexo_sales_period: { Args: { p_tenant: string; p_period: string }; Returns: Json };
       nexo_daily_briefing: { Args: { p_tenant: string; p_user: string }; Returns: Json };
+      nexo_pulse: { Args: { p_tenant: string; p_user: string }; Returns: Json };
       nexo_prepare_catalog_change: { Args: { p_tenant: string; p_user: string; p_session: string; p_change: Json }; Returns: Json };
       nexo_decide_catalog_change: { Args: { p_id: string; p_user: string; p_decision: string; p_image_url?: string | null }; Returns: Json };
       nexo_configure_autonomy: { Args: { p_tenant: string; p_user: string; p_settings: Json }; Returns: Json };

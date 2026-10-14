@@ -10,7 +10,7 @@ const settle = async () => { for (let i = 0; i < 15; i++) await Promise.resolve(
 
 async function launch({ authenticated = true, selfTest = false } = {}) {
   const windows = [], handlers = new Map(), shortcuts = new Map();
-  const state = { authenticated, quit: 0, external: [], area: { x: 0, y: 0, width: 1440, height: 900 } };
+  const state = { authenticated, quit: 0, external: [], notifications: [], area: { x: 0, y: 0, width: 1440, height: 900 } };
   class Window extends EventEmitter {
     constructor(options) {
       super(); this.options = options; this.bounds = { x: 0, y: 0, ...options }; this.visible = false; this.loads = [];
@@ -54,6 +54,7 @@ async function launch({ authenticated = true, selfTest = false } = {}) {
     globalShortcut: { register: (key, fn) => shortcuts.set(key, fn), unregisterAll() {} }, shell: { openExternal: async url => state.external.push(url) },
     Tray: class extends EventEmitter { setToolTip() {} setContextMenu(menu) { state.menu = menu; } }, Menu: { buildFromTemplate: items => items },
     nativeImage: { createFromPath: () => ({ resize: () => ({}) }) }, systemPreferences: {},
+    Notification: class extends EventEmitter { static isSupported() { return true; } constructor(options) { super(); this.options = options; state.notifications.push(this); } show() { this.shown = true; } },
   };
   vm.runInNewContext(source, { require: name => name === 'electron' ? electron : name === './policy.cjs' ? policy : name === './updater.cjs' ? require('../updater.cjs') : name === 'node:fs' ? { readFileSync() { throw new Error('First start'); }, writeFileSync() {}, renameSync() {} } : require(name),
     __dirname: path.dirname(path.join(__dirname, '../main.cjs')), process: { argv: ['electron', 'app', ...(selfTest ? ['--startup-check'] : [])], platform: 'win32', arch: 'x64', execPath: '/electron' },
@@ -179,4 +180,19 @@ test('update IPC accepts only the CRM or orb main frame at the trusted origin', 
     assert.throws(() => handle({ sender: crm.webContents, senderFrame: { url: policy.APP_ORIGIN } }), /permitida/);
     assert.throws(() => handle({ sender: { mainFrame: {} }, senderFrame: {} }), /permitida/);
   }
+});
+
+test('only the orb sends proactive alerts: validated, rate limited, and a click opens the CRM panel', async () => {
+  const { state, bubble, crm, handlers, event } = await launch();
+  const notify = handlers.get('nexo:notify');
+  assert.throws(() => notify(event(crm), { title: 'NEXO', body: 'x' }), /permitida/);
+  assert.throws(() => notify(event(bubble), { title: 'NEXO', body: 'x', href: 'https://evil.test' }), /permitido/);
+  const id = '11111111-2222-4333-8444-555555555555';
+  assert.equal(notify(event(bubble), { title: 'NEXO', body: 'Ana espera un asesor', href: `/dashboard/handoffs/${id}` }), true);
+  assert.equal(state.notifications[0].shown, true);
+  state.notifications[0].emit('click'); await settle();
+  assert.equal(crm.webContents.getURL(), policy.panelUrl(`/dashboard/handoffs/${id}`));
+  for (let i = 0; i < 5; i++) notify(event(bubble), { title: 'NEXO', body: `Aviso ${i}` });
+  assert.equal(notify(event(bubble), { title: 'NEXO', body: 'Uno de más' }), false, 'at most six per minute');
+  assert.equal(state.notifications.length, 6);
 });

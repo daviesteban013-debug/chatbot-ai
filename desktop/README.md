@@ -14,6 +14,14 @@ Comandos: **abre pedidos**, **abre catálogo**, **abre conversaciones**, **abre 
 
 El icono de micrófono apaga la escucha. Contraer el orbe conserva la escucha si ya estaba activada; su botón de encendido permite apagarla sin expandirlo. **Salir de NEXO**, en Personalización o en el icono de la bandeja del sistema, cierra la aplicación y libera el micrófono. Cerrar la ventana principal también termina la app. Cerrar sesión descarga el asistente y libera su micrófono. El botón cuadrado interrumpe la respuesta; el micrófono puede seguir armado.
 
+## Avisos y rutinas
+
+En **Ajustes** de la burbuja (icono de controles) eliges qué te avisa NEXO: un cliente que espera un asesor, un pedido por aprobar, un pago recibido, una venta cerrada por NEXO, un producto agotado o una tarea vencida. Todo empieza apagado. NEXO revisa el negocio cada 45 segundos con datos de la base, sin usar el modelo de lenguaje ni gastar créditos. Al activarlos solo aprende el estado actual; avisa de lo que ocurra después y cada evento una sola vez.
+
+Los avisos aparecen en la burbuja con un acceso que abre el panel correcto del CRM; contraída, el orbe muestra cuántos hay. Desde la versión 0.2.4 también llegan como notificación del sistema cuando trabajas en otra ventana (máximo 6 por minuto; al pulsarla abre el panel). Opcionalmente NEXO los dice en voz alta si está encendido y con voz. En **No molestar** (por defecto de 9 p. m. a 7 a. m., hora de Colombia) no hay sonido ni notificaciones; los avisos quedan en la burbuja.
+
+Rutinas: **Resumen de la mañana**, **Cierre del día** y **Cierre de la semana** (los lunes), cada una a la hora que elijas. Si NEXO estaba cerrado, la rutina llega al abrirlo, hasta 4 horas después. Las preferencias se guardan en este computador.
+
 ## Voz
 
 La app detecta frases localmente y transcribe clips de hasta 12 segundos con `gpt-4o-mini-transcribe` usando `OPENAI_API_KEY` exclusivamente en el servidor. Los silencios no se envían. Habla después de la respuesta: la entrada se pausa durante generación/reproducción para evitar eco. No es una llamada de voz de doble sentido con interrupción automática.

@@ -38,6 +38,16 @@ function callbackUrl(value, pendingUntil, now = Date.now()) {
     return destination.href;
   } catch { return null; }
 }
+const CONTROL = /[\u0000-\u0008\u000b-\u001f\u007f\u202a-\u202e\u2066-\u2069]/g;
+/** A proactive alert from the orb: short plain text and, optionally, a CRM panel to open on click. */
+function notice(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some(key => !['title', 'body', 'href'].includes(key))) throw new Error('Aviso no válido');
+  const clean = text => typeof text === 'string' ? text.replace(CONTROL, '').trim() : '';
+  const title = clean(value.title), body = clean(value.body);
+  if (!title || title.length > 80 || !body || body.length > 240) throw new Error('Aviso no válido');
+  if (value.href !== undefined) panelUrl(value.href);
+  return { title, body, href: value.href };
+}
 async function microphoneConsent(platform, systemPreferences) {
   if (platform !== 'darwin') return true;
   const status = systemPreferences.getMediaAccessStatus('microphone');
@@ -45,4 +55,4 @@ async function microphoneConsent(platform, systemPreferences) {
   if (status !== 'not-determined') return false;
   return systemPreferences.askForMediaAccess('microphone');
 }
-module.exports = { APP_ORIGIN, trustedUrl, panelUrl, color, googleUrl, callbackUrl, microphoneConsent };
+module.exports = { APP_ORIGIN, trustedUrl, panelUrl, color, googleUrl, callbackUrl, microphoneConsent, notice };

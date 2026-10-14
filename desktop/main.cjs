@@ -8,6 +8,7 @@ let preferences = { color: '#facc15', expanded: false };
 const partition = 'persist:nexo';
 const selfTest = process.argv.includes('--startup-check');
 let updates, updateTimer, updateInterval;
+let notified = [];
 function save() {
   const file = path.join(app.getPath('userData'), 'preferences.json');
   fs.writeFileSync(file + '.tmp', JSON.stringify(preferences));
@@ -140,6 +141,17 @@ else {
       try { await shell.openExternal(url); } catch { pendingLoginUntil = 0; throw new Error('No se pudo abrir el navegador'); }
     });
     ipcMain.handle('nexo:quit', event => { guard(event); app.quit(); });
+    // Proactive alerts from the orb only: validated text, at most 6 per minute, click opens the CRM panel.
+    ipcMain.handle('nexo:notify', (event, value) => {
+      guard(event); const notice = policy.notice(value);
+      const now = Date.now(); notified = notified.filter(at => now - at < 60_000);
+      if (notified.length >= 6 || !Notification?.isSupported?.()) return false;
+      notified.push(now);
+      const shown = new Notification({ title: notice.title, body: notice.body });
+      shown.on('click', () => { if (notice.href) openPanel(notice.href); else showBubble(true); });
+      shown.show();
+      return true;
+    });
     const updateEnabled = Boolean(app.isPackaged && !selfTest);
     updates = createUpdates({ version: app.getVersion(), platform: process.platform, enabled: updateEnabled,
       updater: updateEnabled && process.platform === 'win32' ? require('electron-updater').autoUpdater : undefined,
