@@ -2,15 +2,15 @@ import Link from "next/link";
 import { ArrowRight, Check, Clock3, MessageSquareOff, Wallet } from "lucide-react";
 
 const problems = [
-  { icon: Clock3, title: "Respondes cuando puedes.", copy: "Tu cliente necesita saber el precio ahora, no al cerrar el local." },
-  { icon: MessageSquareOff, title: "El chat se llena. Los pedidos se pierden.", copy: "Entre audios y mensajes, una compra interesada queda sin respuesta." },
-  { icon: Wallet, title: "Tu tiempo también cuesta.", copy: "Repetir horarios, precios y disponibilidad no debería ocupar tu día." },
+  { icon: Clock3, title: "Respondes cuando puedes.", copy: "Tu cliente quiere saber el precio y si hay su talla ahora, no cuando por fin revises el chat." },
+  { icon: MessageSquareOff, title: "El chat se llena. Los carritos se enfrían.", copy: "Entre audios y mensajes, una compra interesada queda sin respuesta y se va a otra tienda." },
+  { icon: Wallet, title: "Tu tiempo también cuesta.", copy: "Repetir tallas, precios, stock y costos de envío no debería ocupar tu día." },
 ];
 
 export function ProblemSolution() {
   return (
     <section className="landing-section" aria-labelledby="problema-title">
-      <p className="landing-eyebrow">Tu negocio crece. Tu día no.</p>
+      <p className="landing-eyebrow">Tu tienda crece. Tu día no.</p>
       <h2 id="problema-title" className="landing-title">Que un mensaje sin responder<br className="hidden sm:block" /> no sea una venta perdida.</h2>
       <div className="mt-10 grid gap-4 md:grid-cols-2">
         <div className="rounded-3xl border border-white/10 bg-zinc-900/40 p-6 backdrop-blur-md sm:p-8">
@@ -24,13 +24,13 @@ export function ProblemSolution() {
             {"// Con Nexo de tu lado"}
           </p>
           <div className="space-y-7">{[
-            ["Una respuesta, sin hacer esperar.", "Nexo atiende las preguntas frecuentes con la información de tu negocio."],
-            ["Cada intención tiene un siguiente paso.", "Organiza pedidos, propone citas y prepara cotizaciones en el mismo chat."],
+            ["Una respuesta, sin hacer esperar.", "Nexo atiende las preguntas de tus compradores con la información de tu catálogo."],
+            ["Cada intención tiene un siguiente paso.", "Consulta stock, cotiza el envío y deja el pedido listo para pagar en el mismo chat."],
             ["Automatiza lo repetitivo. Conserva el control.", "Tu equipo interviene cuando hace falta. Tú te enfocas en atender y crecer."],
           ].map(([title, copy]) => <div key={title} className="flex gap-4"><span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-yellow-300/10 border border-yellow-300/20"><Check className="size-3.5 text-yellow-300" /></span><div><h3 className="text-sm font-medium text-white">{title}</h3><p className="mt-2 text-sm leading-relaxed text-zinc-400">{copy}</p></div></div>)}</div>
         </div>
       </div>
-      <Link href="/signup" className="landing-secondary mt-8">Recupera tiempo para tu negocio <ArrowRight className="size-4" /></Link>
+      <Link href="/signup" className="landing-secondary mt-8">Deja de perder ventas en el chat <ArrowRight className="size-4" /></Link>
     </section>
   );
 }

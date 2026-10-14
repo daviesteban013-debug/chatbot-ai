@@ -5,7 +5,8 @@ import Link from "next/link";
 import { ArrowRight, Plus } from "lucide-react";
 
 const questions = [
-  ["¿Necesito saber de tecnología?", "No necesitas programar. Configuras los datos de tu negocio, catálogo, horarios y reglas desde el panel. La conexión de WhatsApp Business puede requerir pasos de verificación de Meta."],
+  ["¿Necesito saber de tecnología?", "No necesitas programar. Configuras los datos de tu tienda, catálogo, stock, envíos y reglas desde el panel. La conexión de WhatsApp Business puede requerir pasos de verificación de Meta."],
+  ["¿Funciona con mi tienda online?", "Nexo vende por WhatsApp con el catálogo que cargas en tu panel: productos, variantes, stock, precios al detal y al por mayor, y costos de envío. Los pedidos quedan registrados en tu CRM con sus datos de envío y pago."],
   ["¿Cómo funciona con las reglas de WhatsApp?", "La conexión se realiza a través de la API de WhatsApp Business de Meta. Debes contar con los permisos y consentimientos necesarios y respetar sus políticas, ventanas de atención y reglas de plantillas. Usar Nexo no garantiza por sí solo el cumplimiento ni la aprobación de una cuenta."],
   ["¿Puedo pasar la conversación a una persona?", "Sí. El flujo permite derivar conversaciones al equipo cuando el cliente lo solicita o cuando el caso requiere revisión. Define las reglas de atención y revisa los casos pendientes desde tu panel."],
   ["¿Nexo puede inventar precios o confirmar cualquier pedido?", "Configura el catálogo y las reglas que debe seguir. Para acciones sensibles, utiliza revisión humana y prueba las respuestas antes de activar la automatización. Como cualquier sistema de IA, puede cometer errores."],

@@ -1,9 +1,9 @@
 import { Quote } from "lucide-react";
 
 const stories = [
-  { name: "Laura M.", initials: "LM", business: "Panadería · Bogotá", number: "18 pedidos", result: "organizados en una mañana", quote: "Mientras preparo los pedidos, el asistente responde por desayunos y recoge las cantidades. Ya no tengo que parar para contestar lo mismo." },
-  { name: "Andrés R.", initials: "AR", business: "Barbería · Medellín", number: "12 citas", result: "gestionadas en un día", quote: "El cliente ve los horarios y confirma por el chat. Yo me concentro en quien está en la silla, sin dejar esperando al próximo." },
-  { name: "Camila P.", initials: "CP", business: "Tienda de plantas · Cali", number: "3 horas", result: "liberadas de tareas repetitivas", quote: "Nexo muestra las opciones y prepara la cotización. Si una compra necesita asesoría especial, la conversación pasa a mi equipo." },
+  { name: "Laura M.", initials: "LM", business: "Tienda de ropa online · Bogotá", number: "18 pedidos", result: "organizados en una mañana", quote: "Mientras empaco los despachos, el asistente responde por tallas y stock y deja los pedidos listos para pagar. Ya no tengo que parar para contestar lo mismo." },
+  { name: "Andrés R.", initials: "AR", business: "Tienda de tenis · Medellín", number: "9 ventas", result: "cerradas fuera de horario", quote: "Los clientes escriben de noche desde Instagram. NEXO les muestra la foto, revisa la talla y les envía el link de pago." },
+  { name: "Camila P.", initials: "CP", business: "Distribuidora de cosmética · Cali", number: "3 horas", result: "liberadas de cotizaciones", quote: "Nexo aplica el precio mayorista y calcula el envío. Si un pedido necesita una negociación especial, la conversación pasa a mi equipo." },
 ];
 
 export function Testimonials() {

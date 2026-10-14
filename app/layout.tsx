@@ -10,9 +10,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "NEXO — Una voz. Todo tu negocio.",
+  title: "NEXO — Tu vendedor de IA para ecommerce por WhatsApp",
   description:
-    "Conoce a NEXO, tu agente de IA. Habla con él, consulta tu CRM y conecta con tus clientes por WhatsApp.",
+    "NEXO vende por WhatsApp con tu catálogo: responde por tallas y stock, cotiza envíos, registra pedidos y hace seguimiento de pagos desde tu CRM.",
   applicationName: "NEXO",
   appleWebApp: { capable: true, title: "NEXO", statusBarStyle: "black-translucent" },
   icons: { icon: "/icons/jarvis-192.png", apple: "/icons/jarvis-apple-180.png" },

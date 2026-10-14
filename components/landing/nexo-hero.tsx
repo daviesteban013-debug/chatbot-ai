@@ -12,9 +12,9 @@ const LiquidAvatar = dynamic(() => import("@/components/jarvis/liquid-avatar").t
   loading: () => <div className={styles.loadingOrb} aria-hidden="true"><i /><i /></div>,
 });
 const prompts = [
-  { label: "Mi negocio", icon: AudioLines, question: "NEXO, ¿cómo va mi negocio?", detail: "Tu CRM, en una conversación." },
-  { label: "Mis clientes", icon: Users, question: "NEXO, busca a mi cliente.", detail: "Menos buscar. Más conocer a tus clientes." },
-  { label: "Mis pedidos", icon: Package, question: "NEXO, ¿qué pedidos están pendientes?", detail: "Lo que necesitas saber, sin perderte entre pantallas." },
+  { label: "Mis ventas", icon: AudioLines, question: "NEXO, ¿cómo van las ventas de hoy?", detail: "Tu tienda y tu CRM, en una conversación." },
+  { label: "Mis clientes", icon: Users, question: "NEXO, ¿qué compró antes este cliente?", detail: "Menos buscar. Más conocer a tus compradores." },
+  { label: "Mis pedidos", icon: Package, question: "NEXO, ¿qué pedidos están pendientes de pago?", detail: "Lo que necesitas saber, sin perderte entre pantallas." },
 ];
 
 export function NexoHero() {
@@ -24,9 +24,9 @@ export function NexoHero() {
     <div className={styles.glow} aria-hidden="true" />
     <div className={styles.layout}>
       <div className={styles.copy}>
-        <p className={styles.eyebrow}><span /> TU NEGOCIO. TU AGENTE.</p>
+        <p className={styles.eyebrow}><span /> TU TIENDA ONLINE. TU AGENTE.</p>
         <h1 id="hero-title">Todo empieza<br />con <span>NEXO.</span></h1>
-        <p className={styles.description}>Una voz. Todo tu negocio.<br /><span>Conoce a tu agente de IA: habla con él, consulta tu CRM y encuentra tu siguiente paso.</span></p>
+        <p className={styles.description}>Tu vendedor de IA para ecommerce.<br /><span>Vende por WhatsApp con tu catálogo: responde por tallas y stock, cotiza el envío y deja cada pedido listo para pagar.</span></p>
         <div className={styles.actions}>
           <Link href="/signup" className="landing-primary">Conoce a NEXO <ArrowRight size={17} /></Link>
           <DesktopDownloadLink />

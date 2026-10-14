@@ -39,95 +39,17 @@ interface SectorScenario {
 
 const SECTORS: SectorScenario[] = [
   {
-    id: "restaurante",
-    badge: "Gastronomía",
-    name: "Restaurante & Café",
-    businessName: "Casa Miga · Brunch & Café",
-    avatarIcon: "☕",
-    description: "Toma pedidos, calcula totales con adiciones y envía confirmación con dirección de entrega.",
-    quickPrompts: [
-      "¿Tienen desayunos disponibles ahora?",
-      "¿Cuánto vale el combo con café?",
-      "Quiero pedir 2 para entregar a las 9 am",
-      "¿Qué medios de pago reciben?",
-    ],
-    initialMessages: [
-      {
-        id: "m1",
-        from: "user",
-        text: "¡Hola! ¿Tienen domicilios de desayuno disponibles hoy?",
-        time: "9:02 am",
-      },
-      {
-        id: "m2",
-        from: "bot",
-        text: "¡Hola! Sí, claro 🥐. Nuestro Combo de la Casa incluye arepa campesina con queso, huevos al gusto y café de origen por $24.000 COP. ¿Cuántos te preparamos?",
-        time: "9:02 am",
-      },
-    ],
-    responses: {
-      "desayuno": "El Desayuno de la Casa vale $24.000 COP y el Americano $28.000 COP. Ambos incluyen bebida caliente y jugo de naranja natural.",
-      "combo": "El Combo de la Casa está en $24.000 COP. Si agregas porción extra de tocineta son $4.500 COP adicionales.",
-      "pedir": "¡Perfecto! Anoto 2 desayunos ($48.000 COP). ¿Nos indicas tu dirección exacta y método de pago preferido para despachar?",
-      "pago": "Recibimos Nequi, Daviplata, transferencias Bancolombia y datáfono contra entrega. ¿Cuál prefieres?",
-      "precio": "Nuestros platos van desde $18.000 hasta $32.000 COP. Todos con ingredientes frescos del día.",
-    },
-    defaultResponse: "¡Con gusto! El pedido queda pre-registrado. ¿Deseas agregar bebidas o cubiertos adicionales a tu orden?",
-    leadStatus: "Pedido en preparación",
-    intentDetected: "Toma de Pedido & Checkout",
-    timeSaved: "8 min ahorrados al mesero",
-  },
-  {
-    id: "barberia",
-    badge: "Belleza & Estilo",
-    name: "Barbería & Spa",
-    businessName: "Estudio Norte Barber Studio",
-    avatarIcon: "💈",
-    description: "Consulta turnos libres en tiempo real, reserva el servicio y envía recordatorio.",
-    quickPrompts: [
-      "¿Hay espacio para corte y barba hoy?",
-      "¿Qué horario tienen disponible mañana?",
-      "¿Qué precio tiene el corte premium?",
-      "Confírmame a las 4:00 pm por favor",
-    ],
-    initialMessages: [
-      {
-        id: "b1",
-        from: "user",
-        text: "Buenas tardes, ¿tienen turno para corte de cabello hoy?",
-        time: "3:15 pm",
-      },
-      {
-        id: "b2",
-        from: "bot",
-        text: "¡Hola! Sí tenemos disponibilidad hoy con el barbero principal: a las 4:30 pm o 6:00 pm. El corte vale $35.000 COP. ¿Cuál hora te reservo?",
-        time: "3:15 pm",
-      },
-    ],
-    responses: {
-      "corte": "El corte clásico vale $30.000 COP y con barba incluida $45.000 COP (incluye toalla caliente y vaporizador).",
-      "horario": "Para mañana tenemos turnos a las 10:00 am, 11:30 am, 3:00 pm y 5:30 pm.",
-      "precio": "Corte de cabello: $30.000 COP · Barba perfilada: $20.000 COP · Combo completo: $45.000 COP.",
-      "confirma": "¡Queda agendada tu cita! Te enviamos recordatorio 2 horas antes a este mismo WhatsApp. ¡Te esperamos!",
-      "tarde": "Tenemos disponibilidad a las 4:30 pm y 6:00 pm hoy. ¿A qué nombre apartamos el turno?",
-    },
-    defaultResponse: "Perfecto. Te agendo el espacio inmediatamente en nuestro calendario. ¿A nombre de quién registramos la cita?",
-    leadStatus: "Cita pre-agendada",
-    intentDetected: "Reserva de Calendario",
-    timeSaved: "12 min en llamadas de agenda",
-  },
-  {
-    id: "tienda",
-    badge: "E-commerce & Retail",
-    name: "Boutique & Ropa",
+    id: "moda",
+    badge: "Moda",
+    name: "Moda & Ropa",
     businessName: "Aura Concept Store",
     avatarIcon: "🛍️",
-    description: "Recomienda productos del catálogo, verifica tallas disponibles y comparte enlace de pago.",
+    description: "Recomienda prendas del catálogo, verifica tallas en stock y deja el pedido listo para pagar.",
     quickPrompts: [
-      "¿Tienen disponible la chaqueta overside negra?",
-      "¿Qué tallas manejan?",
-      "¿Hacen envíos a Medellín / Cali?",
+      "¿Qué tallas tienen de la chaqueta?",
+      "¿Hacen envíos a Medellín o Cali?",
       "¿Tienen cambio si no me queda?",
+      "La quiero, ¿cómo pago?",
     ],
     initialMessages: [
       {
@@ -139,58 +61,138 @@ const SECTORS: SectorScenario[] = [
       {
         id: "t2",
         from: "bot",
-        text: "¡Hola! Sí, nos quedan las últimas 3 unidades en talla M en color negro. Su valor es $149.000 COP con envío nacional gratis hoy 🖤. ¿Te reservo una?",
+        text: "¡Hola! Sí, nos quedan 3 unidades en talla M en color negro. Su valor es $149.000 COP 🖤. ¿Te separo una?",
         time: "11:40 am",
       },
     ],
     responses: {
-      "talla": "Manejamos tallas desde la XS hasta la XL. Te comparto la guía de medidas en centímetros para que elijas la ideal.",
-      "envio": "Hacemos envíos a todo Colombia. A ciudades principales tarda de 24 a 48 horas hábiles. ¡Por compras mayores a $120.000 COP el envío es gratis!",
-      "cambio": "¡Sí! Tienes hasta 30 días para cambios sin costo adicional por talla o referencia.",
-      "precio": "La chaqueta bomber tiene un precio de lanzamiento de $149.000 COP. Aceptamos tarjetas, PSE y Addi.",
+      "talla": "Tenemos la chaqueta en S (2), M (3) y L (1) en stock. Te comparto la guía de medidas para que elijas la ideal.",
+      "envio": "Enviamos a todo Colombia: a ciudades principales llega en 24 a 48 horas hábiles. Dime tu ciudad y te calculo el envío exacto.",
+      "cambio": "Sí, tienes 30 días para cambiar por talla o referencia, siempre que la prenda esté sin uso y con etiquetas.",
+      "pago": "Perfecto. Te dejo el pedido: 1 × Chaqueta bomber negra M, $149.000 COP + envío. Puedes pagar por link de pago, transferencia o Nequi. ¿Cuál prefieres?",
+      "precio": "La chaqueta bomber vale $149.000 COP. Si llevas dos prendas del catálogo, el envío te sale gratis.",
     },
-    defaultResponse: "Excelente elección. Puedo generarte el enlace de pago seguro en 1 segundo para despacharte hoy mismo.",
-    leadStatus: "Venta calificada lista",
-    intentDetected: "Consulta de Catálogo & Cierre",
+    defaultResponse: "Listo. ¿Me compartes tu nombre, ciudad y dirección para calcular el envío y dejar el pedido listo?",
+    leadStatus: "Pedido listo para pagar",
+    intentDetected: "Consulta de talla & cierre",
     timeSaved: "15 min de atención manual",
   },
   {
-    id: "servicios",
-    badge: "Profesionales",
-    name: "Consultoría & Servicios",
-    businessName: "Innova Soluciones Legales",
-    avatarIcon: "💼",
-    description: "Filtra el tipo de necesidad del cliente, solicita documentos y agenda reunión con el especialista.",
+    id: "calzado",
+    badge: "Calzado",
+    name: "Calzado & Accesorios",
+    businessName: "Paso Firme Sneakers",
+    avatarIcon: "👟",
+    description: "Revisa talla y color por variante, envía la foto del producto y cotiza el envío a la ciudad del cliente.",
     quickPrompts: [
-      "Necesito registrar mi marca comercial",
-      "¿Cuánto cuesta la asesoría inicial?",
-      "¿Cuánto tiempo tarda el trámite?",
-      "Quiero hablar con un abogado",
+      "¿Los tienen en talla 40?",
+      "¿Me mandas una foto en blanco?",
+      "¿Cuánto vale el envío a Cali?",
+      "Sí, confirmo el pedido",
     ],
     initialMessages: [
       {
-        id: "s1",
+        id: "c1",
         from: "user",
-        text: "Buenos días, busco asesoría para registrar la marca de mi empresa ante la SIC.",
-        time: "10:10 am",
+        text: "Buenas, ¿cuánto valen los tenis urbanos que publicaron ayer?",
+        time: "7:15 pm",
       },
       {
-        id: "s2",
+        id: "c2",
         from: "bot",
-        text: "¡Hola! Con gusto te asesoramos ⚖️. Realizamos el estudio previo de viabilidad sin costo en 24h. ¿Cuál es el nombre de la marca que deseas proteger?",
-        time: "10:10 am",
+        text: "¡Hola! Los Urban Runner valen $189.000 COP. Los tenemos en negro y blanco, tallas 37 a 42. ¿Qué talla usas?",
+        time: "7:15 pm",
       },
     ],
     responses: {
-      "precio": "El estudio de viabilidad es 100% gratuito. El trámite completo con tasas de la SIC y honorarios tiene tarifa fija desde $750.000 COP.",
-      "tiempo": "El proceso formal ante la Superintendencia toma entre 6 y 9 meses, pero la protección rige desde el día de la radicación inicial.",
-      "abogado": "Claro que sí, puedo agendarte una videollamada de 20 minutos con uno de nuestros abogados senior hoy mismo. ¿Te sirve a las 4:00 pm?",
-      "marca": "Anotado. Verificamos fonética y antecedentes de inmediato y te enviamos el informe de viabilidad a este WhatsApp.",
+      "talla": "En talla 40 hay 2 pares en negro y 1 en blanco. ¿Cuál color te separo?",
+      "foto": "¡Claro! Te envío la foto de los Urban Runner en blanco 📸. Son de suela antideslizante y plantilla acolchada.",
+      "envio": "El envío a Cali vale $12.000 COP y llega en 2 días hábiles. Total: $201.000 COP. ¿Te dejo el pedido así?",
+      "confirmo": "¡Pedido confirmado! 1 × Urban Runner blanco talla 40, total $201.000 COP. Te envío el link de pago; apenas se acredite, despachamos.",
+      "precio": "Los Urban Runner valen $189.000 COP y los Classic Low $159.000 COP.",
     },
-    defaultResponse: "Entendido. Registramos tu caso para que nuestro especialista te entregue la respuesta técnica en la llamada.",
-    leadStatus: "Lead de alto valor",
-    intentDetected: "Calificación B2B & Captura",
-    timeSaved: "25 min en filtrado de leads",
+    defaultResponse: "Con gusto. ¿Qué talla y color buscas? Reviso el stock exacto antes de separarlos.",
+    leadStatus: "Pedido confirmado · pendiente de pago",
+    intentDetected: "Variante, envío & checkout",
+    timeSaved: "12 min por cada venta",
+  },
+  {
+    id: "tecnologia",
+    badge: "Tecnología",
+    name: "Tecnología & Gadgets",
+    businessName: "Voltio Tech Store",
+    avatarIcon: "🎧",
+    description: "Responde dudas técnicas con tu catálogo, explica la garantía y ofrece pago contraentrega o por link.",
+    quickPrompts: [
+      "¿Qué garantía tienen los audífonos?",
+      "¿Son compatibles con iPhone?",
+      "¿Puedo pagar contraentrega?",
+      "¿Tienen stock del cargador de 20W?",
+    ],
+    initialMessages: [
+      {
+        id: "g1",
+        from: "user",
+        text: "Hola, ¿todavía tienen los audífonos inalámbricos con cancelación de ruido?",
+        time: "9:05 pm",
+      },
+      {
+        id: "g2",
+        from: "bot",
+        text: "¡Hola! Sí, los Pulse ANC están disponibles a $219.000 COP, con hasta 30 horas de batería. ¿Te cuento cómo es la garantía?",
+        time: "9:05 pm",
+      },
+    ],
+    responses: {
+      "garantia": "Tienen 6 meses de garantía por defectos de fábrica. Si algo falla, nos escribes por aquí y gestionamos el cambio.",
+      "compatible": "Sí, se conectan por Bluetooth 5.3 con iPhone, Android y computador.",
+      "contraentrega": "Sí, en ciudades principales recibimos contraentrega. También puedes pagar por link de pago o transferencia. ¿A qué ciudad te lo enviamos?",
+      "stock": "Del cargador de 20W quedan 8 unidades, a $59.000 COP. Si lo llevas con los audífonos, el envío es gratis.",
+      "precio": "Los Pulse ANC valen $219.000 COP y el cargador de 20W $59.000 COP.",
+    },
+    defaultResponse: "Te ayudo. ¿Lo quieres para iPhone o Android? Así te recomiendo el accesorio correcto del catálogo.",
+    leadStatus: "Venta calificada",
+    intentDetected: "Consulta técnica & cierre",
+    timeSaved: "18 min de soporte preventa",
+  },
+  {
+    id: "mayorista",
+    badge: "Al por mayor",
+    name: "Ventas al por mayor",
+    businessName: "Distribuidora Andina",
+    avatarIcon: "📦",
+    description: "Aplica precio mayorista desde la cantidad mínima, calcula el total del pedido y envía los datos de pago.",
+    quickPrompts: [
+      "¿Desde cuántas unidades es precio mayorista?",
+      "Quiero 24 unidades surtidas",
+      "¿Cómo es el pago por transferencia?",
+      "¿Cuánto tarda el despacho?",
+    ],
+    initialMessages: [
+      {
+        id: "w1",
+        from: "user",
+        text: "Buenos días, tengo una tienda y quiero comprar camisetas básicas para revender.",
+        time: "8:30 am",
+      },
+      {
+        id: "w2",
+        from: "bot",
+        text: "¡Hola! Con gusto 🙌. La camiseta básica vale $28.000 COP al detal y $19.500 COP al por mayor. ¿Cuántas unidades necesitas?",
+        time: "8:30 am",
+      },
+    ],
+    responses: {
+      "mayorista": "El precio mayorista aplica desde 12 unidades, y puedes surtir tallas y colores en el mismo pedido.",
+      "24": "Anotado: 24 camisetas básicas a $19.500 COP = $468.000 COP. ¿Me indicas las tallas y colores, y la ciudad de despacho?",
+      "transferencia": "Te envío los datos de la cuenta para la transferencia. Cuando nos compartas el comprobante, el pedido pasa a despacho.",
+      "despacho": "Despachamos en 24 horas hábiles después de confirmar el pago. A ciudades principales llega en 2 a 3 días.",
+      "precio": "Detal: $28.000 COP. Al por mayor (desde 12 unidades): $19.500 COP por unidad.",
+    },
+    defaultResponse: "Perfecto. Dime cantidades por talla y color, y te armo el pedido con el total exacto.",
+    leadStatus: "Pedido mayorista en curso",
+    intentDetected: "Cotización mayorista",
+    timeSaved: "25 min armando cotizaciones",
   },
 ];
 
@@ -223,7 +225,8 @@ export function DemoSection() {
 
   function simulateBotReply(userPrompt: string) {
     setIsTyping(true);
-    const lower = userPrompt.toLowerCase();
+    // Sin tildes, para que "envíos" coincida con la palabra clave "envio".
+    const lower = userPrompt.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 
     // Find best match in responses
     let matchedReply = currentSector.defaultResponse;
@@ -317,9 +320,9 @@ export function DemoSection() {
           </h2>
 
           <p className="mt-5 text-pretty text-base leading-relaxed text-zinc-400">
-            Elige el sector de tu negocio, selecciona preguntas frecuentes o{" "}
-            <span className="font-semibold text-zinc-200">escribe tus propias dudas</span> en el chat.
-            Mira cómo responde de forma natural, calcula precios y concreta pedidos al instante.
+            Elige el tipo de tienda, selecciona preguntas frecuentes o{" "}
+            <span className="font-semibold text-zinc-200">escribe como lo haría tu cliente</span> en el chat.
+            Mira cómo responde por tallas, stock y envíos, y deja el pedido listo para pagar.
           </p>
         </div>
 
@@ -568,7 +571,7 @@ export function DemoSection() {
                 </p>
                 {[
                   "No usa menús rígidos de 'presione 1 o 2'; entiende texto libre y modismos colombianos.",
-                  "Calcula sumas, promociones y horarios disponibles sin equivocarse.",
+                  "Consulta stock, envío y totales con los datos de tu catálogo.",
                   "Si el cliente pide un asesor humano, transfiere el chat con un resumen listo.",
                 ].map((item, i) => (
                   <div key={i} className="flex items-start gap-2 text-xs text-zinc-400">
@@ -586,7 +589,7 @@ export function DemoSection() {
                 <span>¿Quieres este mismo asistente en tu número de WhatsApp?</span>
               </div>
               <p className="mt-2 text-xs leading-relaxed text-zinc-400">
-                Conéctalo en 5 minutos con tu catálogo, precios y horarios. Sin programar ni una sola línea de código.
+                Conéctalo con tu catálogo, stock y envíos. Sin programar ni una sola línea de código.
               </p>
               <div className="mt-5 flex flex-wrap items-center gap-3">
                 <Link
