@@ -20,6 +20,12 @@ export function authErrorMessage(message: string): string {
   if (m.includes("already registered") || m.includes("already been registered")) {
     return "Ya existe una cuenta con este correo.";
   }
+  if (m.includes("should be different from the old password") || m.includes("same_password")) {
+    return "La contraseña nueva debe ser distinta de la anterior.";
+  }
+  if (m.includes("auth session missing") || m.includes("session_not_found")) {
+    return "El enlace venció o se abrió en otro navegador. Pide uno nuevo.";
+  }
   if (m.includes("password should be at least")) {
     return "La contraseña debe tener al menos 8 caracteres.";
   }

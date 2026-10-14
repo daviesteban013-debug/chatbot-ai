@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect, useState, type InputHTMLAttributes } from "react";
+import { useEffect, useState, type InputHTMLAttributes, type ReactNode } from "react";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { authErrorMessage } from "@/lib/auth-messages";
 import styles from "./auth.module.css";
 
-export function AuthField({ label, error, ...props }: InputHTMLAttributes<HTMLInputElement> & { label: string; error?: string }) {
+export function AuthField({ label, error, hint, ...props }: InputHTMLAttributes<HTMLInputElement> & { label: string; error?: string; hint?: ReactNode }) {
   const [show, setShow] = useState(false);
   const password = props.type === "password";
-  return <div><label className={styles.label} htmlFor={props.id}>{label}</label>
+  return <div><div className={styles.labelRow}><label className={styles.label} htmlFor={props.id}>{label}</label>{hint}</div>
     <div className={password ? styles.password : undefined}>
       <input {...props} type={password && show ? "text" : props.type} className={styles.input} aria-invalid={Boolean(error)} aria-describedby={error ? `${props.id}-error` : undefined} />
       {password && <button type="button" className={styles.showPassword} disabled={props.disabled} onClick={() => setShow(!show)} aria-label={show ? "Ocultar contraseña" : "Mostrar contraseña"}>{show ? <EyeOff size={17} /> : <Eye size={17} />}</button>}

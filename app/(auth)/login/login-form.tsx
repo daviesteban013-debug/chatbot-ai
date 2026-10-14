@@ -57,7 +57,8 @@ export function LoginForm({ callbackError }: { callbackError?: string }) {
     <div className={styles.divider}>o entra con tu correo</div>
     <form onSubmit={handleSubmit} noValidate className={styles.form}>
       <AuthField id="email" name="email" label="Correo electrónico" type="email" autoComplete="email" placeholder="tu@empresa.com" value={email} onChange={event => setEmail(event.target.value)} error={fieldErrors.email} disabled={busy} />
-      <AuthField id="password" name="password" label="Contraseña" type="password" autoComplete="current-password" placeholder="Tu contraseña" value={password} onChange={event => setPassword(event.target.value)} error={fieldErrors.password} disabled={busy} />
+      <AuthField id="password" name="password" label="Contraseña" type="password" autoComplete="current-password" placeholder="Tu contraseña" value={password} onChange={event => setPassword(event.target.value)} error={fieldErrors.password} disabled={busy}
+        hint={<Link href="/auth/forgot" className={styles.forgot}>¿Olvidaste tu contraseña?</Link>} />
       <AuthError message={formError} />
       {needsConfirmation && <ResendConfirmation email={email} />}
       <button type="submit" className={styles.primary} disabled={busy}>{loading ? <><Loader2 size={16} className={styles.spin} /> Entrando…</> : <>Entrar a NEXO <ArrowRight size={16} /></>}</button>

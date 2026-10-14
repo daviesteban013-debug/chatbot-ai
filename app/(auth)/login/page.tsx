@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = {
-  title: "Iniciar sesión — Chatbot.ai",
+  title: "Iniciar sesión · NEXO",
 };
 
 export default async function LoginPage({
