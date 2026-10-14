@@ -13,6 +13,9 @@ import { getCurrentTenant, getCurrentUser } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { CreditBalancePanel } from "@/components/dashboard/credit-balance";
+import { SalesResults } from "@/components/dashboard/sales-results";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { metricPeriod, type SalesMetrics } from "@/lib/sales-metrics";
 import {
   orderStatusLabel,
   orderStatusVariant,
@@ -23,7 +26,8 @@ import {
 import { formatCOP, timeAgo } from "@/lib/utils";
 import type { ConversationStatus, OrderStatus } from "@/lib/database.types";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const period = metricPeriod((await searchParams).periodo);
   const [user, tenantContext] = await Promise.all([
     getCurrentUser(),
     getCurrentTenant(),
@@ -78,6 +82,9 @@ export default async function DashboardPage() {
       .limit(5),
   ]);
 
+  // Results are computed in the database for any member (viewers included).
+  const { data: results } = await createAdminClient().rpc("nexo_sales_metrics", { p_tenant: tenantId, p_user: user.id, p_days: period });
+
   const tenantName = tenantContext.tenant?.name ?? "tu negocio";
 
   const metrics = [
@@ -130,6 +137,7 @@ export default async function DashboardPage() {
       </header>
 
       {/* Métricas */}
+      {results ? <SalesResults metrics={results as unknown as SalesMetrics} /> : null}
       <CreditBalancePanel />
       <section className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         {metrics.map(({ label, value, icon: Icon, href, tint }) => (

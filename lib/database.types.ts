@@ -1174,6 +1174,7 @@ export type Database = {
       nexo_begin_sales_followup: { Args: { p_id: string; p_lease: string }; Returns: Json };
       nexo_finish_sales_followup: { Args: { p_id: string; p_lease: string; p_status: string; p_reason?: string | null; p_wa_message_id?: string | null; p_body?: string | null }; Returns: Json };
       nexo_consume_sales_worker_ticket: { Args: { p_token: string }; Returns: boolean };
+      nexo_sales_metrics: { Args: { p_tenant: string; p_user: string; p_days: number }; Returns: Json };
       nexo_provision_tenant: { Args: { p_user: string; p_name: string; p_slug: string }; Returns: string };
       nexo_review_pending_order: { Args: { p_tenant: string; p_user: string; p_order: string; p_approve: boolean }; Returns: Json };
       nexo_expire_credit_reservations: { Args: Record<string, never>; Returns: number };
