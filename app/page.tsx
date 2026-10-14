@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { NexoConstellation } from "@/components/landing/nexo-constellation";
+import { DotField } from "@/components/brand/dot-field";
 import { NexoHero } from "@/components/landing/nexo-hero";
 import { DesktopDownloadSection } from "@/components/landing/desktop-download";
 import { LandingNavbar } from "@/components/landing/navbar";
@@ -32,7 +32,7 @@ export default async function HomePage({
 
   return (
     <div className="landing-root relative min-h-screen overflow-x-hidden">
-      <NexoConstellation />
+      <div className="nexo-field" aria-hidden="true"><DotField /></div>
       <a href="#contenido" className="sr-only z-[60] rounded-lg bg-yellow-300 p-3 text-zinc-950 focus:fixed focus:left-4 focus:top-4 focus:not-sr-only">Saltar al contenido</a>
       <LandingNavbar />
       <main id="contenido" className="relative z-10">

@@ -30,6 +30,7 @@ import { CatalogProposals } from "@/components/jarvis/catalog-proposals";
 import { useDailyBriefing } from "@/hooks/useDailyBriefing";
 import { DailyBriefing } from "@/components/jarvis/daily-briefing";
 import { useNexoActivity } from "@/hooks/useNexoActivity";
+import { DotField } from "@/components/brand/dot-field";
 import { NexoActivity } from "@/components/dashboard/nexo-activity";
 import { buildBriefing, type Briefing } from "@/lib/briefing";
 import { OperatorTask } from "@/components/jarvis/operator-task";
@@ -172,6 +173,7 @@ function JarvisFullscreenInner({
   useEffect(() => { const sync = () => setFileSession(sessionId); sync(); }, [sessionId]);
 
   const chatScrollRef = useRef<HTMLDivElement>(null);
+  const avatarRef = useRef<HTMLDivElement>(null);
   const powerOn = useCallback(() => {
     clapStopRef.current();
     setPanel(null);
@@ -331,7 +333,8 @@ function JarvisFullscreenInner({
 
   return (
     <div className={styles.experience} style={{ "--jarvis-accent": pageAccent } as CSSProperties}>
-      <div aria-hidden="true" className={styles.constellation} />
+      <DotField className={styles.field} accent={pageAccent} originRef={avatarRef}
+        pulse={avatarState === "SPEAKING" ? "speaking" : avatarState === "LISTENING" ? "listening" : avatarState === "PROCESSING" ? "processing" : null} />
       <header className={styles.header}>
         <Link href="/dashboard" onClick={exit} className={styles.crm}><LayoutDashboard size={15} /><span>CRM</span></Link>
         <span className={styles.wordmark}>NEXO<span className={styles.wordmarkDot}>.</span></span>
@@ -341,7 +344,7 @@ function JarvisFullscreenInner({
       <main className={styles.main}>
         {userId && <TaskAlerts onOpen={() => { pauseMicrophone(); void openCrmWorkspace({ href: "/dashboard/workspace", label: "Memoria y tareas" }); }}/>}
         <section className={styles.stage} aria-label="NEXO, tu agente">
-          <div className={styles.avatar}>
+          <div ref={avatarRef} className={styles.avatar}>
             <JarvisLiquidAvatar powered={isPoweredOn} state={avatarState} accent={pageAccent} onActivate={powerOn} />
           </div>
           <div className={styles.identity}>

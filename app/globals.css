@@ -69,6 +69,10 @@ textarea {
 .nexo-constellation { position: fixed; inset: 0; pointer-events: none; z-index: 0; background: radial-gradient(ellipse at 75% 30%, #b387170b, transparent 55%), radial-gradient(ellipse at 15% 65%, #facc1504, transparent 50%); }
 .nexo-constellation canvas { display: block; width: 100%; height: 100%; opacity: .8; }
 
+/* Landing: interactive dot field behind every section. */
+.nexo-field { position: fixed; inset: 0; pointer-events: none; z-index: 0; background: radial-gradient(ellipse at 75% 30%, #b387170b, transparent 55%); }
+.nexo-field canvas { display: block; width: 100%; height: 100%; -webkit-mask-image: radial-gradient(ellipse 90% 85% at 50% 40%, #000 35%, transparent 100%); mask-image: radial-gradient(ellipse 90% 85% at 50% 40%, #000 35%, transparent 100%); }
+
 .landing-root :is(section[id], footer[id], div[id], details[id]) {
   scroll-margin-top: 7rem;
 }
