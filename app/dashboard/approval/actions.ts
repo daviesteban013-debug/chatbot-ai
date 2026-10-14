@@ -6,11 +6,37 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentTenant, getCurrentUser } from "@/lib/auth";
-import { sendText, isWithinServiceWindow } from "@/lib/whatsapp/send";
+import { sendText, isWithinServiceWindow, type SendOptions } from "@/lib/whatsapp/send";
 
 type ActionResult = { ok: boolean; error?: string };
 
 async function loadSendOptions(tenantId: string) { return loadWhatsAppSendOptions(createAdminClient(), tenantId); }
+
+/**
+ * Claims the proposed run before sending, so a double click or two teammates
+ * approving at once send the reply only once. If WhatsApp rejects the message,
+ * the run goes back to "proposed" so it can be retried.
+ */
+async function claimAndSend(
+  tenantId: string, runId: string, status: "approved" | "edited", text: string, phone: string, sendOptions: SendOptions,
+): Promise<{ ok: true; waMessageId: string | null } | { ok: false; error: string }> {
+  const admin = createAdminClient();
+  const { data: claimed, error } = await admin.from("agent_runs")
+    .update({ status, final_reply: text })
+    .eq("id", runId).eq("tenant_id", tenantId).eq("status", "proposed")
+    .select("id").maybeSingle();
+  if (error) return { ok: false, error: "No se pudo procesar la respuesta. Inténtalo de nuevo." };
+  if (!claimed) return { ok: false, error: "Esta respuesta ya fue procesada." };
+  try {
+    const sent = await sendText(phone, text, sendOptions);
+    return { ok: true, waMessageId: sent.messages?.[0]?.id ?? null };
+  } catch (err) {
+    await admin.from("agent_runs").update({ status: "proposed", final_reply: null })
+      .eq("id", runId).eq("tenant_id", tenantId).eq("status", status);
+    const msg = err instanceof Error ? err.message : "Error enviando mensaje";
+    return { ok: false, error: `Error enviando por WhatsApp: ${msg}` };
+  }
+}
 
 /**
  * Aprueba una respuesta propuesta por el agente y la envía por WhatsApp.
@@ -76,21 +102,9 @@ export async function approveReply(agentRunId: string): Promise<ActionResult> {
   const replyText = run.proposed_reply?.trim();
   if (!replyText) return { ok: false, error: "La respuesta propuesta está vacía." };
 
-  // Send via WhatsApp
-  try {
-    await sendText(customer.phone, replyText, sendOptions);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Error enviando mensaje";
-    return { ok: false, error: `Error enviando por WhatsApp: ${msg}` };
-  }
-
-  // Update agent_run status
+  const sent = await claimAndSend(tenantId, run.id, "approved", replyText, customer.phone, sendOptions);
+  if (!sent.ok) return sent;
   const admin = createAdminClient();
-  await admin
-    .from("agent_runs")
-    .update({ status: "approved", final_reply: replyText })
-    .eq("id", run.id)
-    .eq("tenant_id", tenantId);
 
   // Insert outbound message
   const now = new Date().toISOString();
@@ -101,6 +115,7 @@ export async function approveReply(agentRunId: string): Promise<ActionResult> {
     sender: "human",
     type: "text",
     body: replyText,
+    wa_message_id: sent.waMessageId,
     created_at: now,
   });
 
@@ -144,6 +159,7 @@ export async function editAndApproveReply(
 
   const trimmed = editedText.trim();
   if (!trimmed) return { ok: false, error: "El texto editado no puede estar vacío." };
+  if (trimmed.length > 4096) return { ok: false, error: "WhatsApp admite hasta 4.096 caracteres por mensaje." };
 
   // Load conversation → customer
   const { data: conversation } = await supabase
@@ -181,21 +197,9 @@ export async function editAndApproveReply(
   const sendOptions = await loadSendOptions(tenantId);
   if (!sendOptions) return { ok: false, error: "No hay credenciales de WhatsApp configuradas." };
 
-  // Send edited text
-  try {
-    await sendText(customer.phone, trimmed, sendOptions);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Error enviando mensaje";
-    return { ok: false, error: `Error enviando por WhatsApp: ${msg}` };
-  }
-
-  // Update agent_run
+  const sent = await claimAndSend(tenantId, run.id, "edited", trimmed, customer.phone, sendOptions);
+  if (!sent.ok) return sent;
   const admin = createAdminClient();
-  await admin
-    .from("agent_runs")
-    .update({ status: "edited", final_reply: trimmed })
-    .eq("id", run.id)
-    .eq("tenant_id", tenantId);
 
   // Insert outbound message
   const now = new Date().toISOString();
@@ -206,6 +210,7 @@ export async function editAndApproveReply(
     sender: "human",
     type: "text",
     body: trimmed,
+    wa_message_id: sent.waMessageId,
     created_at: now,
   });
 
@@ -244,105 +249,50 @@ export async function rejectReply(agentRunId: string): Promise<ActionResult> {
   if (!run) return { ok: false, error: "Respuesta no encontrada." };
   if (run.status !== "proposed") return { ok: false, error: "Esta respuesta ya fue procesada." };
 
-  const admin = createAdminClient();
-  await admin
+  const { data: rejected } = await createAdminClient()
     .from("agent_runs")
     .update({ status: "rejected" })
     .eq("id", agentRunId)
-    .eq("tenant_id", tenantId);
+    .eq("tenant_id", tenantId)
+    .eq("status", "proposed")
+    .select("id")
+    .maybeSingle();
+  if (!rejected) return { ok: false, error: "Esta respuesta ya fue procesada." };
 
   revalidatePath("/dashboard/approval");
   return { ok: true };
 }
 
 /**
- * Aprueba un pedido pendiente → lo mueve a 'pending_payment'.
+ * Aprueba (→ pending_payment) o rechaza (→ canceled, liberando el stock reservado) un
+ * pedido pendiente. La base de datos bloquea el pedido: un doble clic o una aprobación
+ * y un rechazo simultáneos solo se aplican una vez.
  */
+async function reviewOrder(orderId: string, approve: boolean): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!user || user.is_anonymous) return { ok: false, error: "Tu sesión expiró. Vuelve a iniciar sesión." };
+
+  const tenantCtx = await getCurrentTenant();
+  if (!tenantCtx) return { ok: false, error: "No encontramos tu negocio." };
+  if (!["owner", "agent"].includes(tenantCtx.role)) return { ok: false, error: "Tu acceso es de solo lectura." };
+
+  const { data, error } = await createAdminClient().rpc("nexo_review_pending_order", {
+    p_tenant: tenantCtx.tenantId, p_user: user.id, p_order: orderId, p_approve: approve,
+  });
+  if (error) return { ok: false, error: error.message.includes("order_forbidden") ? "Tu acceso es de solo lectura." : "No se pudo actualizar el pedido. Inténtalo de nuevo." };
+  const result = data as { ok: boolean; reason?: string } | null;
+  if (!result?.ok) return { ok: false, error: result?.reason === "not_found" ? "Pedido no encontrado." : "Este pedido ya fue procesado." };
+
+  revalidatePath("/dashboard/approval");
+  return { ok: true };
+}
+
+/** Aprueba un pedido pendiente → lo mueve a 'pending_payment'. */
 export async function approveOrder(orderId: string): Promise<ActionResult> {
-  const user = await getCurrentUser();
-  if (!user || user.is_anonymous) return { ok: false, error: "Tu sesión expiró. Vuelve a iniciar sesión." };
-
-  const tenantCtx = await getCurrentTenant();
-  if (!tenantCtx) return { ok: false, error: "No encontramos tu negocio." };
-  if (!["owner", "agent"].includes(tenantCtx.role)) return { ok: false, error: "Tu acceso es de solo lectura." };
-  const tenantId = tenantCtx.tenantId;
-
-  const supabase = await createClient();
-
-  const { data: order } = await supabase
-    .from("orders")
-    .select("id, status")
-    .eq("id", orderId)
-    .eq("tenant_id", tenantId)
-    .maybeSingle();
-
-  if (!order) return { ok: false, error: "Pedido no encontrado." };
-  if (order.status !== "pending_approval") {
-    return { ok: false, error: "Este pedido ya fue procesado." };
-  }
-
-  const admin = createAdminClient();
-  await admin
-    .from("orders")
-    .update({ status: "pending_payment", updated_at: new Date().toISOString() })
-    .eq("id", orderId)
-    .eq("tenant_id", tenantId);
-
-  revalidatePath("/dashboard/approval");
-  return { ok: true };
+  return reviewOrder(orderId, true);
 }
 
-/**
- * Rechaza un pedido pendiente → libera stock reservado y lo marca como cancelado.
- */
+/** Rechaza un pedido pendiente → libera stock reservado y lo marca como cancelado. */
 export async function rejectOrder(orderId: string): Promise<ActionResult> {
-  const user = await getCurrentUser();
-  if (!user || user.is_anonymous) return { ok: false, error: "Tu sesión expiró. Vuelve a iniciar sesión." };
-
-  const tenantCtx = await getCurrentTenant();
-  if (!tenantCtx) return { ok: false, error: "No encontramos tu negocio." };
-  if (!["owner", "agent"].includes(tenantCtx.role)) return { ok: false, error: "Tu acceso es de solo lectura." };
-  const tenantId = tenantCtx.tenantId;
-
-  const supabase = await createClient();
-
-  const { data: order } = await supabase
-    .from("orders")
-    .select("id, status")
-    .eq("id", orderId)
-    .eq("tenant_id", tenantId)
-    .maybeSingle();
-
-  if (!order) return { ok: false, error: "Pedido no encontrado." };
-  if (order.status !== "pending_approval") {
-    return { ok: false, error: "Este pedido ya fue procesado." };
-  }
-
-  // Load order items to release stock
-  const { data: items } = await supabase
-    .from("order_items")
-    .select("variant_id, qty")
-    .eq("order_id", orderId)
-    .eq("tenant_id", tenantId);
-
-  // Release reserved stock for each item
-  const admin = createAdminClient();
-  if (items && items.length > 0) {
-    for (const item of items) {
-      await admin.rpc("release_variant_stock", {
-        p_variant: item.variant_id,
-        p_qty: item.qty,
-      });
-    }
-  }
-
-  // Cancel the order
-  await admin
-    .from("orders")
-    .update({ status: "canceled", updated_at: new Date().toISOString() })
-    .eq("id", orderId)
-    .eq("tenant_id", tenantId);
-
-  revalidatePath("/dashboard/approval");
-  return { ok: true };
+  return reviewOrder(orderId, false);
 }

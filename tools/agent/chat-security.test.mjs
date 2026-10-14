@@ -55,6 +55,7 @@ const { GET, POST } = await import(await load("../../app/api/chat/route.ts", {
   "@/lib/jarvis-personalization": await load("../../lib/jarvis-personalization.ts"),
   "@/lib/files/server": moduleUrl("export class FileAccessError extends Error {} export const loadChatFiles=async()=>[];"),
   "@/lib/files/types": await load("../../lib/files/types.ts"),
+  "@/lib/membership": await load("../../lib/membership.ts"),
 }));
 const origin = "https://nexo.test";
 const body = { sessionId: "session_a", userMessage: "Consulta mis pedidos" };

@@ -45,15 +45,21 @@ export async function takeHandoff(handoffId: string): Promise<ActionResult> {
     return { ok: false, error: "Este handoff ya no está disponible." };
   }
 
-  const { error } = await createAdminClient()
+  const { data: taken, error } = await createAdminClient()
     .from("handoffs")
     .update({ status: "taken", taken_by: user.id })
     .eq("tenant_id", tenantId)
     .eq("id", handoffId)
-    .eq("status", "open");
+    .eq("status", "open")
+    .select("id")
+    .maybeSingle();
 
   if (error) {
     return { ok: false, error: "No se pudo tomar el handoff." };
+  }
+  // Another advisor took it between the check above and this update.
+  if (!taken) {
+    return { ok: false, error: "Otro asesor ya tomó este handoff." };
   }
 
   revalidatePath("/dashboard/handoffs");

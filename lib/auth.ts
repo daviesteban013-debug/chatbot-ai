@@ -1,17 +1,13 @@
 import { cache } from "react";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
-import type { Tenant, TenantMemberRole } from "@/lib/database.types";
+import { pickMembership, type CurrentTenant } from "@/lib/membership";
 
 /**
  * Contexto de tenant del usuario autenticado.
  * `tenant` puede venir como objeto o arreglo según la inferencia del join.
  */
-export interface CurrentTenant {
-  tenantId: string;
-  role: TenantMemberRole;
-  tenant: Tenant | null;
-}
+export type { CurrentTenant };
 
 /**
  * Usuario autenticado actual (o `null`).
@@ -29,7 +25,8 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
 /**
  * Resuelve el tenant del usuario autenticado a partir de `tenant_members`.
  * Devuelve `null` si no hay sesión o si el usuario aún no pertenece a ningún
- * tenant (p. ej. recién registrado sin aprovisionar).
+ * tenant (p. ej. recién registrado sin aprovisionar). Con varios negocios,
+ * siempre elige el mismo (ver `pickMembership`).
  */
 export const getCurrentTenant = cache(async (): Promise<CurrentTenant | null> => {
   const supabase = await createClient();
@@ -42,17 +39,7 @@ export const getCurrentTenant = cache(async (): Promise<CurrentTenant | null> =>
     .from("tenant_members")
     .select("tenant_id, role, tenants(*)")
     .eq("user_id", user.id)
-    .limit(1)
-    .maybeSingle();
+    .limit(50);
 
-  if (!data) return null;
-
-  const joined = data.tenants as Tenant | Tenant[] | null | undefined;
-  const tenant = Array.isArray(joined) ? (joined[0] ?? null) : (joined ?? null);
-
-  return {
-    tenantId: data.tenant_id,
-    role: data.role,
-    tenant,
-  };
+  return pickMembership(data);
 });

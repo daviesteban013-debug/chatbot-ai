@@ -25,45 +25,14 @@ export async function provisionTenant(): Promise<ProvisionResult> {
   const businessName = typeof user.user_metadata?.business_name === "string"
     ? user.user_metadata.business_name.trim().slice(0, 60) : "Mi negocio";
   const name = businessName.length >= 2 ? businessName : "Mi negocio";
-  const admin = createAdminClient();
-
-  // 2) Idempotencia: si ya pertenece a un tenant, no crear otro.
-  const { data: existing, error: existingError } = await admin
-    .from("tenant_members")
-    .select("tenant_id")
-    .eq("user_id", user.id)
-    .limit(1)
-    .maybeSingle();
-  if (existingError) return { ok: false };
-  if (existing) {
-    return { ok: true, tenantId: existing.tenant_id };
-  }
-
-  // 3) Crear el tenant y la membresía owner.
-  const slug = buildSlug(name);
-  const { data: tenant, error: tenantError } = await admin
-    .from("tenants")
-    .insert({ name, slug, plan: "pilot" })
-    .select("id")
-    .single();
-  if (tenantError || !tenant) {
-    return { ok: false };
-  }
-
-  const { error: memberError } = await admin
-    .from("tenant_members")
-    .insert({
-      tenant_id: tenant.id,
-      user_id: user.id,
-      role: "owner",
-    });
-  if (memberError) {
-    // Do not leave an orphan business if the membership write fails.
-    await admin.from("tenants").delete().eq("id", tenant.id);
-    return { ok: false };
-  }
-
-  return { ok: true, tenantId: tenant.id };
+  // Idempotent and serialized per user in the database: concurrent calls (auth
+  // callback, finish page, double submit) return the same business instead of
+  // creating two. Tenant and owner membership are created in one transaction.
+  const { data: tenantId, error: provisionError } = await createAdminClient().rpc("nexo_provision_tenant", {
+    p_user: user.id, p_name: name, p_slug: buildSlug(name),
+  });
+  if (provisionError || typeof tenantId !== "string") return { ok: false };
+  return { ok: true, tenantId };
 }
 
 /** Genera un slug único y seguro a partir del nombre del negocio. */

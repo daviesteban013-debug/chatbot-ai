@@ -116,6 +116,7 @@ const { POST, GET } = await import(await load("../../app/api/chat/route.ts", {
   "@/lib/jarvis-personalization": profileUrl,
   "@/lib/files/server": moduleUrl("export class FileAccessError extends Error {} export const loadChatFiles = async () => [];"),
   "@/lib/files/types": await load("../../lib/files/types.ts"),
+  "@/lib/membership": await load("../../lib/membership.ts"),
 }));
 const { saveJarvisPersonalization } = await import(await load("../../app/dashboard/jarvis/actions.ts", {
   "@/lib/auth": moduleUrl("export const getCurrentTenant = async () => null;"),

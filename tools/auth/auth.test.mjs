@@ -29,7 +29,12 @@ const server = asModule("export const createClient = async () => globalThis.__au
 globalThis.__authClient = { auth: { getUser: async () => ({ data: { user }, error: null }) } };
 globalThis.__authAdmin = () => {
   adminCalls++;
-  return { from(table) {
+  return { async rpc(name, args) {
+    // nexo_provision_tenant: one locked transaction that reuses or creates the business.
+    writes.push({ rpc: name, args });
+    if (queryError || memberError) return { data: null, error: queryError ?? memberError };
+    return { data: existing?.tenant_id ?? "tenant-new", error: null };
+  }, from(table) {
     const query = {
       select() { return query; }, eq() { return query; }, limit() { return query; },
       maybeSingle: async () => ({ data: existing, error: queryError }),
@@ -54,20 +59,21 @@ test("an anonymous or unconfirmed caller cannot reach service-role provisioning"
 test("confirmed owner gets their own business even if caller injects another user's ID", async () => {
   reset(); user = { id: "owner", email_confirmed_at: "2026-01-01", user_metadata: { business_name: " Mi negocio real ", role: "admin" } };
   assert.deepEqual(await provisionTenant({ userId: "victim", email: "victim@example.test", businessName: "Fake" }), { ok: true, tenantId: "tenant-new" });
-  assert.equal(writes[0].value.name, "Mi negocio real");
-  assert.equal(writes[1].value.user_id, "owner"); assert.equal(writes[1].value.role, "owner");
+  assert.equal(writes[0].rpc, "nexo_provision_tenant");
+  assert.equal(writes[0].args.p_name, "Mi negocio real"); assert.equal(writes[0].args.p_user, "owner");
+  assert.match(writes[0].args.p_slug, /^mi-negocio-real-[0-9a-f]{6}$/);
 });
 test("existing membership is reused; query failures do not create another business", async () => {
   reset(); user = { id: "owner", email_confirmed_at: "2026-01-01" }; existing = { tenant_id: "existing" };
-  assert.deepEqual(await provisionTenant(), { ok: true, tenantId: "existing" }); assert.deepEqual(writes, []);
+  assert.deepEqual(await provisionTenant(), { ok: true, tenantId: "existing" });
+  assert.deepEqual(writes.map(w => w.rpc), ["nexo_provision_tenant"], "a single atomic call, never a separate insert");
   existing = null; queryError = new Error("offline");
-  assert.deepEqual(await provisionTenant(), { ok: false }); assert.deepEqual(writes, []);
+  assert.deepEqual(await provisionTenant(), { ok: false });
 });
-test("Google accounts use a safe business name; failed membership cleans only the new orphan", async () => {
+test("Google accounts use a safe business name; a failed transaction reports failure", async () => {
   reset(); user = { id: "google-user", email_confirmed_at: "2026-01-01", user_metadata: { business_name: {} } }; memberError = new Error("offline");
   assert.deepEqual(await provisionTenant(), { ok: false });
-  assert.equal(writes[0].value.name, "Mi negocio"); assert.equal(writes[1].value.user_id, "google-user");
-  assert.deepEqual(writes[2], { table: "tenants", deleted: true });
+  assert.equal(writes[0].args.p_name, "Mi negocio"); assert.equal(writes[0].args.p_user, "google-user");
 });
 
 let verified, tokenError, provisionOk;
