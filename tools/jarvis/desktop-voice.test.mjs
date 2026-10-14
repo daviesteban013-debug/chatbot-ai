@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-import { moduleUrl } from '../stripe/load-module.mjs';
+import { moduleUrl } from '../lib/load-module.mjs';
 const { jarvisCommand, jarvisCommandPanel, commandPanels } = await import(await moduleUrl('lib/jarvis-commands.ts'));
 const desktopPolicy = createRequire(import.meta.url)('../../desktop/policy.cjs');
 const { createVoiceActivity } = await import(await moduleUrl('lib/voice/voice-activity.ts'));

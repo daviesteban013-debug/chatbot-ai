@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import nextEnv from '@next/env';
-import {moduleUrl} from '../stripe/load-module.mjs';
+import {moduleUrl} from '../lib/load-module.mjs';
 // Real provider + bounded demo allowance; synthetic CRM and in-memory proposals.
 // Never fetch customer records, persist work, print keys or send external messages.
 nextEnv.loadEnvConfig(process.cwd(),false,{info(){},error(){}});

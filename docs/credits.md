@@ -23,7 +23,8 @@ La reserva es atómica: el bloqueo del periodo del propietario serializa todas
 las sesiones antes de comprobar la ventana. Cambiar de conversación, pestaña o
 dispositivo no renueva el cupo. Las RPC y tablas nuevas son privadas para
 `service_role`, con RLS y `SECURITY INVOKER`; la ruta deriva la identidad de la
-sesión autenticada. El plan sigue exigiendo suscripción y modo Stripe verificados.
+sesión autenticada. El plan sigue exigiendo un periodo pagado vigente en el modo de
+pagos configurado (ver `docs/mercadopago-payments.md`).
 
 Los límites viven en `nexo_message_limits`; `NEXO_MESSAGE_LIMITS` documenta los
 valores comerciales. Cambiar ambos y los textos de `lib/plans.ts` conjuntamente.
@@ -113,15 +114,14 @@ un límite al descuento.
 2. Verificar que el proveedor compatible con Chat Completions devuelva tokens
    de entrada/salida y `usage` en streaming. Si no lo soporta, cambiar de proveedor
    o implementar su medición oficial antes de habilitarlo.
-3. Mantener los eventos Stripe `customer.subscription.created`,
-   `customer.subscription.updated` y `customer.subscription.deleted` habilitados.
-   El webhook consulta el estado vigente en Stripe y devuelve 503 si no puede
-   persistirlo, para permitir reintentos. Los cambios de plan modifican la cuota
-   sin borrar el consumo del mes. La cancelación, vencimiento o estado no activo
-   retiran el cupo pagado y dejan únicamente el cupo de prueba configurado.
-4. Las suscripciones existentes se inicializan como `unknown`, sin conceder un
-   cupo pagado no verificado. Revalidarlas desde Stripe mediante el flujo existente
-   de reclamación de suscripción o un evento legítimo antes de lanzar el cambio.
+3. Mantener el webhook de Mercado Pago (`payment`, `subscription_preapproval`,
+   `subscription_authorized_payment`) configurado. El webhook consulta el pago
+   vigente en Mercado Pago y devuelve 500 si no puede persistirlo, para permitir
+   reintentos. Los cambios de plan modifican la cuota sin borrar el consumo del mes.
+   El vencimiento del periodo pagado, un reembolso o un contracargo retiran el cupo
+   pagado y dejan únicamente el cupo de prueba configurado.
+4. El cupo pagado depende solo de `tenants.plan_active_until` y `billing_mode`,
+   que escriben las RPC privadas de cobro tras verificar el pago en Mercado Pago.
 5. Ejecutar `npm run test:credits`, `npm run test:jarvis`, `npm run test:pwa`
    y `npm run build`. Realizar después una prueba de proveedor y webhook en un
    entorno de pruebas, sin cobros ni envíos a clientes reales.

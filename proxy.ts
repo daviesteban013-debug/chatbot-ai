@@ -61,14 +61,8 @@ export async function proxy(request: NextRequest) {
   }
 
   // Proteger el panel y el onboarding: sin sesión se redirige al login.
-  // Excepción: permitir acceso a Jarvis si viene de un pago recién completado (?paid=1).
-  const isJarvisPaid =
-    pathname.startsWith("/dashboard/jarvis") &&
-    request.nextUrl.searchParams.get("paid") === "1";
-
   if (
     !user &&
-    !isJarvisPaid &&
     (pathname.startsWith("/dashboard") || pathname.startsWith("/onboarding"))
   ) {
     const loginUrl = new URL("/login", request.url);

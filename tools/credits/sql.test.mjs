@@ -30,8 +30,9 @@ before(async () => {
 after(async () => { await db?.close(); });
 beforeEach(async () => {
   await db.exec("reset role; truncate public.nexo_model_requests, public.nexo_message_requests, public.credit_requests, public.credit_periods; update credit_limits set tokens = 1000000 where plan = 'esencial'; update nexo_message_limits set messages=40 where plan='esencial';");
-  await db.exec("update tenants set plan = 'esencial', stripe_subscription_status = 'active', stripe_current_period_end = now() + interval '2 months';");
-  await db.exec("update billing_settings set mode='test'; update tenants set stripe_mode='test';");
+  await db.exec("truncate public.billing_payments, public.billing_checkouts cascade;");
+  await db.exec("update tenants set plan = 'esencial', plan_active_until = now() + interval '2 months', mp_preapproval_id = null, mp_preapproval_status = null;");
+  await db.exec("update billing_settings set mode='test'; update tenants set billing_mode='test';");
 });
 const balance = async (id = tenant, uid = null) => (await db.query("select credit_balance($1,$2) as value", [id, uid])).rows[0].value;
 const reserve = async (requested = 600000, minimum = requested, channel = "web", id = crypto.randomUUID()) => ({ id, ...(await db.query("select reserve_credits($1,$2,null,$3,$4,$5) as value", [id, tenant, requested, minimum, channel])).rows[0].value });
@@ -46,9 +47,9 @@ test("NEXO grants the verified business tier; expired, wrong-mode and unrelated 
   await db.query("update tenants set plan='crecimiento' where id=$1",[tenant]);
   assert.equal((await messageBalance()).quotaMessages,100);
   assert.equal((await messageBalance(otherTenant)).quotaMessages,40);
-  await db.query("update tenants set stripe_current_period_end=now()-interval '1 second' where id=$1",[tenant]);
+  await db.query("update tenants set plan_active_until=now()-interval '1 second' where id=$1",[tenant]);
   assert.equal((await messageBalance()).quotaMessages,15);
-  await db.query("update tenants set stripe_current_period_end=now()+interval '1 month',stripe_mode='live' where id=$1",[tenant]);
+  await db.query("update tenants set plan_active_until=now()+interval '1 month',billing_mode='live' where id=$1",[tenant]);
   assert.equal((await messageBalance()).quotaMessages,15);
   assert.equal((await messageBalance(null,user)).quotaMessages,15);
   assert.equal((await messageBalance(null,null)).quotaMessages,20);
@@ -133,18 +134,85 @@ test("live cutover cannot carry over a test subscription's paid allowance", asyn
   assert.equal((await balance()).quotaTokens,1000000);
   await db.exec("update billing_settings set mode='live';");
   assert.equal((await balance()).quotaTokens,20000);
-  await db.exec("update tenants set stripe_mode='live';");
+  await db.exec("update tenants set billing_mode='live';");
   assert.equal((await balance()).quotaTokens,1000000);
 });
 
-test("checkout retries share an attempt; competing plans are rejected and browsers cannot reserve checkout", async () => {
-  await db.query("insert into billing_accounts(tenant_id,mode,customer_id) values($1,'test','cus_fixture') on conflict do nothing",[tenant]);
-  await db.query("update billing_accounts set checkout_expires_at=null where tenant_id=$1",[tenant]);
-  const claim=async(plan='esencial')=>(await db.query("select claim_billing_checkout($1,'test',$2,false) as value",[tenant,plan])).rows[0].value;
-  const a=await claim(),b=await claim();assert.equal(a.ok,true);assert.equal(a.attempt,b.attempt);assert.equal((await claim('equipo')).ok,false);
+const claim = async (plan = "esencial", kind = "one_time", amount = 120000, uid = user) =>
+  (await db.query("select nexo_claim_mp_checkout($1,$2,'test',$3,$4,false,$5) as value", [tenant, uid, kind, plan, amount])).rows[0].value;
+const pay = async (id, checkout, status = "approved", amount = 120000, currency = "COP", mode = "test") =>
+  (await db.query("select nexo_apply_mp_payment($1,$2,$3,$4,$5,$6) as value", [id, checkout, mode, status, amount, currency])).rows[0].value;
+const until = async () => new Date((await db.query("select plan_active_until from tenants where id=$1", [tenant])).rows[0].plan_active_until).getTime();
+const owner = () => db.query("update tenant_members set role='owner' where tenant_id=$1 and user_id=$2", [tenant, user]);
+
+test("checkouts are owner-only, reuse a ready link and block plan changes while another plan is paid", async () => {
+  await owner();
+  await assert.rejects(claim("esencial", "one_time", 120000, otherUser), /billing_owner_required/);
+  const a = await claim(); assert.equal(a.ok, true); assert.equal(a.reused, false);
+  await db.query("update billing_checkouts set checkout_url='https://www.mercadopago.com.co/checkout/x' where id=$1", [a.id]);
+  const b = await claim(); assert.equal(b.id, a.id); assert.equal(b.reused, true);
+  assert.equal((await claim("equipo", "one_time", 400000)).reason, "plan_change");
+  await db.query("update tenants set plan_active_until=null where id=$1", [tenant]);
+  const c = await claim("equipo", "one_time", 400000); assert.equal(c.ok, true);
+  assert.equal((await db.query("select status from billing_checkouts where id=$1", [a.id])).rows[0].status, "canceled");
+  await db.query("update tenants set mp_preapproval_status='authorized' where id=$1", [tenant]);
+  assert.equal((await claim("equipo", "one_time", 400000)).reason, "subscribed");
+  await db.exec("update billing_settings set mode='live'");
+  await assert.rejects(claim(), /billing_mode_mismatch/);
+  await db.exec("update billing_settings set mode='test'");
   await db.exec("set role authenticated;");
-  try { await assert.rejects(claim(),/permission denied/); await assert.rejects(db.query("update billing_settings set mode='live'"),/permission denied/); }
-  finally { await db.exec("reset role;"); }
+  try {
+    await assert.rejects(claim(), /permission denied/);
+    await assert.rejects(pay("1", a.id), /permission denied/);
+    await assert.rejects(db.query("select * from billing_payments"), /permission denied/);
+    await assert.rejects(db.query("update billing_settings set mode='live'"), /permission denied/);
+  } finally { await db.exec("reset role;"); }
+});
+
+test("approved payments extend the paid period once; wrong amount, currency or mode never activates a plan", async () => {
+  await owner(); await db.query("update tenants set plan_active_until=null where id=$1", [tenant]);
+  const { id } = await claim();
+  assert.equal((await pay("p-1", id, "approved", 1000)).reason, "amount");
+  assert.equal((await pay("p-1", id, "approved", 120000, "USD")).reason, "amount");
+  assert.equal((await pay("p-1", id, "approved", 120000, "COP", "live")).reason, "mode");
+  assert.equal((await pay("p-1", id, "pending")).applied, false);
+  assert.equal((await balance()).plan, "trial");
+  const first = await pay("p-1", id); assert.equal(first.applied, true);
+  const end = await until(); assert.ok(end > Date.now() + 27 * 864e5 && end < Date.now() + 32 * 864e5);
+  assert.equal((await pay("p-1", id)).applied, false, "duplicate notifications are idempotent");
+  assert.equal((await pay("p-1", id, "pending")).applied, false);
+  assert.equal((await db.query("select status from billing_payments where mp_payment_id='p-1'")).rows[0].status, "approved");
+  assert.equal(await until(), end);
+  assert.equal((await balance()).plan, "esencial");
+});
+
+test("renewals stack after the current period; a refund removes only its unconsumed time", async () => {
+  await owner(); await db.query("update tenants set plan_active_until=null where id=$1", [tenant]);
+  const { id } = await claim();
+  await pay("p-a", id); const one = await until();
+  await pay("p-b", id); const two = await until();
+  assert.ok(two - one > 27 * 864e5, "the second month starts when the first one ends");
+  await pay("p-b", id, "refunded");
+  assert.ok(Math.abs(await until() - one) < 1000);
+  await pay("p-a", id, "charged_back");
+  assert.ok(await until() <= Date.now() + 1000);
+  assert.equal((await balance()).plan, "trial");
+  assert.equal((await pay("p-a", id)).applied, false, "a refunded payment cannot be re-approved");
+});
+
+test("subscription events are tied to their checkout and an older subscription cannot replace the active one", async () => {
+  await owner(); await db.query("update tenants set plan_active_until=null where id=$1", [tenant]);
+  const { id } = await claim("esencial", "subscription");
+  const sync = async (pre, status, checkout = id) => (await db.query("select nexo_sync_mp_preapproval($1,$2,$3,'test') as value", [checkout, pre, status])).rows[0].value;
+  assert.equal((await sync("pre-1", "pending")).ok, true);
+  assert.equal((await sync("pre-other", "authorized")).reason, "preapproval_mismatch");
+  await sync("pre-1", "authorized");
+  const row = (await db.query("select mp_preapproval_id, mp_preapproval_status from tenants where id=$1", [tenant])).rows[0];
+  assert.deepEqual(row, { mp_preapproval_id: "pre-1", mp_preapproval_status: "authorized" });
+  await db.query("update billing_checkouts set status='canceled' where id=$1", [id]);
+  const old = (await db.query("insert into billing_checkouts(tenant_id,mode,kind,plan,annual,amount_cop,expires_at) values($1,'test','subscription','esencial',false,120000,now()+interval '1 day') returning id", [tenant])).rows[0].id;
+  assert.equal((await sync("pre-0", "cancelled", old)).applied, false);
+  assert.equal((await db.query("select mp_preapproval_status from tenants where id=$1", [tenant])).rows[0].mp_preapproval_status, "authorized");
 });
 
 test("all versioned migrations apply; configured plans contain the selected monthly credits", async () => {
@@ -190,9 +258,11 @@ test("upgrades change the quota without resetting consumption; canceled and expi
   await db.query("update tenants set plan='crecimiento' where id=$1", [tenant]);
   assert.equal((await balance()).quotaTokens, 4000000);
   assert.equal((await balance()).usedTokens, 5000);
-  await db.query("update tenants set stripe_subscription_status='canceled' where id=$1", [tenant]);
+  await db.query("update tenants set plan_active_until=now()-interval '1 day',mp_preapproval_status='authorized' where id=$1", [tenant]);
+  assert.equal((await balance()).plan, "crecimiento", "an authorized subscription keeps a grace while Mercado Pago retries");
+  await db.query("update tenants set plan_active_until=now()-interval '4 days' where id=$1", [tenant]);
   assert.equal((await balance()).quotaTokens, 20000);
-  await db.query("update tenants set stripe_subscription_status='active',stripe_current_period_end=now()-interval '1 day' where id=$1", [tenant]);
+  await db.query("update tenants set plan_active_until=now()-interval '1 day',mp_preapproval_status='cancelled' where id=$1", [tenant]);
   assert.equal((await balance()).plan, "trial");
 });
 test("a previous-period settlement stays in its original month; current credits do not reset on reads", async () => {
@@ -209,7 +279,7 @@ test("a previous-period settlement stays in its original month; current credits 
 test("demo visitors share a bounded daily pool; account trials cannot spoof monthly paid limits", async () => {
   assert.equal((await balance(null,null)).quotaTokens, 100000);
   assert.equal((await balance(null,user)).quotaTokens, 20000);
-  await db.query("update tenants set stripe_subscription_status='unknown' where id=$1", [tenant]);
+  await db.query("update tenants set plan_active_until=null where id=$1", [tenant]);
   assert.equal((await balance()).quotaTokens, 20000);
 });
 test("RLS isolates periods and requests; browsers cannot change quotas or execute charging RPCs", async () => {

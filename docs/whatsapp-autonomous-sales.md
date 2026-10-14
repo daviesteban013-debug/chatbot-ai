@@ -11,7 +11,7 @@ El dueño configura en `/dashboard/agent`:
 - Un enlace HTTPS reutilizable de su negocio que permita indicar el importe del pedido.
 - Instrucciones públicas para transferencia: banco/billetera, titular, tipo y número de cuenta.
 
-Solo se ofrecen los métodos configurados. No hay valores inventados ni fallback a Stripe de las suscripciones de NEXO. El formulario no solicita contraseñas ni claves API. Los miembros consultan la configuración; solo el dueño actual puede guardarla mediante un RPC privado que vuelve a comprobar su membresía.
+Solo se ofrecen los métodos configurados. No hay valores inventados ni fallback al cobro de los planes de NEXO. El formulario no solicita contraseñas ni claves API. Los miembros consultan la configuración; solo el dueño actual puede guardarla mediante un RPC privado que vuelve a comprobar su membresía.
 
 El enlace se guarda, no se genera un checkout individual con importe ni referencia automáticamente. Se envían el total y la referencia para que el cliente los indique. Transferencia y enlace permanecen `payment_status=pending`. Recibir una captura o un «ya pagué» no confirma el pago. Para verificarlo automáticamente falta conectar el proveedor de cobro o la conciliación bancaria de cada negocio, validar su webhook y relacionarlo con el pedido; esta entrega no implementa ese conector. Tampoco contrata una transportadora ni crea una guía.
 

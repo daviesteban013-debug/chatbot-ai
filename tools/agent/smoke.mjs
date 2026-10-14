@@ -1,6 +1,6 @@
 import nextEnv from "@next/env";
 import { createClient } from "@supabase/supabase-js";
-import { moduleUrl } from "../stripe/load-module.mjs";
+import { moduleUrl } from "../lib/load-module.mjs";
 
 // Server-side, read-only probe. No model requests, sends, writes or raw CRM values.
 nextEnv.loadEnvConfig(process.cwd(), false, { info() {}, error() {} });

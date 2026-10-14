@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { moduleUrl } from '../stripe/load-module.mjs';
+import { moduleUrl } from '../lib/load-module.mjs';
 const { createRecorderListener } = await import(await moduleUrl('lib/voice/recorder-listener.ts'));
 const flush = async () => { for (let i = 0; i < 8; i++) await new Promise(resolve => setImmediate(resolve)); };
 function harness(t, { pendingPermission = false, pendingUpload = false } = {}) {

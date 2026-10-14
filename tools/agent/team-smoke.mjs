@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import nextEnv from "@next/env";
-import { moduleUrl } from "../stripe/load-module.mjs";
+import { moduleUrl } from "../lib/load-module.mjs";
 
 // Real model + real credit metering; synthetic CRM and in-memory conversation only.
 // No business records are read, changed or sent to the provider. Never print credentials.

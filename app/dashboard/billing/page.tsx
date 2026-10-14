@@ -1,33 +1,42 @@
 import Link from "next/link";
 import { getCurrentTenant } from "@/lib/auth";
-import { stripeMode } from "@/lib/stripe/config";
-import { billingDatabase, assertBillingMode, currentSubscription, checkoutPending } from "@/lib/stripe/billing";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { mercadoPagoMode } from "@/lib/mercadopago/client";
 import { plans } from "@/lib/plans";
 import { BillingView } from "./billing-view";
 
 export const metadata = { title: "Planes y pagos · Nexo.ai" };
+const ID = /^[\w-]{1,64}$/;
+const id = (value: unknown) => typeof value === "string" && ID.test(value) ? value : undefined;
 
-export default async function BillingPage({ searchParams }: { searchParams: Promise<{ checkout?: string; session_id?: string }> }) {
+/** Server state only: the paid period, the automatic subscription and payments in process. */
+async function readBilling(tenantId: string) {
+  const mode = mercadoPagoMode();
+  const admin = createAdminClient();
+  const [{ data: row, error }, { data: pending, error: pendingError }] = await Promise.all([
+    admin.from("tenants").select("plan,plan_period,plan_active_until,billing_mode,mp_preapproval_status").eq("id", tenantId).single(),
+    admin.from("billing_payments").select("mp_payment_id").eq("tenant_id", tenantId).eq("mode", mode)
+      .in("status", ["pending", "in_process"]).limit(1),
+  ]);
+  if (error || pendingError) throw new Error("Pagos no disponibles.");
+  const sameMode = row.billing_mode === mode;
+  const activeUntil = sameMode && row.plan_active_until && Date.parse(row.plan_active_until) > Date.now() ? row.plan_active_until : null;
+  const plan = plans.find(p => p.id === row.plan);
+  return {
+    mode,
+    current: activeUntil && plan ? { planId: plan.id, plan: plan.name, activeUntil, annual: row.plan_period === "annual" } : null,
+    subscription: sameMode && row.mp_preapproval_status ? { status: row.mp_preapproval_status } : null,
+    pendingPayment: Boolean(pending?.length),
+  };
+}
+
+export default async function BillingPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const tenant = await getCurrentTenant();
   if (!tenant) return <div className="p-8"><Link href="/auth/finish">Termina de configurar tu negocio</Link></div>;
   const query = await searchParams;
-  let subscription = null;
-  let pending = false;
-  let unavailable = false;
-  try {
-    await assertBillingMode();
-    const { data, error } = await billingDatabase().from("billing_accounts").select("customer_id,checkout_expires_at")
-      .eq("tenant_id", tenant.tenantId).eq("mode", stripeMode()).maybeSingle();
-    if (error) throw new Error("Cuenta no disponible.");
-    if (data) {
-      pending = checkoutPending(data.checkout_expires_at);
-      subscription = await currentSubscription(data.customer_id);
-    }
-  } catch { unavailable = true; }
-  const plan = plans.find(p => p.id === subscription?.items.data[0]?.price.metadata.planId);
-  return <BillingView mode={stripeMode()} owner={tenant.role === "owner"} unavailable={unavailable}
-    current={subscription ? { plan: plan?.name ?? "Plan", status: subscription.status,
-      endsAt: subscription.items.data[0]?.current_period_end ?? null, canceling: subscription.cancel_at_period_end } : null}
-    pending={pending && !subscription} canceled={query.checkout === "canceled"}
-    sessionId={query.checkout === "success" ? query.session_id : undefined} />;
+  const billing = await readBilling(tenant.tenantId).catch(() => null);
+  const returned = query.checkout === "return" ? { paymentId: id(query.payment_id) ?? id(query.collection_id), preapprovalId: id(query.preapproval_id) } : null;
+  return <BillingView mode={billing?.mode ?? "test"} owner={tenant.role === "owner"} unavailable={!billing}
+    current={billing?.current ?? null} subscription={billing?.subscription ?? null} pendingPayment={billing?.pendingPayment ?? false}
+    canceled={query.checkout === "canceled"} returned={returned?.paymentId || returned?.preapprovalId ? returned : null} />;
 }

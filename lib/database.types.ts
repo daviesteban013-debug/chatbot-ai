@@ -70,6 +70,45 @@ export type Tenant = {
   plan: string;
   status: string;
   created_at: string;
+  plan_period: "monthly" | "annual" | null;
+  plan_paid_at: string | null;
+  plan_active_until: string | null;
+  billing_mode: "test" | "live" | null;
+  mp_preapproval_id: string | null;
+  mp_preapproval_status: string | null;
+}
+
+export type BillingCheckout = {
+  id: string;
+  tenant_id: string;
+  mode: "test" | "live";
+  kind: "subscription" | "one_time";
+  plan: string;
+  annual: boolean;
+  amount_cop: number;
+  mp_ref: string | null;
+  checkout_url: string | null;
+  status: "open" | "completed" | "canceled";
+  created_by: string | null;
+  expires_at: string;
+  created_at: string;
+}
+
+export type BillingPayment = {
+  mp_payment_id: string;
+  tenant_id: string;
+  checkout_id: string;
+  mode: "test" | "live";
+  plan: string;
+  annual: boolean;
+  amount_cop: number;
+  status: string;
+  period_start: string | null;
+  period_end: string | null;
+  needs_review: boolean;
+  raw: Json;
+  created_at: string;
+  updated_at: string;
 }
 
 export type TenantMember = {
@@ -351,6 +390,16 @@ export type Database = {
           created_at?: string;
         };
         Relationships: [];
+      };
+      billing_checkouts: {
+        Row: BillingCheckout;
+        Insert: never;
+        Update: { mp_ref?: string; checkout_url?: string; status?: BillingCheckout["status"] };
+        Relationships: [];
+      };
+      billing_payments: {
+        Row: BillingPayment;
+        Insert: never; Update: never; Relationships: [];
       };
       tenant_members: {
         Row: TenantMember;
@@ -1123,6 +1172,9 @@ export type Database = {
       nexo_begin_sales_followup: { Args: { p_id: string; p_lease: string }; Returns: Json };
       nexo_finish_sales_followup: { Args: { p_id: string; p_lease: string; p_status: string; p_reason?: string | null; p_wa_message_id?: string | null; p_body?: string | null }; Returns: Json };
       nexo_consume_sales_worker_ticket: { Args: { p_token: string }; Returns: boolean };
+      nexo_claim_mp_checkout: { Args: { p_tenant: string; p_user: string; p_mode: string; p_kind: string; p_plan: string; p_annual: boolean; p_amount: number }; Returns: Json };
+      nexo_apply_mp_payment: { Args: { p_payment_id: string; p_checkout: string; p_mode: string; p_status: string; p_amount: number; p_currency: string; p_raw?: Json }; Returns: Json };
+      nexo_sync_mp_preapproval: { Args: { p_checkout: string; p_preapproval_id: string; p_status: string; p_mode: string }; Returns: Json };
       nexo_enqueue_sales_followups: { Args: Record<string, never>; Returns: number };
       nexo_dispatch_sales_followup_worker: { Args: Record<string, never>; Returns: undefined };
       nexo_configure_sales_payments: { Args: { p_tenant: string; p_user: string; p_link: string; p_transfer: string }; Returns: Json };
