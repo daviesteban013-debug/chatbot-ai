@@ -13,6 +13,7 @@ const labels: Record<string, string> = {
   search_business_memory: "Consultar memoria confirmada", list_crm_tasks: "Consultar tareas",
   propose_business_memory: "Preparar recuerdo para revisión", propose_crm_task: "Preparar tarea para revisión",
   propose_catalog_change: "Preparar cambio de catálogo", get_sales_results: "Consultar resultados de ventas",
+  start_background_job: "Iniciar trabajo en segundo plano",
 };
 const autoLabels: Record<string, string> = {
   propose_catalog_change: "Actualizar catálogo", propose_business_memory: "Guardar recuerdo", propose_crm_task: "Crear tarea",
@@ -32,6 +33,7 @@ export function operatorAction(id: string, tool: string, result?: ToolResult): O
       : tool.startsWith("propose_") ? "Propuesta preparada. Abre Memoria y tareas → Por confirmar para revisarla y activarla."
       : kind === "proposal" ? "Propuesta verificada. Revisa su tarjeta para confirmar, cancelar o pasarla a una persona."
       : kind === "navigation" ? "Destino verificado; la pantalla se abrirá al terminar la respuesta."
+      : tool === "start_background_job" ? "Trabajo en cola. NEXO te avisará al terminar; puedes seguirlo en Trabajos."
       : typeof data.total_matches === "number" ? `${data.total_matches} coincidencias${data.truncated ? "; mostrando una parte" : ""}.`
       : "Consulta completada con datos del negocio." } : {}),
     ...(navigation && !failed ? { navigation } : {}),

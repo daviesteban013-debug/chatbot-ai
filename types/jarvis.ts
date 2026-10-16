@@ -2,6 +2,7 @@ import type { JarvisPersonalization } from "@/lib/jarvis-personalization";
 import type { HandoffTrace, SpecialistId } from "@/lib/agent/team";
 import type { OrderProposal } from "@/lib/order-proposals";
 import type { OperatorAction } from "@/lib/crm-operator";
+import type { JobView } from "@/lib/jobs/types";
 
 export type AvatarState = "IDLE" | "LISTENING" | "PROCESSING" | "SPEAKING" | "ERROR";
 
@@ -29,6 +30,8 @@ export interface AgentStreamPayload {
   orderProposals?: OrderProposal[];
   operation?: OperatorAction;
   operatorActions?: OperatorAction[];
+  /** Background jobs NEXO started during this turn. */
+  jobs?: JobView[];
   tool?: string;
   error?: string;
   latencyMs?: number;

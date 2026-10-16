@@ -18,6 +18,7 @@
     "llm:status": "node tools/llm/status.mjs",
     "test:billing": "node --test tools/billing/*.test.mjs",
     "test:catalog": "node --test tools/catalog/*.test.mjs",
+    "test:jobs": "node --test tools/jobs/*.test.mjs",
     "test:files": "node --test tools/files/*.test.mjs",
     "test:knowledge": "node --test tools/knowledge/*.test.mjs",
     "test:whatsapp": "node --test tools/whatsapp/*.test.mjs",

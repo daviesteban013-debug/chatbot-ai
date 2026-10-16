@@ -259,7 +259,7 @@ export function useJarvisAgent(options: UseJarvisAgentOptions = {}): UseJarvisAg
                   content: finalContent,
                   createdAt: new Date().toISOString(),
                   status: "completed",
-                  metadata: { handoffs: payload.handoffs ?? [], orderProposals: payload.orderProposals ?? [], operatorActions: currentActions },
+                  metadata: { handoffs: payload.handoffs ?? [], orderProposals: payload.orderProposals ?? [], operatorActions: currentActions, jobs: payload.jobs ?? [] },
                 };
 
                 setMessages((prev) =>

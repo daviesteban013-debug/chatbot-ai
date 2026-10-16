@@ -43,6 +43,8 @@ globalThis.__agentStream = async function* (account, messages, tools, options) {
   } else if (["navigate", "repeat"].includes(state.mode) && state.calls.length === 1) {
     yield { type: "tool_calls", toolCalls: [state.mode === "navigate" ? toolCall("open_crm_panel", { panel: "orders" })
       : toolCall("delegate_to_agent", { agent: "pedidos", task: "Prepara otro pedido para el cliente confirmado" })] };
+  } else if (state.mode === "job" && state.calls.length === 1) {
+    yield { type: "tool_calls", toolCalls: [toolCall("start_background_job", { kind: "collections_review" })] };
   } else if (state.mode === "provider-error") {
     throw new Error("private-provider-body");
   } else yield { type: "delta", content: "Ana tiene un pedido pendiente." };
@@ -66,6 +68,15 @@ globalThis.__agentPreparation = () => {
   state.proposals = [];
   return { tools: (state.measurePrompt ? ["prepare_order_proposal", "prepare_repeat_order_proposal"] : state.mode === "repeat" ? ["prepare_repeat_order_proposal"] : []).map(name => ({ type: "function", function: { name } })), proposals: state.proposals,
     execute: async () => ({ ok: false }), executeRepeat: globalThis.__agentPrepare };
+};
+globalThis.__agentJobs = () => {
+  state.jobs = [];
+  return { tools: state.jobTools ? [{ type: "function", function: { name: "start_background_job" } }] : [], jobs: state.jobs,
+    execute: async args => {
+      state.toolCalls.push({ name: "start_background_job", args });
+      state.jobs.push({ id: "job-a", kind: "collections_review", status: "queued" });
+      return { ok: true, data: { job: { id: "job-a", kind: "collections_review", status: "queued" }, started: true, finished: false, results_available: false } };
+    } };
 };
 globalThis.__specialistComplete = async (account, messages, tools, options) => {
   state.specialistCalls.push({ account, messages: structuredClone(messages), tools, options });
@@ -91,6 +102,7 @@ const { createAgentExecutor } = await import(await load("../../lib/agent/executo
   "./team": team,
   "./order-actions": moduleUrl("export const createOrderPreparation=()=>globalThis.__agentPreparation();"),
   "./catalog-actions": moduleUrl("export const createCatalogPreparation=()=>({tools:[],proposals:[],execute:async()=>({ok:false})});"),
+  "./job-actions": moduleUrl("export const createJobStarter=()=>globalThis.__agentJobs();"),
   "./navigation": navigation,
   "./operator-activity": activity,
   "@/lib/crm-operator": operator,
@@ -203,6 +215,26 @@ test("navigation emits running and verified completion without claiming the scre
   assert.equal(toolResult.data.destination_verified, true);
   assert.deepEqual(allowed.at(-1).operatorActions, [progress[1]]);
   assert.deepEqual(state.rows.at(-1).metadata.operatorActions, [progress[1]]);
+});
+
+test("background jobs start directly from the coordinator, show as operator steps and travel with the reply", async () => {
+  state.mode = "job"; state.jobTools = true;
+  const events = await run();
+  assert.ok(state.calls[0].messages[0].content.includes("TRABAJOS EN SEGUNDO PLANO"));
+  assert.ok(state.calls[0].tools.some(tool => tool.function.name === "start_background_job"));
+  assert.deepEqual(state.toolCalls.map(call => call.name), ["start_background_job"]);
+  assert.equal(state.specialistCalls.length, 0, "no specialist is involved in starting a job");
+  const progress = events.filter(event => event.operation).map(event => event.operation);
+  assert.deepEqual(progress.map(action => [action.tool, action.status]), [["start_background_job", "running"], ["start_background_job", "completed"]]);
+  assert.match(progress[1].summary, /avisará al terminar/);
+  const toolResult = JSON.parse(state.calls[1].messages.find(message => message.role === "tool").content);
+  assert.equal(toolResult.data.started, true); assert.equal(toolResult.data.finished, false);
+  assert.deepEqual(events.at(-1).jobs, [{ id: "job-a", kind: "collections_review", status: "queued" }]);
+  assert.deepEqual(state.rows.at(-1).metadata.jobs, [{ id: "job-a", kind: "collections_review", status: "queued" }]);
+  state.jobTools = false; state.calls = []; state.mode = "text";
+  await run();
+  assert.ok(!state.calls[0].messages[0].content.includes("TRABAJOS EN SEGUNDO PLANO"), "no prompt section without the tool");
+  assert.match(state.calls[0].messages[0].content, /lo único que continúa después es un trabajo iniciado con start_background_job/);
 });
 
 test("repeat preparation remains a pending approval and retains its proposal if final persistence fails", async () => {

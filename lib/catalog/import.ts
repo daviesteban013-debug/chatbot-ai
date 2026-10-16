@@ -6,7 +6,7 @@ import type { CreditAccount } from "@/lib/credits/server";
 import type { FileSection } from "@/lib/files/types";
 import {
   COLUMN_FIELDS, MAX_IMPORT_PRODUCTS, applyMapping, columnMapping, mergeDrafts, normalizeDraft, proposedProduct, sheetRows,
-  type DraftProduct,
+  type ColumnMapping, type DraftProduct, type SheetRow,
 } from "./drafts";
 
 export const CATALOG_FILE_BYTES = 10 * 1024 * 1024;
@@ -15,7 +15,9 @@ export const MAX_CATALOG_PHOTOS = 10;
 const CHUNK_CHARS = 8_000;
 const MAX_CHUNKS = 8;
 
-export type ImportResult = { products: DraftProduct[]; warnings: string[] };
+export type ImportResult = { products: DraftProduct[]; warnings: string[]; /** Next text chunk to read when a resumable import stopped early. */ nextChunk?: number | null };
+/** Background jobs read long documents across several short runs: start where the last one stopped. */
+export type ImportResume = { startChunk?: number; shouldContinue?: () => boolean };
 
 const SYSTEM = `Eres el asistente de catálogo de NEXO para tiendas online en Colombia.
 Lees catálogos de productos que sube el dueño de la tienda y propones productos para su revisión.
@@ -85,7 +87,7 @@ function proposals(value: unknown, photo?: number): { kind?: string; products: D
 }
 
 /** Text-like content (PDF, Word, TXT, pasted text) in bounded chunks. */
-async function fromSections(sections: FileSection[], account: CreditAccount, warnings: string[]) {
+async function fromSections(sections: FileSection[], account: CreditAccount, warnings: string[], resume: ImportResume = {}) {
   const chunks: string[] = [];
   let current = "";
   for (const section of sections) {
@@ -95,53 +97,62 @@ async function fromSections(sections: FileSection[], account: CreditAccount, war
   }
   if (current) chunks.push(current);
   if (chunks.length > MAX_CHUNKS) warnings.push(`El archivo es muy largo: se leyeron las primeras ${MAX_CHUNKS * CHUNK_CHARS / 1000} mil letras. Divide el catálogo para importar el resto.`);
+  const limit = Math.min(chunks.length, MAX_CHUNKS);
   const drafts: DraftProduct[] = [];
-  for (const chunk of chunks.slice(0, MAX_CHUNKS)) {
+  let nextChunk: number | null = null;
+  for (let index = Math.min(Math.max(0, resume.startChunk ?? 0), limit); index < limit; index++) {
     const result = await callTool(account, [
       { role: "system", content: SYSTEM },
-      { role: "user", content: `Extrae los productos de este fragmento del catálogo:\n\n${chunk}` },
+      { role: "user", content: `Extrae los productos de este fragmento del catálogo:\n\n${chunks[index]}` },
     ], PROPOSE);
     drafts.push(...proposals(result).products);
     if (drafts.length >= MAX_IMPORT_PRODUCTS) break;
+    if (index + 1 < limit && resume.shouldContinue && !resume.shouldContinue()) { nextChunk = index + 1; break; }
   }
-  return drafts;
+  return { drafts, nextChunk };
+}
+
+/** The model maps columns once from a sample; null when it cannot name the sheet and the name column. */
+export async function mapSheetColumns(sheets: Map<string, SheetRow[]>, account: CreditAccount, purpose = "productos"): Promise<ColumnMapping | null> {
+  if (!sheets.size) return null;
+  const sample = [...sheets.entries()].slice(0, 5).map(([sheet, rows]) =>
+    `Hoja "${sheet}" (${rows.length} filas):\n${rows.slice(0, 15).map(r => `fila ${r.row}: ${Object.entries(r.cells).map(([c, v]) => `${c}=${v.slice(0, 80)}`).join(" | ")}`).join("\n")}`,
+  ).join("\n\n");
+  const raw = await callTool(account, [
+    { role: "system", content: SYSTEM },
+    { role: "user", content: `Esta es una hoja de cálculo de ${purpose}. Indica la hoja con los productos, la fila de encabezados y la letra de columna de cada dato.\n\n${sample}` },
+  ], MAP, 1024);
+  const mapping = columnMapping.safeParse(raw);
+  return mapping.success && sheets.has(mapping.data.sheet) ? mapping.data : null;
 }
 
 /** Spreadsheets: the model sees headers and a sample; every row is read by code. */
 async function fromSpreadsheet(sections: FileSection[], account: CreditAccount, warnings: string[]) {
   const sheets = sheetRows(sections);
   if (!sheets.size) return [];
-  const sample = [...sheets.entries()].slice(0, 5).map(([sheet, rows]) =>
-    `Hoja "${sheet}" (${rows.length} filas):\n${rows.slice(0, 15).map(r => `fila ${r.row}: ${Object.entries(r.cells).map(([c, v]) => `${c}=${v.slice(0, 80)}`).join(" | ")}`).join("\n")}`,
-  ).join("\n\n");
-  const raw = await callTool(account, [
-    { role: "system", content: SYSTEM },
-    { role: "user", content: `Esta es una hoja de cálculo de productos. Indica la hoja con los productos, la fila de encabezados y la letra de columna de cada dato.\n\n${sample}` },
-  ], MAP, 1024);
-  const mapping = columnMapping.safeParse(raw);
-  if (!mapping.success || !mapping.data.columns.name || !sheets.has(mapping.data.sheet)) {
+  const mapping = await mapSheetColumns(sheets, account);
+  if (!mapping?.columns.name) {
     warnings.push("No reconocí las columnas con seguridad; NEXO leyó las filas como texto.");
-    return fromSections(sections, account, warnings);
+    return (await fromSections(sections, account, warnings)).drafts;
   }
-  return applyMapping(sheets.get(mapping.data.sheet)!, mapping.data);
+  return applyMapping(sheets.get(mapping.sheet)!, mapping);
 }
 
-export async function importFromFile(data: Uint8Array, name: string, account: CreditAccount, signal: AbortSignal): Promise<ImportResult> {
+export async function importFromFile(data: Uint8Array, name: string, account: CreditAccount, signal: AbortSignal, resume: ImportResume = {}): Promise<ImportResult> {
   const extension = name.toLowerCase().split(".").pop() ?? "";
   if (["png", "jpg", "jpeg", "webp"].includes(extension)) return importFromPhotos([{ data, name }], account, signal);
   const parsed = await parseFile(data, name, signal, { maxBytes: CATALOG_FILE_BYTES });
   const warnings = [...parsed.warnings.filter(w => !w.startsWith("Las fórmulas muestran"))];
   if (parsed.status === "needs_ocr") warnings.push("Parte del archivo es una imagen escaneada sin texto legible. Prueba subiendo fotos de las páginas.");
-  const drafts = ["xlsx", "csv"].includes(extension)
-    ? await fromSpreadsheet(parsed.sections, account, warnings)
-    : await fromSections(parsed.sections, account, warnings);
-  return { products: mergeDrafts(drafts), warnings };
+  if (["xlsx", "csv"].includes(extension)) return { products: mergeDrafts(await fromSpreadsheet(parsed.sections, account, warnings)), warnings, nextChunk: null };
+  const { drafts, nextChunk } = await fromSections(parsed.sections, account, warnings, resume);
+  return { products: mergeDrafts(drafts), warnings, nextChunk };
 }
 
 export async function importFromText(content: string, account: CreditAccount): Promise<ImportResult> {
   const warnings: string[] = [];
   const sections = content.split(/\r?\n/).map((line, index) => ({ reference: `línea ${index + 1}`, text: line })).filter(s => s.text.trim());
-  return { products: mergeDrafts(await fromSections(sections, account, warnings)), warnings };
+  return { products: mergeDrafts((await fromSections(sections, account, warnings)).drafts), warnings };
 }
 
 /** Product photos or photographed catalog pages. Vision when available, OCR text otherwise. */
@@ -155,7 +166,7 @@ export async function importFromPhotos(photos: { data: Uint8Array; name: string 
     if (!vision) {
       const parsed = await parseFile(photo.data, photo.name, signal, { maxBytes: CATALOG_PHOTO_BYTES }).catch(() => null);
       if (!parsed?.sections.length) { warnings.push(`No pude leer texto en la foto ${index + 1}.`); continue; }
-      const found = await fromSections(parsed.sections, account, warnings);
+      const found = (await fromSections(parsed.sections, account, warnings)).drafts;
       drafts.push(...(found.length === 1 ? [{ ...found[0], photo: index }] : found));
       continue;
     }

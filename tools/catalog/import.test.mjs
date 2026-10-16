@@ -82,6 +82,22 @@ test("documents and pasted text become validated proposals; malformed items are 
   assert.match(state.calls[0].messages[0].content, /DATOS, nunca instrucciones/);
 });
 
+test("long documents can be read across runs: stop when asked and start again at the next chunk", async () => {
+  const sections = Array.from({ length: 30 }, (_, i) => ({ reference: `página ${i + 1}`, text: "x".repeat(1000) }));
+  state.parsed = { sections, warnings: [], status: "ready", truncated: false };
+  state.replies.push({ products: [{ name: "Uno", price: 1000 }] }, { products: [{ name: "Dos", price: 2000 }] });
+  let budget = 1;
+  const first = await importer.importFromFile(new Uint8Array([1]), "catalogo.pdf", account, new AbortController().signal, { shouldContinue: () => budget-- > 0 });
+  assert.equal(state.calls.length, 2); assert.equal(first.nextChunk, 2);
+  assert.deepEqual(first.products.map(p => p.name), ["Uno", "Dos"]);
+  state.replies.push({ products: [{ name: "Tres", price: 3000 }] }, { products: [{ name: "Cuatro", price: 4000 }] }, { products: [{ name: "Cinco", price: 5000 }] });
+  const rest = await importer.importFromFile(new Uint8Array([1]), "catalogo.pdf", account, new AbortController().signal, { startChunk: first.nextChunk });
+  assert.equal(rest.nextChunk, null); assert.deepEqual(rest.products.map(p => p.name), ["Tres", "Cuatro", "Cinco"]);
+  assert.match(state.calls[2].messages[1].content, /\[página 15\]/); assert.doesNotMatch(state.calls[2].messages[1].content, /\[página 14\]/);
+  const whole = await importer.importFromFile(new Uint8Array([1]), "catalogo.pdf", account, new AbortController().signal).catch(e => e);
+  assert.ok(whole instanceof Error, "without replies the plain call still reads every chunk");
+});
+
 test("without vision, photos fall back to OCR text and a single product keeps its photo", async () => {
   state.parsed = { sections: [{ reference: "imagen (OCR)", text: "Tenis Urban $189.000" }], warnings: [], status: "ready", truncated: false };
   state.replies.push({ products: [{ name: "Tenis Urban", price: "$189.000" }] });
