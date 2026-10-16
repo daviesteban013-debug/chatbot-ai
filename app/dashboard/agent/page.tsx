@@ -34,7 +34,7 @@ export default async function AgentPage() {
       .select("enabled, delay_minutes, max_reminders")
       .eq("tenant_id", tenantId)
       .maybeSingle(), supabase.from("nexo_autonomy_settings")
-      .select("catalog_stock, catalog_availability, work_items")
+      .select("catalog_stock, catalog_availability, work_items, learn_from_chat")
       .eq("tenant_id", tenantId)
       .maybeSingle()]);
 
@@ -57,7 +57,7 @@ export default async function AgentPage() {
       <div className="grid gap-5 lg:grid-cols-[1.1fr_.9fr] lg:items-start">
         <div className="space-y-5">
           <AutonomyForm canEdit={isOwner} remindersEnabled={followupSettings?.enabled === true}
-            initial={{ catalog_stock: autonomy?.catalog_stock === true, catalog_availability: autonomy?.catalog_availability === true, work_items: autonomy?.work_items === true }} />
+            initial={{ catalog_stock: autonomy?.catalog_stock === true, catalog_availability: autonomy?.catalog_availability === true, work_items: autonomy?.work_items === true, learn_from_chat: autonomy?.learn_from_chat === true }} />
           {agent ? <SalesFollowupsForm canEdit={isOwner} initial={followupSettings} loadFailed={Boolean(followupSettingsError)} /> : null}
           {agent ? <SalesPaymentsForm canEdit={isOwner} initial={salesPayments(agent.business_rules && typeof agent.business_rules === "object" && !Array.isArray(agent.business_rules) ? agent.business_rules.sales_payments : null)} /> : null}
         </div>

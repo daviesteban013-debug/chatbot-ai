@@ -15,7 +15,7 @@ const {createAgentExecutor}=await import(await load('../../lib/agent/executor.ts
  './web-tools':moduleUrl('export const webCrmTools=()=>[];export const executeWebToolCall=()=>{throw new Error("unexpected")};'),
  './team':await load('../../lib/agent/team.ts',{zod:import.meta.resolve('zod')}),
  './work-tools':await load('../../lib/agent/work-tools.ts',{zod:import.meta.resolve('zod'),'@/lib/workspace':await load('../../lib/workspace.ts',{zod:import.meta.resolve('zod')})}),
- './order-actions':moduleUrl('export const createOrderPreparation=()=>({tools:[],proposals:[]});'),'./catalog-actions':moduleUrl("export const createCatalogPreparation=()=>({tools:[],proposals:[],execute:async()=>({ok:false})});"),'./job-actions':moduleUrl("export const createJobStarter=()=>({tools:[],jobs:[],execute:async()=>({ok:false})});"),
+ './order-actions':moduleUrl('export const createOrderPreparation=()=>({tools:[],proposals:[]});'),'./catalog-actions':moduleUrl("export const createCatalogPreparation=()=>({tools:[],proposals:[],execute:async()=>({ok:false})});"),'./memory-context':moduleUrl("export const loadMemoryContext=async()=>null;"),'./job-actions':moduleUrl("export const createJobStarter=()=>({tools:[],jobs:[],execute:async()=>({ok:false})});"),
  './navigation':moduleUrl('export const crmNavigationTools=()=>[];export const executeCrmNavigation=()=>{throw new Error("unexpected")};'),
  './operator-activity':await load('../../lib/agent/operator-activity.ts',{'@/lib/crm-operator':operator}),'@/lib/crm-operator':operator,
  '@/lib/credits/server':moduleUrl('export class CreditError extends Error{};export const reserveMessage=async()=>"turn";export const finishMessage=async()=>{};'),

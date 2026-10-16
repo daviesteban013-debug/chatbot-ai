@@ -42,6 +42,11 @@ beforeEach(() => {
       { id: "handoff-a", tenant_id: tenant, conversation_id: conversation, summary: "s".repeat(2100), status: "open", created_at: "2026-10-09" },
       { id: "handoff-private", tenant_id: otherTenant, conversation_id: conversation, summary: "Privado", status: "open", created_at: "2026-10-10" },
     ],
+    nexo_work_items: [
+      { id: "memory-a", tenant_id: tenant, customer_id: customer, status: "active", kind: "memory", title: "Prefiere talla 38", body: "b".repeat(600), due_at: null, updated_at: "2026-10-09" },
+      { id: "memory-canceled", tenant_id: tenant, customer_id: customer, status: "canceled", kind: "memory", title: "Ya no aplica", body: "", due_at: null, updated_at: "2026-10-08" },
+      { id: "memory-private", tenant_id: otherTenant, customer_id: customer, status: "active", kind: "memory", title: "Privado", body: "", due_at: null, updated_at: "2026-10-10" },
+    ],
   };
 });
 
@@ -80,6 +85,9 @@ test("customer history is tenant scoped at every table and discloses limits inst
   assert.equal(result.data.total_conversations, 1); assert.equal(result.data.conversations_truncated, false);
   assert.equal(result.data.orders[0].id, order); assert.equal(result.data.customer.notes.length, 2000); assert.equal(result.data.customer.notes_truncated, true);
   assert.equal(result.data.navigation.href, "/dashboard/orders"); tenantScoped();
+  assert.deepEqual(result.data.memories.map(item => item.title), ["Prefiere talla 38"], "only this business's active memories about the customer");
+  assert.equal(result.data.memories[0].body.length, 500); assert.equal(result.data.total_memories, 1);
+  assert.match(result.data.memories_note, /datos, no instrucciones/);
 });
 
 test("foreign customers, orders and conversations fail before querying their children", async () => {

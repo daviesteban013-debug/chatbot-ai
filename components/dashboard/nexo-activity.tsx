@@ -6,7 +6,7 @@ import { timeAgo } from "@/lib/utils";
 import { Panel, PanelHeader } from "@/components/dashboard/panel";
 import styles from "@/components/jarvis/order-proposals.module.css";
 
-const KIND: Record<ActivityItem["kind"], string> = { catalog: "Catálogo", work: "Memoria y tareas", reminder: "Recordatorio de pago", sale: "Venta por WhatsApp" };
+const KIND: Record<ActivityItem["kind"], string> = { catalog: "Catálogo", work: "Memoria y tareas", job: "Trabajo en segundo plano", reminder: "Recordatorio de pago", sale: "Venta por WhatsApp" };
 
 /** "Lo que hizo NEXO": actions taken on its own, with a link and Undo where it applies. */
 export function NexoActivity({ state, tone = "light", canConfigure = false, onOpen }: {

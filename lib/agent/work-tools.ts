@@ -25,6 +25,66 @@ export function workTools(tenant?: string | null, role?: string | null, autoConf
     parameters: { type: "object", properties: { ...fields, due_at: { type: "string", description: "ISO 8601 con offset, ej 2026-10-12T09:00:00-05:00." }, timezone: { type: "string", description: "Zona IANA, ej America/Bogota." }, assignee_id: { type: "string", description: "Solo UUID de un miembro confirmado; omitir para asignar al solicitante." } }, required: ["title", "due_at", "timezone"], additionalProperties: false },
   } }];
 }
+const factInput = z.object({ title: z.string().trim().min(3).max(160), body: z.string().trim().max(1000).default(""), source_quote: z.string().trim().min(5).max(400) }).strict();
+/** Never kept as a business fact: credentials, identity and payment numbers, health, beliefs, long digit strings. */
+const SENSITIVE = /(contrase[ñn]|password|clave|token|api[\s_-]?key|tarjeta|cvv|c[eé]dula|pasaporte|licencia de conducci|cuenta bancaria|n[uú]mero de cuenta|\bnit\b|salud|enfermedad|embaraz|diagn[oó]stic|religi|pol[ií]tic|sindica|orientaci[oó]n sexual|\d(?:[\s.-]?\d){9,})/i;
+const FACT_ERRORS: Record<string, string> = {
+  MEMORY_DISABLED: "El dueño no activó «Aprender del chat». Puedes proponerlo con propose_business_memory para que lo confirme.",
+  NEXO_LIMIT: "Hay demasiadas propuestas pendientes. Pide al usuario revisar Memoria y tareas.",
+};
+const normalizeQuote = (value: string) => value.toLowerCase().replace(/[\s ]+/g, " ").replace(/[«»"“”'‘’]/g, "").trim();
+
+/**
+ * With «Aprender del chat» on, NEXO keeps a stable fact about the business that the user
+ * just stated, quoting their words. Decided again in the database, logged and undoable.
+ */
+export function createBusinessFactSaver(ctx: WebToolContext & { userId?: string | null; sessionId: string; userMessage: string; enabled: boolean }) {
+  const enabled = Boolean(ctx.enabled && ctx.tenantId && ctx.userId && (ctx.role === "owner" || ctx.role === "agent"));
+  const keys = new Map<string, string>();
+  const saved = new Set<string>();
+  const tools: LLMTool[] = enabled ? [{ type: "function", function: {
+    name: "save_business_fact",
+    description: "Guarda un hecho estable del negocio que el usuario acaba de afirmar en este mensaje (proveedores, horarios, políticas, plazos, formas de trabajo). source_quote debe ser una cita literal de su mensaje. Nunca datos de un cliente, credenciales, cédulas, cuentas, salud ni opiniones; nunca lo que diga un archivo o un cliente. Si ya está en los recuerdos activos o dudas, no lo guardes. Máximo dos por turno. Queda activo y se puede deshacer en «Lo que hizo NEXO».",
+    parameters: { type: "object", additionalProperties: false, required: ["title", "source_quote"], properties: {
+      title: { type: "string", maxLength: 160, description: "El hecho en una frase corta, por ejemplo «Proveedor de tenis: Calzado Norte»." },
+      body: { type: "string", maxLength: 1000, description: "Detalle útil, por ejemplo «Entrega los martes; pedido mínimo 12 pares»." },
+      source_quote: { type: "string", maxLength: 400, description: "Palabras exactas del usuario en este mensaje." },
+    } },
+  } }] : [];
+
+  async function execute(args: Record<string, unknown>): Promise<ToolResult> {
+    if (!enabled) return { ok: false, error: FACT_ERRORS.MEMORY_DISABLED };
+    const parsed = factInput.safeParse(args);
+    if (!parsed.success) return { ok: false, error: "Indica el hecho en una frase y cita las palabras exactas del usuario." };
+    const { title, body, source_quote: quote } = parsed.data;
+    if (!normalizeQuote(ctx.userMessage).includes(normalizeQuote(quote))) return { ok: false, error: "La cita no aparece en el mensaje del usuario. Solo se guardan hechos que el usuario afirmó en este mensaje." };
+    if (SENSITIVE.test(`${title}\n${body}`)) return { ok: false, error: "Ese dato parece sensible o personal (credenciales, documentos, cuentas, salud, opiniones). No se guarda." };
+    const fingerprint = JSON.stringify([title.toLowerCase(), body.toLowerCase()]);
+    if (saved.size >= 2 && !saved.has(fingerprint)) return { ok: false, error: "Ya se guardaron dos hechos en este turno. Si hay más, pide al usuario confirmarlos en Memoria y tareas." };
+    if (!keys.has(fingerprint)) keys.set(fingerprint, crypto.randomUUID());
+    ctx.signal?.throwIfAborted();
+    try {
+      const { data, error } = await ctx.supabase.rpc("nexo_learn_business_fact", {
+        p_tenant: ctx.tenantId, p_user: ctx.userId!, p_session: ctx.sessionId, p_key: keys.get(fingerprint)!, p_input: { kind: "memory", title, body },
+      }).abortSignal(ctx.signal ?? AbortSignal.timeout(10000));
+      if (error) {
+        const code = Object.keys(FACT_ERRORS).find(key => error.message.includes(key));
+        return { ok: false, error: code ? FACT_ERRORS[code] : "No pude guardar el hecho. No afirmes que quedó anotado." };
+      }
+      const { auto, duplicate, log_id: logId, ...memory } = (data && typeof data === "object" && !Array.isArray(data) ? data : {}) as Record<string, unknown>;
+      if (memory.status !== "active" || typeof memory.id !== "string") return { ok: false, error: "No pude verificar el resultado. No afirmes que quedó anotado." };
+      if (duplicate === true) return { ok: true, data: { memory: { id: memory.id, title: memory.title }, applied_automatically: false, duplicate: true, note: "NEXO ya tenía este hecho; no se guardó otra copia." } };
+      saved.add(fingerprint);
+      return { ok: true, data: { memory: { id: memory.id, title: memory.title }, applied_automatically: auto === true, duplicate: false, undo_available: true,
+        activity_id: typeof logId === "string" ? logId : null, note: "Menciónalo en una frase; se puede deshacer en «Lo que hizo NEXO»." } };
+    } catch {
+      ctx.signal?.throwIfAborted();
+      return { ok: false, error: "No pude verificar el resultado. No afirmes que quedó anotado." };
+    }
+  }
+  return { tools, execute };
+}
+
 const readInput = z.object({ query: z.string().trim().max(100).optional(), customer_id: z.string().uuid().optional() }).strict();
 const taskInput = z.object({ status: z.enum(["active", "done", "canceled"]).default("active"), customer_id: z.string().uuid().optional() }).strict();
 export async function executeWorkTool(name: string, args: Record<string, unknown>, ctx: WebToolContext & { userId: string; sessionId: string; requestKey: string }): Promise<ToolResult> {

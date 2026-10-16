@@ -11,6 +11,7 @@ const OPTIONS: Array<{ key: keyof AutonomySettings; title: string; example: stri
   { key: "catalog_stock", title: "Entradas y salidas de stock", example: "«Llegaron 20 tenis talla 40» queda aplicado al instante." },
   { key: "catalog_availability", title: "Ocultar o activar productos", example: "«Oculta las gorras rojas» queda aplicado al instante." },
   { key: "work_items", title: "Memoria y tareas internas", example: "Lo que le pidas recordar o agendar queda activo sin pasar por «Por confirmar»." },
+  { key: "learn_from_chat", title: "Aprender del chat", example: "Si dices «mi proveedor de tenis entrega los martes», NEXO lo anota como dato del negocio. Nunca datos de clientes ni sensibles; se puede deshacer." },
 ];
 const ALWAYS_ASK = ["Cambios de precio", "Productos nuevos", "Pedidos preparados desde el chat", "Tomar o cerrar casos de atención humana"];
 

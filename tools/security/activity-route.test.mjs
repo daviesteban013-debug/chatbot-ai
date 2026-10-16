@@ -54,14 +54,17 @@ const { saveAutonomy } = await import(await moduleUrl("app/dashboard/agent/auton
   "@/lib/supabase/admin": url("export const createAdminClient=()=>({rpc:async(name,args)=>{const s=globalThis.__activityState();s.rpc.push({name,args});return s.result;}});"),
 }));
 
-test("only the owner changes autonomy, and only the three low-risk switches exist", async () => {
-  const all = { catalog_stock: true, catalog_availability: false, work_items: true };
+test("only the owner changes autonomy, and only the four low-risk switches exist", async () => {
+  const all = { catalog_stock: true, catalog_availability: false, work_items: true, learn_from_chat: false };
   assert.equal((await saveAutonomy(all)).ok, false, "agents cannot change it");
   state.tenant.role = "owner";
   assert.equal((await saveAutonomy({ ...all, prices: true })).ok, false);
   assert.equal((await saveAutonomy({ catalog_stock: "yes", catalog_availability: false, work_items: false })).ok, false);
+  assert.equal((await saveAutonomy({})).ok, false, "an empty patch changes nothing");
   assert.equal(state.rpc.length, 0);
   state.result = { data: {}, error: null };
   assert.equal((await saveAutonomy(all)).ok, true);
   assert.deepEqual(state.rpc[0], { name: "nexo_configure_autonomy", args: { p_tenant: "tenant-1", p_user: "user-1", p_settings: all } });
+  assert.equal((await saveAutonomy({ learn_from_chat: true })).ok, true, "one switch at a time keeps the others");
+  assert.deepEqual(state.rpc[1].args.p_settings, { learn_from_chat: true });
 });
