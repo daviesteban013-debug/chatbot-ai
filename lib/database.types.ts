@@ -398,11 +398,23 @@ export type Database = {
         Insert: never; Update: never; Relationships: [];
       };
       nexo_autonomy_settings: {
-        Row: { tenant_id: string; catalog_stock: boolean; catalog_availability: boolean; work_items: boolean; updated_by: string | null; updated_at: string };
+        Row: { tenant_id: string; catalog_stock: boolean; catalog_availability: boolean; work_items: boolean; learn_from_chat: boolean; updated_by: string | null; updated_at: string };
         Insert: never; Update: never; Relationships: [];
       };
       nexo_activity_log: {
-        Row: { id: string; tenant_id: string; user_id: string | null; session_id: string | null; kind: "catalog" | "work"; ref_id: string; summary: string; undo: Json; status: "applied" | "undone"; created_at: string; undone_at: string | null; undone_by: string | null };
+        Row: { id: string; tenant_id: string; user_id: string | null; session_id: string | null; kind: "catalog" | "work" | "job"; ref_id: string; summary: string; undo: Json; status: "applied" | "undone"; created_at: string; undone_at: string | null; undone_by: string | null };
+        Insert: never; Update: never; Relationships: [];
+      };
+      nexo_jobs: {
+        Row: import("./jobs/types").JobRow;
+        Insert: never; Update: never; Relationships: [];
+      };
+      nexo_worker_tickets: {
+        Row: { token_hash: string; worker: string; expires_at: string; consumed_at: string | null };
+        Insert: never; Update: never; Relationships: [];
+      };
+      nexo_suggestion_dismissals: {
+        Row: { tenant_id: string; user_id: string; key: string; until: string };
         Insert: never; Update: never; Relationships: [];
       };
       billing_checkouts: {
@@ -1196,6 +1208,20 @@ export type Database = {
       nexo_propose_work_by_nexo: { Args: { p_tenant: string; p_user: string; p_session: string | null; p_key: string; p_input: Json }; Returns: Json };
       nexo_undo_activity: { Args: { p_tenant: string; p_user: string; p_log: string }; Returns: Json };
       nexo_activity_feed: { Args: { p_tenant: string; p_user: string; p_limit?: number }; Returns: Json };
+      nexo_start_job: { Args: { p_tenant: string; p_user: string; p_session: string; p_kind: string; p_input: Json; p_key: string }; Returns: Json };
+      nexo_claim_jobs: { Args: { p_limit?: number }; Returns: Json };
+      nexo_job_heartbeat: { Args: { p_id: string; p_lease: string; p_progress?: Json | null; p_checkpoint?: Json | null }; Returns: Json };
+      nexo_release_job: { Args: { p_id: string; p_lease: string; p_checkpoint?: Json | null; p_progress?: Json | null }; Returns: Json };
+      nexo_finish_job: { Args: { p_id: string; p_lease: string; p_status: string; p_result?: Json | null; p_error?: string | null }; Returns: Json };
+      nexo_cancel_job: { Args: { p_tenant: string; p_user: string; p_id: string }; Returns: Json };
+      nexo_mark_job_applied: { Args: { p_tenant: string; p_user: string; p_id: string; p_outcome: Json }; Returns: Json };
+      nexo_consume_worker_ticket: { Args: { p_token: string; p_worker: string }; Returns: boolean };
+      nexo_dispatch_jobs_worker: { Args: Record<string, never>; Returns: undefined };
+      nexo_unpaid_orders: { Args: { p_tenant: string; p_after_created?: string | null; p_after_id?: string | null; p_limit?: number }; Returns: Json };
+      nexo_collections_status: { Args: { p_tenant: string; p_orders: string[] }; Returns: Json };
+      nexo_learn_business_fact: { Args: { p_tenant: string; p_user: string; p_session: string | null; p_key: string; p_input: Json }; Returns: Json };
+      nexo_dismiss_suggestion: { Args: { p_tenant: string; p_user: string; p_key: string }; Returns: Json };
+      nexo_automation_suggestions: { Args: { p_tenant: string; p_user: string }; Returns: Json };
       nexo_sales_metrics: { Args: { p_tenant: string; p_user: string; p_days: number }; Returns: Json };
       nexo_provision_tenant: { Args: { p_user: string; p_name: string; p_slug: string }; Returns: string };
       nexo_review_pending_order: { Args: { p_tenant: string; p_user: string; p_order: string; p_approve: boolean }; Returns: Json };
