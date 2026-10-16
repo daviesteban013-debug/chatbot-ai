@@ -32,7 +32,9 @@ import { DailyBriefing } from "@/components/jarvis/daily-briefing";
 import { useNexoActivity } from "@/hooks/useNexoActivity";
 import { DotField } from "@/components/brand/dot-field";
 import { useProactive, type Announcement } from "@/hooks/useProactive";
-import { ProactiveAlerts, ProactiveInvite, ProactiveSettingsPanel, RoutineSummary } from "@/components/jarvis/proactive";
+import { AutomationSuggestion, ProactiveAlerts, ProactiveInvite, ProactiveSettingsPanel, RoutineSummary } from "@/components/jarvis/proactive";
+import { useAutomationSuggestions } from "@/hooks/useAutomationSuggestions";
+import { SUGGESTION_TEXTS } from "@/lib/suggestions";
 import { NexoActivity } from "@/components/dashboard/nexo-activity";
 import { RichText } from "@/components/jarvis/rich-text";
 import { buildBriefing, type Briefing } from "@/lib/briefing";
@@ -196,6 +198,8 @@ function JarvisFullscreenInner({
       speak(routine ? routine.headline : alerts.length === 1 ? alerts[0].text : `Tienes ${alerts.length} avisos nuevos. ${alerts[0].text}.`);
   }, [speak]);
   const proactive = useProactive(desktopMode && Boolean(userId), userId, announce, profile.displayName || undefined);
+  const suggestions = useAutomationSuggestions(desktopMode && Boolean(userId));
+  const suggestion = suggestions.suggestions[0] ?? null;
   const powerOn = useCallback(() => {
     clapStopRef.current();
     setPanel(null);
@@ -355,11 +359,13 @@ function JarvisFullscreenInner({
   const nightly = proactive.routine && proactive.routine.id !== "morning" ? proactive.routine : null;
   const proactiveCards = <>
     {invite && <ProactiveInvite onEnable={() => proactive.update({ alerts: true })} onLater={() => proactive.update({})} />}
+    {suggestion && <AutomationSuggestion suggestion={suggestion} busy={suggestions.busy === suggestion.key}
+      onEnable={() => void suggestions.decide(suggestion.key, "enable", SUGGESTION_TEXTS[suggestion.key].enabled)} onLater={() => void suggestions.decide(suggestion.key, "dismiss")} />}
     <ProactiveAlerts alerts={proactive.alerts} onOpen={openFromCard} onDismiss={proactive.dismiss} onClear={proactive.clear} />
     {nightly && <RoutineSummary card={nightly} onOpen={openFromCard} onClose={proactive.closeRoutine} />}
   </>;
   const facts = dailyBriefing.data;
-  if (desktopMode) return <DesktopBubble hasProposals={orderProposals.proposals.length > 0 || catalogProposals.proposals.length > 0 || Boolean(briefingCard) || operatorActions.length > 0 || proactive.alerts.length > 0 || Boolean(nightly) || invite}
+  if (desktopMode) return <DesktopBubble hasProposals={orderProposals.proposals.length > 0 || catalogProposals.proposals.length > 0 || Boolean(briefingCard) || operatorActions.length > 0 || proactive.alerts.length > 0 || Boolean(nightly) || invite || Boolean(suggestion)}
     alerts={proactiveCards} unread={proactive.alerts.length} latestAlert={proactive.alerts[0]?.text ?? null}
     settingsPanel={<ProactiveSettingsPanel settings={proactive.settings} update={proactive.update} systemAvailable={typeof window !== "undefined" && Boolean(window.nexoDesktop?.notify)} />}
     today={facts ? { sales: facts.today.sales, orders: facts.today.orders, unpaid: facts.unpaid.count, unpaidTotal: facts.unpaid.total, waiting: facts.handoffs.count } : null}

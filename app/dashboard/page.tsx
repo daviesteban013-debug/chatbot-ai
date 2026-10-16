@@ -9,6 +9,7 @@ import { CreditBalancePanel } from "@/components/dashboard/credit-balance";
 import { SalesResults } from "@/components/dashboard/sales-results";
 import { Panel, PanelHeader, PanelLink, Stat, StatGrid, StatusDot } from "@/components/dashboard/panel";
 import { HomeActivity } from "@/components/dashboard/home-activity";
+import { HomeSuggestions } from "@/components/dashboard/home-suggestions";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { metricPeriod, type SalesMetrics } from "@/lib/sales-metrics";
 import { buildBriefing, type BriefingData } from "@/lib/briefing";
@@ -191,6 +192,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </Panel>
 
         <div className="space-y-5">
+          <HomeSuggestions enabled={tenantContext.role === "owner"} />
           <HomeActivity canConfigure={tenantContext.role === "owner"} enabled={tenantContext.role !== "viewer"} />
 
           <Panel aria-labelledby="conversations-title">

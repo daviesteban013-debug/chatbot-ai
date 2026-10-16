@@ -1,6 +1,7 @@
 "use client";
-import { BellRing, X } from "lucide-react";
+import { BellRing, X, Zap } from "lucide-react";
 import { ALERT_KINDS, ROUTINES, type ProactiveAlert, type ProactiveSettings, type RoutineCard } from "@/lib/proactive";
+import { SUGGESTION_TEXTS, type AutomationSuggestion as Suggestion } from "@/lib/suggestions";
 import styles from "./proactive.module.css";
 
 const ago = (iso: string) => {
@@ -48,6 +49,19 @@ export function ProactiveInvite({ onEnable, onLater }: { onEnable(): void; onLat
     <p className={styles.head}><BellRing size={12} /><span>AVISOS DE NEXO</span></p>
     <p className={styles.note}>Te aviso cuando un cliente espere un asesor, entre un pedido por aprobar, te paguen, NEXO cierre una venta o se agote un producto.</p>
     <div className={styles.buttons}><button type="button" className={styles.primary} onClick={onEnable}>Activar avisos</button><button type="button" className={styles.secondary} onClick={onLater}>Ahora no</button></div>
+  </section>;
+}
+
+/** Offered to the owner after the team confirmed one kind of change by hand again and again. */
+export function AutomationSuggestion({ suggestion, busy, onEnable, onLater }: { suggestion: Suggestion; busy: boolean; onEnable(): void; onLater(): void }) {
+  const text = SUGGESTION_TEXTS[suggestion.key];
+  return <section className={styles.card} data-tone="invite" aria-label="Sugerencia de autonomía">
+    <p className={styles.head}><Zap size={12} /><span>NEXO PODRÍA HACERLO SOLO</span></p>
+    <p className={styles.note}><strong>{text.title}</strong> {text.body(suggestion.confirmed)} Cada acción queda en «Lo que hizo NEXO» y se puede deshacer.</p>
+    <div className={styles.buttons}>
+      <button type="button" className={styles.primary} disabled={busy} onClick={onEnable}>Activar</button>
+      <button type="button" className={styles.secondary} disabled={busy} onClick={onLater}>Ahora no</button>
+    </div>
   </section>;
 }
 
