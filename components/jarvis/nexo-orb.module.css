@@ -1,0 +1,70 @@
+.orb {
+  --size: var(--orb-size, 92px);
+  --c: var(--nexo-color, #facc15);
+  --eye-l: 1; --eye-r: 1; --eye-h: 1; --gaze-x: 0px; --gaze-y: 0px;
+  position: relative; display: grid; place-items: center; width: var(--size); height: var(--size); isolation: isolate; pointer-events: none;
+  transition: width .35s cubic-bezier(.2,.8,.2,1), height .35s cubic-bezier(.2,.8,.2,1);
+}
+.body {
+  position: relative; z-index: 2; display: grid; place-items: center; width: 100%; height: 103%;
+  border-radius: 48% 52% 46% 54% / 53% 43% 57% 47%;
+  background:
+    radial-gradient(ellipse at 28% 17%, #fffadf 0%, #ffffff55 6%, transparent 34%),
+    radial-gradient(ellipse at 36% 30%, var(--c) 4%, color-mix(in srgb, var(--c), #24231c 34%) 56%, #141411 96%);
+  box-shadow: inset calc(var(--size) * -.1) calc(var(--size) * -.15) calc(var(--size) * .2) #0009, inset 1px 1px 2px #fff9, 0 calc(var(--size) * .12) calc(var(--size) * .3) #0007;
+  animation: float 6s ease-in-out infinite;
+  transition: filter .5s, transform .3s;
+  will-change: transform;
+}
+.gloss { position: absolute; inset: 5%; border-radius: inherit; border: 1px solid #ffffff14; pointer-events: none; }
+.gloss::after { content: ""; position: absolute; left: 18%; top: 9%; width: 26%; height: 14%; border-radius: 50%; background: #ffffff33; filter: blur(2px); transform: rotate(-22deg); }
+.eyes { display: flex; gap: calc(var(--size) * .14); transform: translate(calc(var(--look-x) + var(--gaze-x)), calc(var(--look-y) + var(--gaze-y))); transition: transform .14s ease-out; }
+.eyes i { display: block; width: calc(var(--size) * .087); height: calc(var(--size) * .22); border-radius: calc(var(--size) * .1); background: #fffef3; box-shadow: 0 0 calc(var(--size) * .13) #fff8; transform-origin: center; transition: transform .09s ease-out, opacity .3s; }
+.eyes i:first-child { transform: scaleY(calc(var(--eye-l) * var(--eye-h))); }
+.eyes i:last-child { transform: scaleY(calc(var(--eye-r) * var(--eye-h))); }
+.eyes[data-blink] i { transform: scaleY(.08) !important; }
+
+/* Rings around the body */
+.ring, .halo, .ping { position: absolute; inset: -8%; border-radius: 50%; z-index: 1; opacity: 0; pointer-events: none; }
+.ring { border: 1.5px solid color-mix(in srgb, var(--c), transparent 35%); }
+.halo { inset: -6%; background: conic-gradient(from 0deg, transparent 0 62%, color-mix(in srgb, var(--c), transparent 20%) 82%, transparent 100%); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2px)); mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2px)); }
+.ping { inset: 0; border: 2px solid var(--c); }
+.pingOn { animation: ping .9s cubic-bezier(.2,.7,.3,1) forwards; }
+
+/* States */
+.orb[data-state="off"] { --eye-h: .22; }
+.orb[data-state="off"] .body { filter: saturate(.3) brightness(.72); animation-duration: 9s; }
+.orb[data-state="off"] .eyes i { box-shadow: none; opacity: .75; }
+
+.orb[data-state="listening"] .body { animation: attend 1.7s ease-in-out infinite; }
+.orb[data-state="listening"] .ring { opacity: 1; animation: ripple 1.7s ease-out infinite; }
+.orb[data-state="listening"] { --eye-h: 1.12; }
+
+.orb[data-state="thinking"] { --gaze-x: calc(var(--size) * -.05); --gaze-y: calc(var(--size) * -.06); }
+.orb[data-state="thinking"] .body { animation: ponder 2.6s ease-in-out infinite; }
+.orb[data-state="thinking"] .halo { opacity: 1; animation: spin 2.2s linear infinite; }
+
+.orb[data-state="speaking"] .body { animation: talkBody 1.1s ease-in-out infinite; }
+.orb[data-state="speaking"] .ring { opacity: .55; inset: -5%; animation: breatheRing 1.1s ease-in-out infinite; }
+
+.orb[data-state="error"], .orb.flinch { --c: #fb7185; --eye-h: .7; }
+.orb[data-state="error"] .body, .orb.flinch .body { animation: shake .55s cubic-bezier(.36,.07,.19,.97) 1, float 6s ease-in-out .55s infinite; }
+.orb[data-state="error"] .eyes i:first-child, .orb.flinch .eyes i:first-child { transform: scaleY(var(--eye-h)) rotate(14deg); }
+.orb[data-state="error"] .eyes i:last-child, .orb.flinch .eyes i:last-child { transform: scaleY(var(--eye-h)) rotate(-14deg); }
+
+@keyframes float { 0%, 100% { transform: translateY(0) rotate(0deg) scale(1); } 35% { transform: translateY(calc(var(--size) * -.03)) rotate(-1deg) scale(1.015, .985); } 70% { transform: translateY(calc(var(--size) * -.01)) rotate(.8deg) scale(.99, 1.01); } }
+@keyframes attend { 0%, 100% { transform: scale(1) translateY(0); } 50% { transform: scale(1.035) translateY(calc(var(--size) * -.015)); } }
+@keyframes ripple { 0% { transform: scale(.92); opacity: .75; } 100% { transform: scale(1.32); opacity: 0; } }
+@keyframes ponder { 0%, 100% { transform: rotate(-3deg) translateY(0); } 50% { transform: rotate(3deg) translateY(calc(var(--size) * -.02)); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes talkBody { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.02, .985); } }
+@keyframes breatheRing { 0%, 100% { transform: scale(.98); opacity: .25; } 50% { transform: scale(1.06); opacity: .6; } }
+@keyframes ping { 0% { transform: scale(.9); opacity: .9; } 100% { transform: scale(1.9); opacity: 0; } }
+@keyframes shake { 10%, 90% { transform: translateX(-2px); } 20%, 80% { transform: translateX(3px); } 30%, 50%, 70% { transform: translateX(-5px); } 40%, 60% { transform: translateX(5px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .body, .ring, .halo, .ping { animation: none !important; }
+  .orb, .body, .eyes, .eyes i { transition: none !important; }
+  .orb[data-state="listening"] .ring { opacity: .7; }
+  .orb[data-state="thinking"] .halo { opacity: .6; }
+}

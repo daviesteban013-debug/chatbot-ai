@@ -69,6 +69,7 @@
 .history article > span { display: block; color: var(--jarvis-accent); font-size: 11px; margin-bottom: 7px; }
 .history article[data-role="user"] > span { color: #898ea4; }
 .history article p { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.8; color: #e4e4e7; }
+.richMessage { font-size: 14px; line-height: 1.75; color: #e4e4e7; }
 .experience button { cursor: pointer; }
 .experience button:disabled { cursor: default; }
 .experience button:focus-visible, .experience a:focus-visible { outline: 2px solid var(--jarvis-accent); outline-offset: 4px; }

@@ -34,6 +34,7 @@ import { DotField } from "@/components/brand/dot-field";
 import { useProactive, type Announcement } from "@/hooks/useProactive";
 import { ProactiveAlerts, ProactiveInvite, ProactiveSettingsPanel, RoutineSummary } from "@/components/jarvis/proactive";
 import { NexoActivity } from "@/components/dashboard/nexo-activity";
+import { RichText } from "@/components/jarvis/rich-text";
 import { buildBriefing, type Briefing } from "@/lib/briefing";
 import { OperatorTask } from "@/components/jarvis/operator-task";
 import { normalizeOperatorActions, parseOperatorNavigation, type OperatorNavigation } from "@/lib/crm-operator";
@@ -324,6 +325,7 @@ function JarvisFullscreenInner({
     stopMicrophone(); stopVoice(); claps.start();
   };
   const latest = turnStart === null ? undefined : messages.slice(turnStart).reverse().find(message => message.role === "assistant");
+  const question = turnStart === null ? undefined : messages.slice(turnStart).find(message => message.role === "user")?.content;
   const activity = !isPoweredOn
     ? claps.pending ? "Esperando permiso del micrófono" : claps.listening ? "Da dos aplausos para encender" : isRecording ? "Di «NEXO, enciéndete»" : "Listo cuando tú lo estés"
     : isRecording ? "Te escucho" : voiceSpeaking ? "Hablando contigo" : readyToPlay ? "Pulsa Reproducir voz" : voicePending ? "Preparando mi voz" : isLoading ? agentActivity ?? "Organizando tu solicitud" : "Aquí para ayudarte";
@@ -362,7 +364,7 @@ function JarvisFullscreenInner({
     settingsPanel={<ProactiveSettingsPanel settings={proactive.settings} update={proactive.update} systemAvailable={typeof window !== "undefined" && Boolean(window.nexoDesktop?.notify)} />}
     today={facts ? { sales: facts.today.sales, orders: facts.today.orders, unpaid: facts.unpaid.count, unpaidTotal: facts.unpaid.total, waiting: facts.handoffs.count } : null}
     operator={operator} proposals={proposals} powered={isPoweredOn} listening={isRecording} armed={microphoneArmed} busy={isLoading || voiceBusy} speaking={voiceSpeaking}
-    activity={activity} reply={latest?.content || commandNotice} navigationNotice={navigationNotice} error={error || voiceError || microphoneError} input={input} voice={isVoiceOutputEnabled} readyToPlay={readyToPlay}
+    activity={activity} reply={latest?.content || commandNotice} question={latest ? question ?? null : null} navigationNotice={navigationNotice} error={error || voiceError || microphoneError} input={input} voice={isVoiceOutputEnabled} readyToPlay={readyToPlay}
     onPower={isPoweredOn ? powerOff : powerOn} onMicrophone={toggleRecording} onVoice={() => { stopSpokenTurn(); setIsVoiceOutputEnabled(value => !value); }}
     onStop={() => { stopSpokenTurn(); cancelResponse(); }} onResume={() => { pauseMicrophone(); resume(); }}
     onInput={setInput} onSubmit={handleFormSubmit} />;
@@ -454,7 +456,7 @@ function JarvisFullscreenInner({
             <p className={styles.help}>Al encender NEXO se activa la escucha continua con permiso del micrófono. Espera a que termine de hablar y dile tu siguiente instrucción: no necesitas pulsar el micrófono en cada turno. Puedes pausar la escucha con su botón o decir «NEXO, apágate» o «NEXO, abre el CRM». Mientras hablo, abres un panel o cambias de pestaña, la escucha queda en pausa.</p>
           </div>}
           {panel === "history" && <div ref={chatScrollRef} className={styles.history}>
-            {messages.length ? messages.map(message => <article key={message.id} data-role={message.role}><span>{message.role === "user" ? "Tú" : initialConfig.name || "NEXO"}</span><p>{message.content || "Preparando respuesta…"}</p>{message.role === "assistant" && <OperatorTask actions={normalizeOperatorActions(message.metadata?.operatorActions)} busy={isLoading} onOpen={destination => void openCrmWorkspace(destination)} />}{Array.isArray(message.metadata?.attachments) && <div className={styles.fileList}>{(message.metadata.attachments as FileSummary[]).map(file => <a key={file.id} href={`/api/jarvis/files/${file.id}`} download className={styles.fileItem}><FileText size={15} />{file.name}</a>)}</div>}</article>) : <p className={styles.help}>Tu conversación aparecerá aquí cuando envíes tu primera instrucción.</p>}
+            {messages.length ? messages.map(message => <article key={message.id} data-role={message.role}><span>{message.role === "user" ? "Tú" : initialConfig.name || "NEXO"}</span>{message.role === "assistant" && message.content ? <RichText source={message.content} className={styles.richMessage} onOpen={href => { const destination = parseOperatorNavigation(href); if (destination) void openCrmWorkspace(destination); }} /> : <p>{message.content || "Preparando respuesta…"}</p>}{message.role === "assistant" && <OperatorTask actions={normalizeOperatorActions(message.metadata?.operatorActions)} busy={isLoading} onOpen={destination => void openCrmWorkspace(destination)} />}{Array.isArray(message.metadata?.attachments) && <div className={styles.fileList}>{(message.metadata.attachments as FileSummary[]).map(file => <a key={file.id} href={`/api/jarvis/files/${file.id}`} download className={styles.fileItem}><FileText size={15} />{file.name}</a>)}</div>}</article>) : <p className={styles.help}>Tu conversación aparecerá aquí cuando envíes tu primera instrucción.</p>}
           </div>}
         </>}
       </dialog>

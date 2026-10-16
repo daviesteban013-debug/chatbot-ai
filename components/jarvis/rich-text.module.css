@@ -1,0 +1,27 @@
+.rich { --rt-accent: var(--nexo-color, var(--jarvis-accent, #facc15)); color: inherit; font-size: inherit; line-height: inherit; overflow-wrap: anywhere; }
+.rich > * + * { margin-top: .65em; }
+.rich p { margin: 0; }
+.rich strong { color: #fafafa; font-weight: 600; }
+.rich em { font-style: italic; color: #e9e9ec; }
+.rich code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: .9em; padding: .1em .4em; border-radius: 5px; background: #ffffff12; color: #f4f4f5; }
+.rich pre { margin: 0; padding: 10px 12px; border-radius: 10px; background: #0b0c0ea6; border: 1px solid #ffffff10; overflow-x: auto; }
+.rich pre code { padding: 0; background: transparent; font-size: .88em; line-height: 1.6; }
+.rich h3, .rich h4, .rich h5 { margin: 0; color: #fafafa; font-weight: 600; letter-spacing: -.01em; line-height: 1.35; }
+.rich h3 { font-size: 1.12em; } .rich h4 { font-size: 1.04em; } .rich h5 { font-size: 1em; }
+.rich > h3 + *, .rich > h4 + *, .rich > h5 + * { margin-top: .4em; }
+.rich ul, .rich ol { margin: 0; padding: 0 0 0 1.25em; display: grid; gap: .3em; }
+.rich ul { list-style: none; padding-left: 1.05em; }
+.rich ul li { position: relative; }
+.rich ul li::before { content: ""; position: absolute; left: -1.05em; top: .62em; width: 5px; height: 5px; border-radius: 50%; background: var(--rt-accent); opacity: .85; }
+.rich ol { list-style: decimal; }
+.rich ol li::marker { color: var(--rt-accent); font-variant-numeric: tabular-nums; }
+.rich blockquote { margin: 0; padding: .2em 0 .2em .85em; border-left: 2px solid color-mix(in srgb, var(--rt-accent), transparent 40%); color: #c9cad1; }
+.rich hr { border: 0; border-top: 1px solid #ffffff14; margin: .9em 0; }
+.rich a { color: var(--rt-accent); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--rt-accent), transparent 55%); text-underline-offset: 3px; }
+.rich a:hover { text-decoration-color: var(--rt-accent); }
+.tableWrap { overflow-x: auto; border: 1px solid #ffffff12; border-radius: 10px; scrollbar-width: thin; }
+.rich table { width: 100%; border-collapse: collapse; font-size: .94em; font-variant-numeric: tabular-nums; }
+.rich th, .rich td { text-align: left; padding: 7px 10px; vertical-align: top; }
+.rich th { font-size: .82em; font-weight: 500; letter-spacing: .04em; color: #a7a9b3; background: #ffffff06; white-space: nowrap; }
+.rich td { border-top: 1px solid #ffffff0d; color: #e4e4e7; }
+.rich tr > :last-child:not(:first-child) { text-align: right; }
