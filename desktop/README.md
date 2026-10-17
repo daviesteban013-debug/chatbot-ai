@@ -22,6 +22,12 @@ Los avisos aparecen en la burbuja con un acceso que abre el panel correcto del C
 
 Rutinas: **Resumen de la mañana**, **Cierre del día** y **Cierre de la semana** (los lunes), cada una a la hora que elijas. Si NEXO estaba cerrado, la rutina llega al abrirlo, hasta 4 horas después. Las preferencias se guardan en este computador.
 
+## Arrastrar, pegar y carpeta vigilada
+
+Arrastra un archivo sobre la burbuja (PDF, Excel, CSV, Word, fotos o texto, hasta 3 MB) o pégalo con Ctrl+V: aparece como chip y NEXO ofrece tres acciones de un clic: **Importar al catálogo**, **Actualizar stock o precios** (hojas XLSX/CSV con columnas SKU, Stock y Precio) y **Leer y resumir**. Las dos primeras son trabajos en segundo plano: NEXO sigue trabajando aunque cierres la burbuja y avisa al terminar; se siguen en **Trabajos** del CRM (`/dashboard/jobs`, o di «abre trabajos»). El botón de pegar de la burbuja lee el portapapeles del sistema (texto o una captura PNG) solo cuando lo pulsas, hasta 10 veces por minuto.
+
+Desde 0.2.5, en **Ajustes → Carpeta vigilada** puedes pedirle a NEXO que vigile `Descargas/NEXO`: lo que guardes ahí llega a la burbuja cuando el archivo termina de escribirse. Las subcarpetas `catalogo` y `stock` inician su trabajo solas; en la raíz NEXO pregunta o aplica la acción que elijas. Solo se leen archivos de tipos admitidos, de hasta 3 MB y dentro de esa carpeta (no se siguen accesos directos); cada archivo se entrega una sola vez y se sube por la misma API autenticada que los adjuntos del chat. Está apagado por defecto.
+
 ## Voz
 
 La app detecta frases localmente y transcribe clips de hasta 12 segundos con `gpt-4o-mini-transcribe` usando `OPENAI_API_KEY` exclusivamente en el servidor. Los silencios no se envían. Habla después de la respuesta: la entrada se pausa durante generación/reproducción para evitar eco. No es una llamada de voz de doble sentido con interrupción automática.

@@ -70,3 +70,20 @@ test('desktop login accepts a one-time code only while login is pending', () => 
   assert.equal(callbackUrl(link, 100, 100), null);
   for (const bad of [link + '&next=https://evil.test', link + '&code=duplicate', link.replace('auth?', 'other?'), 'nexo-desktop://auth?code=%3Cscript%3E', link + '#evil']) assert.equal(callbackUrl(bad, 200, 100), null);
 });
+test('watched files: supported types up to 3 MB, never temp, hidden or lock files; preferences and tokens are strict', () => {
+  const { watchPreference, clipboardText, clipboardImage, watchedFile, fileToken } = require('../policy.cjs');
+  assert.deepEqual(watchedFile('Lista.XLSX', 10), { name: 'Lista.XLSX', extension: 'xlsx', mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  assert.equal(watchedFile('foto.JPG', 3 * 1024 * 1024).mime, 'image/jpeg');
+  for (const [name, size] of [['.oculto.pdf', 10], ['~$doc.docx', 10], ['a.crdownload', 10], ['a.part', 10], ['a.exe', 10], ['sin-extension', 10], ['a.pdf', 0], ['a.pdf', 3 * 1024 * 1024 + 1],
+    ['..\\x.pdf', 10], ['a/b.pdf', 10], [' a.pdf', 10], ['a.pdf\n', 10], ['x'.repeat(170) + '.pdf', 10], [null, 10], ['a.pdf', '10']]) assert.equal(watchedFile(name, size), null, String(name));
+  assert.deepEqual(watchPreference({ enabled: true, action: 'catalog_update' }), { enabled: true, action: 'catalog_update' });
+  for (const bad of [null, {}, [], { enabled: 'yes', action: 'ask' }, { enabled: true, action: 'rm' }, { enabled: true, action: 'ask', path: '/' }]) assert.throws(() => watchPreference(bad), /no válida/);
+  assert.equal(clipboardText(' hola‮ mundo '), 'hola mundo');
+  assert.equal(clipboardText('x'.repeat(9000)).length, 8000);
+  assert.equal(clipboardText('   '), null); assert.equal(clipboardText(5), null); assert.equal(clipboardText(undefined), null);
+  const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0]);
+  assert.equal(clipboardImage(png), png);
+  assert.equal(clipboardImage(Buffer.from('GIF89a..')), null); assert.equal(clipboardImage(Buffer.alloc(3 * 1024 * 1024 + 1)), null); assert.equal(clipboardImage(null), null);
+  assert.equal(fileToken('a'.repeat(32)), 'a'.repeat(32));
+  for (const bad of ['A'.repeat(32), 'a'.repeat(31), '../x', null, 7]) assert.throws(() => fileToken(bad), /no disponible/);
+});

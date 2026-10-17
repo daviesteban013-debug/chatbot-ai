@@ -48,6 +48,40 @@ function notice(value) {
   if (value.href !== undefined) panelUrl(value.href);
   return { title, body, href: value.href };
 }
+/** NEXO 0.2.5: files the person hands to NEXO from this computer (dropped in Descargas/NEXO or copied). */
+const MAX_FILE_BYTES = 3 * 1024 * 1024;
+const MIME = { pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  csv: 'text/csv', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', txt: 'text/plain', md: 'text/markdown' };
+const WATCH_ACTIONS = new Set(['ask', 'catalog_import', 'catalog_update']);
+function watchPreference(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some(key => !['enabled', 'action'].includes(key))
+    || typeof value.enabled !== 'boolean' || !WATCH_ACTIONS.has(value.action)) throw new Error('Preferencia no válida');
+  return { enabled: value.enabled, action: value.action };
+}
+/** Copied text: control characters removed, at most 8 000 characters; null when there is nothing usable. */
+function clipboardText(value) {
+  if (typeof value !== 'string') return null;
+  const text = value.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f\u202a-\u202e\u2066-\u2069]/g, '').trim();
+  return text ? text.slice(0, 8000) : null;
+}
+/** A copied image is accepted only as a real PNG of at most 3 MB. */
+function clipboardImage(buffer) {
+  if (!buffer || typeof buffer.length !== 'number' || buffer.length < 8 || buffer.length > MAX_FILE_BYTES) return null;
+  return [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a].every((byte, index) => buffer[index] === byte) ? buffer : null;
+}
+/** A file that appeared in the watched folder: supported type, 1 byte to 3 MB, never a temp, hidden or lock file. */
+function watchedFile(name, size) {
+  if (typeof name !== 'string' || !name || name.length > 160 || name !== name.trim() || /[\u0000-\u001f\u007f\\/]/.test(name)
+    || name.startsWith('.') || name.startsWith('~$') || /\.(crdownload|part|tmp|download|partial)$/i.test(name)) return null;
+  const dot = name.lastIndexOf('.');
+  const extension = dot > 0 ? name.slice(dot + 1).toLowerCase() : '';
+  if (!MIME[extension] || !Number.isSafeInteger(size) || size < 1 || size > MAX_FILE_BYTES) return null;
+  return { name, extension, mime: MIME[extension] };
+}
+function fileToken(value) {
+  if (typeof value !== 'string' || !/^[0-9a-f]{32}$/.test(value)) throw new Error('Archivo no disponible');
+  return value;
+}
 async function microphoneConsent(platform, systemPreferences) {
   if (platform !== 'darwin') return true;
   const status = systemPreferences.getMediaAccessStatus('microphone');
@@ -55,4 +89,4 @@ async function microphoneConsent(platform, systemPreferences) {
   if (status !== 'not-determined') return false;
   return systemPreferences.askForMediaAccess('microphone');
 }
-module.exports = { APP_ORIGIN, trustedUrl, panelUrl, color, googleUrl, callbackUrl, microphoneConsent, notice };
+module.exports = { APP_ORIGIN, MAX_FILE_BYTES, trustedUrl, panelUrl, color, googleUrl, callbackUrl, microphoneConsent, notice, watchPreference, clipboardText, clipboardImage, watchedFile, fileToken };

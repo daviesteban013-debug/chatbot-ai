@@ -10,6 +10,16 @@ if (window.top === window && window.location.origin === 'https://chatbot-ai-gold
     startGoogleSignIn: url => ipcRenderer.invoke('nexo:google', url),
     quit: () => ipcRenderer.invoke('nexo:quit'),
     notify: notice => ipcRenderer.invoke('nexo:notify', notice),
+    readClipboard: () => ipcRenderer.invoke('nexo:clipboard'),
+    getWatch: () => ipcRenderer.invoke('nexo:watch'),
+    setWatch: preference => ipcRenderer.invoke('nexo:watch-set', preference),
+    openWatchFolder: () => ipcRenderer.invoke('nexo:watch-open'),
+    readWatchedFile: token => ipcRenderer.invoke('nexo:file-read', token),
+    onFileReady: callback => {
+      const listener = (_event, file) => callback(file);
+      ipcRenderer.on('nexo:file-ready', listener);
+      return () => ipcRenderer.removeListener('nexo:file-ready', listener);
+    },
     getUpdateState: () => ipcRenderer.invoke('nexo:update-state'),
     checkForUpdates: () => ipcRenderer.invoke('nexo:update-check'),
     downloadUpdate: () => ipcRenderer.invoke('nexo:update-download'),

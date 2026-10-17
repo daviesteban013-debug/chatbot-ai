@@ -1,10 +1,16 @@
-const { app, BrowserWindow, ipcMain, session, screen, globalShortcut, shell, Tray, Menu, nativeImage, systemPreferences, Notification, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, session, screen, globalShortcut, shell, Tray, Menu, nativeImage, systemPreferences, Notification, dialog, clipboard } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
+const crypto = require('node:crypto');
 const policy = require('./policy.cjs');
 const { createUpdates, REPO } = require('./updater.cjs');
+const { createWatcher } = require('./watch.cjs');
 let bubble, crm, tray, pendingLoginUntil = 0, awaitingLogin = false, bubbleLoading = false;
-let preferences = { color: '#facc15', expanded: false };
+let preferences = { color: '#facc15', expanded: false, watch: { enabled: false, action: 'ask' } };
+// Files from the watched folder wait here under a one-time token until the orb reads them.
+const pendingFiles = new Map();
+const FILE_TOKEN_MS = 10 * 60_000, MAX_PENDING_FILES = 20;
+let watcher, clipboardReads = [];
 const partition = 'persist:nexo';
 const selfTest = process.argv.includes('--startup-check');
 let updates, updateTimer, updateInterval;
@@ -24,6 +30,24 @@ function expand(expanded) {
   bubble.setBounds({ x: Math.max(area.x, Math.min(bounds.x + bounds.width - width, area.x + area.width - width)), y: Math.max(area.y, Math.min(bounds.y + bounds.height - height, area.y + area.height - height)), width, height });
   preferences.expanded = expanded;
   return save();
+}
+function watchRoot() { return path.join(app.getPath('downloads'), 'NEXO'); }
+function fileArrived(file) {
+  const now = Date.now();
+  for (const [token, entry] of pendingFiles) if (now - entry.at > FILE_TOKEN_MS) pendingFiles.delete(token);
+  while (pendingFiles.size >= MAX_PENDING_FILES) pendingFiles.delete(pendingFiles.keys().next().value);
+  const token = crypto.randomBytes(16).toString('hex');
+  pendingFiles.set(token, { ...file, at: now });
+  if (!bubble || bubble.isDestroyed() || !dashboardUrl(bubble.webContents.getURL())) return;
+  bubble.webContents.send('nexo:file-ready', { token, name: file.name, folder: file.folder, size: file.size });
+  if (!preferences.expanded) expand(true);
+  bubble.showInactive();
+}
+function syncWatcher() {
+  if (selfTest) return;
+  if (!preferences.watch.enabled) { watcher?.stop(); return; }
+  watcher ??= createWatcher({ root: watchRoot(), fs, setTimeout, clearTimeout, onFile: fileArrived, onError: () => {} });
+  watcher.start();
 }
 function guard(event, allowCrm = false) {
   if ((event.sender !== bubble?.webContents && !(allowCrm && event.sender === crm?.webContents)) || event.senderFrame !== event.sender.mainFrame || !policy.trustedUrl(event.senderFrame.url)) throw new Error('Solicitud no permitida');
@@ -106,7 +130,9 @@ else {
       const saved = JSON.parse(fs.readFileSync(path.join(app.getPath('userData'), 'preferences.json'), 'utf8'));
       preferences.color = policy.color(saved.color);
       // CRM handles access; the assistant starts as a discreet, microphone-off orb.
+      try { preferences.watch = policy.watchPreference(saved.watch); } catch { /* Older preferences: watching stays off. */ }
     } catch { /* First start uses defaults. */ }
+    syncWatcher();
     if (!selfTest) {
       if (process.defaultApp) app.setAsDefaultProtocolClient('nexo-desktop', process.execPath, [path.resolve(process.argv[1])]);
       else app.setAsDefaultProtocolClient('nexo-desktop');
@@ -152,6 +178,41 @@ else {
       shown.show();
       return true;
     });
+    // Watched folder (Descargas/NEXO) and clipboard: bubble only, validated, bounded.
+    ipcMain.handle('nexo:watch', event => { guard(event); return preferences.watch; });
+    ipcMain.handle('nexo:watch-set', (event, value) => { guard(event); preferences.watch = policy.watchPreference(value); save(); syncWatcher(); return preferences.watch; });
+    ipcMain.handle('nexo:watch-open', async event => {
+      guard(event);
+      try { fs.mkdirSync(path.join(watchRoot(), 'catalogo'), { recursive: true }); fs.mkdirSync(path.join(watchRoot(), 'stock'), { recursive: true }); } catch { /* Shown as empty. */ }
+      await shell.openPath(watchRoot());
+    });
+    ipcMain.handle('nexo:file-read', (event, value) => {
+      guard(event);
+      const token = policy.fileToken(value);
+      const entry = pendingFiles.get(token);
+      pendingFiles.delete(token);
+      if (!entry || Date.now() - entry.at > FILE_TOKEN_MS) throw new Error('Archivo no disponible');
+      // The path must still be a regular file inside the watched folder (no links out of it).
+      const root = fs.realpathSync(watchRoot()) + path.sep;
+      const real = fs.realpathSync(entry.path);
+      const stat = fs.lstatSync(entry.path);
+      if (!stat.isFile() || !real.startsWith(root) || stat.size > policy.MAX_FILE_BYTES || !policy.watchedFile(entry.name, stat.size)) throw new Error('Archivo no disponible');
+      return { name: entry.name, folder: entry.folder, mime: entry.mime, base64: fs.readFileSync(entry.path).toString('base64') };
+    });
+    ipcMain.handle('nexo:clipboard', event => {
+      guard(event);
+      const now = Date.now(); clipboardReads = clipboardReads.filter(at => now - at < 60_000);
+      if (clipboardReads.length >= 10) throw new Error('Demasiadas lecturas del portapapeles');
+      clipboardReads.push(now);
+      if (!clipboard) return { kind: 'empty' };
+      const image = clipboard.readImage?.();
+      if (image && !image.isEmpty()) {
+        const png = policy.clipboardImage(image.toPNG());
+        if (png) return { kind: 'image', png: Buffer.from(png).toString('base64') };
+      }
+      const text = policy.clipboardText(clipboard.readText?.());
+      return text ? { kind: 'text', text } : { kind: 'empty' };
+    });
     const updateEnabled = Boolean(app.isPackaged && !selfTest);
     updates = createUpdates({ version: app.getVersion(), platform: process.platform, enabled: updateEnabled,
       updater: updateEnabled && process.platform === 'win32' ? require('electron-updater').autoUpdater : undefined,
@@ -189,6 +250,6 @@ else {
       setTimeout(() => app.exit(1), 30_000).unref();
     } else openPanel('/dashboard');
   });
-  app.on('will-quit', () => { globalShortcut.unregisterAll(); clearTimeout(updateTimer); clearInterval(updateInterval); });
+  app.on('will-quit', () => { globalShortcut.unregisterAll(); clearTimeout(updateTimer); clearInterval(updateInterval); watcher?.stop(); });
   app.on('window-all-closed', () => app.quit());
 }

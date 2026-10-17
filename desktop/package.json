@@ -1,6 +1,6 @@
 {
   "name": "nexo-desktop",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "private": true,
   "description": "NEXO flotante para Windows y macOS",
   "author": "Nexo.ai",
@@ -26,7 +26,8 @@
       "preload.cjs",
       "policy.cjs",
       "icon.png",
-      "updater.cjs"
+      "updater.cjs",
+      "watch.cjs"
     ],
     "protocols": [
       {
