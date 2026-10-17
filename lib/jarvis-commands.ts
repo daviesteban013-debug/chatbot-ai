@@ -18,13 +18,15 @@ export function jarvisCommandPanel(command: JarvisCommand | null) {
   return command && command in commandPanels ? commandPanels[command as PanelCommand] : null;
 }
 
-/** Only whole commands match: quoted instructions and business messages stay chat. */
-export function jarvisCommand(text: string): JarvisCommand | null {
-  const command = text.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase().replace(/[.,¡!¿?;:]/g, " ").trim().replace(/\s+/g, " ")
-    .replace(/^(?:nexo|jarvis)\s+/, "").replace(/\s+por favor$/, "");
-  if (/^(enciendete|enciende|encender|encender (?:nexo|jarvis)|activate|activar|activar (?:nexo|jarvis)|despierta|inicia)$/.test(command)) return "wake";
-  if (/^(apagate|apagar|apagar (?:nexo|jarvis)|desactivate|descansa)$/.test(command)) return "sleep";
+const plain = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+/** Only whole commands match: quoted instructions and business messages stay chat. The agent's own name wakes it too. */
+export function jarvisCommand(text: string, agentName?: string | null): JarvisCommand | null {
+  const alias = agentName ? plain(agentName).replace(/[^a-z0-9 ]/g, "").trim() : "";
+  const names = alias && alias !== "nexo" && alias !== "jarvis" ? `(?:nexo|jarvis|${alias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})` : "(?:nexo|jarvis)";
+  const command = plain(text).replace(/[.,¡!¿?;:]/g, " ").trim().replace(/\s+/g, " ")
+    .replace(new RegExp(`^${names}\\s+`), "").replace(/\s+por favor$/, "");
+  if (new RegExp(`^(enciendete|enciende|encender|encender ${names}|activate|activar|activar ${names}|despierta|inicia)$`).test(command)) return "wake";
+  if (new RegExp(`^(apagate|apagar|apagar ${names}|desactivate|descansa)$`).test(command)) return "sleep";
   if (/^(abre el crm|abre crm|abrir crm|abrir el crm|ir al crm|muestrame el crm)$/.test(command)) return "crm";
   // Answered from the daily briefing data: instant and free, no model call.
   if (/^(resumen del dia|mi resumen( del dia)?|dame (el|mi) resumen( del dia)?|como vamos( hoy)?|como va (el|mi) negocio( hoy)?|que hay (para )?hoy|que tengo (para )?hoy)$/.test(command)) return "briefing";

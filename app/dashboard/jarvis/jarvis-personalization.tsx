@@ -40,7 +40,7 @@ export function JarvisPersonalizationPanel({ profile, tone, authenticated, avail
   return (
     <section aria-label="Personalización de NEXO" className="relative z-30 mx-4 my-4 rounded-lg border border-white/10 bg-zinc-900 p-5 sm:mx-6 sm:p-6">
       <div className="mb-5 flex items-start justify-between gap-3">
-        <div><h2 className="text-lg font-semibold">Tu NEXO, a tu manera</h2><p className="mt-1 text-sm text-zinc-400">Voz, trato y recuerdos personales. Se guardan solo en tu cuenta.</p></div>
+        <div><h2 className="text-lg font-semibold">Tu NEXO, a tu manera</h2><p className="mt-1 text-sm text-zinc-400">Voz, trato y recuerdos personales. Se guardan solo en tu cuenta.</p><a href="/onboarding?replay=1" className="mt-2 inline-block text-xs text-yellow-300 underline underline-offset-2 hover:text-yellow-200">Repetir la bienvenida de NEXO</a></div>
         <button type="button" onClick={onClose} aria-label="Cerrar personalización" className="rounded-lg p-2 hover:bg-white/10"><X className="size-5" /></button>
       </div>
       {!authenticated && <p className="mb-4 text-sm text-yellow-200">Puedes probar la voz. Inicia sesión para guardar preferencias y recuerdos.</p>}

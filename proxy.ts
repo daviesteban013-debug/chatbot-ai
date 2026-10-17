@@ -81,21 +81,17 @@ export async function proxy(request: NextRequest) {
     // cuenta en el mismo navegador) se vuelve a verificar contra la BD.
     const onboarded = request.cookies.get("onboarding_done")?.value === user.id;
 
-    // Ya completó el onboarding: no debe volver a verlo.
-    if (onboarded && pathname.startsWith("/onboarding")) {
+    // Ya completó el onboarding: no debe volver a verlo, salvo que pida repetir la bienvenida.
+    if (onboarded && pathname.startsWith("/onboarding") && request.nextUrl.searchParams.get("replay") !== "1") {
       return redirectWithCookies(
         new URL("/dashboard/jarvis", request.url),
         supabaseResponse
       );
     }
 
-    // Aún no completa y va al panel: una única consulta ligera (RLS la acota).
-    // Nota: Si el usuario va a /dashboard/jarvis, permitimos que Jarvis lo guíe en lugar de forzar /onboarding.
-    if (
-      !onboarded &&
-      pathname.startsWith("/dashboard") &&
-      !pathname.startsWith("/dashboard/jarvis")
-    ) {
+    // Aún no completa y va al panel: una única consulta ligera (RLS la acota). Toda cuenta
+    // nueva conoce a NEXO en el portal de bienvenida antes de entrar a cualquier pantalla.
+    if (!onboarded && pathname.startsWith("/dashboard")) {
       const { data: memberRow, error: memberError } = await supabase
         .from("tenant_members")
         .select("tenants(agents(onboarding_completed))")
@@ -122,6 +118,9 @@ export async function proxy(request: NextRequest) {
         }
       }
 
+      if (status === "pending") {
+        return redirectWithCookies(new URL("/onboarding", request.url), supabaseResponse);
+      }
       if (status === "completed") {
         // Fijar la cookie para saltar la consulta en próximos requests.
         supabaseResponse.cookies.set("onboarding_done", user.id, {

@@ -23,6 +23,11 @@ test("spoken and typed commands tolerate accents and punctuation, without matchi
   assert.equal(jarvisCommand("Jarvis, apágate"), "sleep");
   assert.equal(jarvisCommand("Jarvis, abre el CRM"), "crm");
   for (const text of ["Dime cómo decir Jarvis enciéndete", "Dime cómo decir Nexo enciéndete", "No abras el CRM", "recuerda que apágate es mi comando", "encender las luces"]) assert.equal(jarvisCommand(text), null);
+  for (const text of ["¡Lía, enciéndete!", "Encender Lía", "Lia, abre el CRM"]) assert.notEqual(jarvisCommand(text, "Lía"), null, "the agent's own name wakes it");
+  assert.equal(jarvisCommand("Lía, enciéndete"), null, "a name NEXO was not given does not wake it");
+  assert.equal(jarvisCommand("Doña Lía, enciéndete", "Doña Lía"), "wake", "accents and spaces in the name are tolerated");
+  assert.equal(jarvisCommand("Lía, muéstrame los pedidos", "Lía"), "orders");
+  assert.equal(jarvisCommand("muéstrame los pedidos de Lía", "Lía"), null, "the name is stripped only as a prefix");
 });
 
 function fakeRecognition() {
@@ -176,7 +181,7 @@ globalThis.__entryClient = () => ({ auth: {
   exchangeCodeForSession: async () => ({ error: authState.fail ? new Error("failed") : null }),
   getUser: async () => ({ data: { user: authState.user } }),
 }, from() {
-  const query = { select() { return query; }, eq() { return query; }, limit() { return query; }, maybeSingle: async () => ({ data: { tenants: { agents: { onboarding_completed: false } } }, error: null }) };
+  const query = { select() { return query; }, eq() { return query; }, limit() { return query; }, maybeSingle: async () => ({ data: { tenants: { agents: { onboarding_completed: authState.onboarded === true } } }, error: null }) };
   return query;
 } });
 const nextUrl = moduleUrl(`
@@ -198,13 +203,19 @@ test("email confirmation lands in Jarvis, honors internal destinations, and reje
   authState.fail = true;
   assert.match((await GET(new Request("https://app.example/auth/callback?code=bad"))).location, /auth_callback_error/);
 });
-function request(path) { const url = `https://app.example${path}`; return { url, nextUrl: new URL(url), cookies: { get: () => undefined, getAll: () => [], set() {} } }; }
-test("signed-in entry lands in Jarvis; guests stay protected and incomplete onboarding does not block CRM access", async () => {
-  authState = { user: { id: "user-1" } };
+function request(path, doneCookie) { const url = `https://app.example${path}`; return { url, nextUrl: new URL(url), cookies: { get: name => name === "onboarding_done" && doneCookie ? { value: doneCookie } : undefined, getAll: () => [], set() {} } }; }
+test("a new account meets NEXO in the welcome portal before any screen; afterwards it lands in Jarvis and can replay the portal", async () => {
+  authState = { user: { id: "user-1" }, onboarded: false };
   assert.equal((await proxy(request("/login"))).location, "https://app.example/dashboard/jarvis");
   assert.equal((await proxy(request("/signup"))).location, "https://app.example/dashboard/jarvis");
+  assert.equal((await proxy(request("/dashboard/jarvis"))).location, "https://app.example/onboarding");
+  assert.equal((await proxy(request("/dashboard"))).location, "https://app.example/onboarding");
+  assert.equal((await proxy(request("/onboarding"))).location, undefined);
+  authState.onboarded = true;
   assert.equal((await proxy(request("/dashboard/jarvis"))).location, undefined);
   assert.equal((await proxy(request("/dashboard"))).location, undefined);
+  assert.equal((await proxy(request("/onboarding", "user-1"))).location, "https://app.example/dashboard/jarvis", "once done the portal is skipped");
+  assert.equal((await proxy(request("/onboarding?replay=1", "user-1"))).location, undefined, "unless the person asks to meet NEXO again");
   authState.user = null;
   assert.equal((await proxy(request("/dashboard/jarvis"))).location, "https://app.example/login");
   assert.equal((await proxy(request("/dashboard"))).location, "https://app.example/login");

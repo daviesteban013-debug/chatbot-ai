@@ -263,7 +263,7 @@ function JarvisFullscreenInner({
   }, [stopSpokenTurn, cancelResponse, setState]);
 
   const submitInstruction = useCallback((text: string, wakeOnly = false) => {
-    const command = jarvisCommand(text);
+    const command = jarvisCommand(text, initialConfig.name);
     if (wakeOnly && command !== "wake") return false;
     if (command === "wake") { setInput(""); powerOn(); return true; }
     if (command === "sleep") { setInput(""); powerOff(); return true; }
@@ -301,7 +301,7 @@ function JarvisFullscreenInner({
     setNavigationNotice(null);
     sendMessage(text);
     return true;
-  }, [setInput, powerOn, powerOff, stopVoice, stopSpokenTurn, cancelResponse, openCrmWorkspace, isLoading, attachments.pending, messages.length, sendMessage, refreshBriefing, speak, userId]);
+  }, [setInput, powerOn, powerOff, stopVoice, stopSpokenTurn, cancelResponse, openCrmWorkspace, isLoading, attachments.pending, messages.length, sendMessage, refreshBriefing, speak, userId, initialConfig.name]);
 
   const microphoneBlocked = isLoading || voiceBusy || attachments.pending || panel !== null;
   useEffect(() => { busyRef.current = isLoading || voiceBusy; }, [isLoading, voiceBusy]);

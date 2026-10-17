@@ -21,7 +21,7 @@ export const jarvisDefaults: JarvisConfig = {
 };
 
 export const jarvisTones = ["cercano", "profesional", "divertido", "directo"];
-export const jarvisAccents = ["#facc15", "#34d399", "#38bdf8", "#f472b6", "#a78bfa"];
+export const jarvisAccents = ["#facc15", "#34d399", "#38bdf8", "#22d3ee", "#f472b6", "#a78bfa", "#fb7185"];
 export const jarvisAbilityIds = ["catalogo", "pedidos", "agenda", "handoff", "seguimiento"];
 
 /** Normaliza y acota cualquier entrada (cliente o BD) a un JarvisConfig válido. */
