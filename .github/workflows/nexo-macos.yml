@@ -60,3 +60,41 @@ jobs:
           "$app/Contents/MacOS/NEXO" --startup-check > startup.json
           cat startup.json
           node -e 'const fs=require("node:fs"); const lines=fs.readFileSync("startup.json","utf8").trim().split("\n"); const s=JSON.parse(lines.at(-1)); if(s.startup!=="ok"||!s.version||s.workspacePanel!=="https://chatbot-ai-gold-two.vercel.app/dashboard/workspace"||s.platform!=="darwin"||!s.sandbox||s.nodeIntegration||!s.alwaysOnTop||!s.allWorkspaces) process.exit(1)'
+  self-update:
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-15-intel, macos-15]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: nexo-macos-universal
+          path: package
+      - name: Replace an installed copy with the DMG exactly as the app does on update, then start the result
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./desktop/package.json').version")"
+          dmg="$(ls package/*.dmg)"
+          apps="$RUNNER_TEMP/Applications"; seed="$RUNNER_TEMP/seed"
+          mkdir -p "$apps" "$seed"
+          hdiutil attach -nobrowse -readonly -mountpoint "$seed" "$dmg"
+          ditto "$seed/NEXO.app" "$apps/NEXO.app"
+          hdiutil detach "$seed"
+          echo previous > "$apps/NEXO.app/Contents/Resources/previous-marker"
+          node -e 'const m=require("./desktop/mac-install.cjs"); const b=process.argv[1]+"/NEXO.app"; if(!m.installable(b)||m.installable("/Volumes/NEXO/NEXO.app")||m.installable("/private/var/folders/x/AppTranslocation/y/d/NEXO.app")) process.exit(1)' "$apps"
+          node desktop/mac-install.cjs --self-test "$dmg" "$apps" "$version" | tee install.json
+          test ! -e "$apps/NEXO.app/Contents/Resources/previous-marker"
+          test -e "$apps/.NEXO-previous.app/Contents/Resources/previous-marker"
+          test ! -e "$dmg"
+          codesign --verify --deep --strict "$apps/NEXO.app"
+          "$apps/NEXO.app/Contents/MacOS/NEXO" --startup-check > startup.json
+          cat startup.json
+          node -e 'const s=JSON.parse(require("node:fs").readFileSync("startup.json","utf8").trim().split("\n").at(-1)); if(s.startup!=="ok"||s.version!==process.argv[1]) process.exit(1)' "$version"
+          node -e 'require("./desktop/mac-install.cjs").cleanupPrevious(process.argv[1]+"/NEXO.app").then(removed=>{ if(!removed||require("node:fs").existsSync(process.argv[1]+"/.NEXO-previous.app")) process.exit(1) })' "$apps"

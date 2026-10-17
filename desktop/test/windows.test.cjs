@@ -72,7 +72,7 @@ async function launch({ authenticated = true, selfTest = false } = {}) {
     lstatSync(file) { return fsStub.statSync(file); },
     realpathSync(target) { return state.realpaths.get(String(target)) ?? String(target); },
   };
-  vm.runInNewContext(source, { require: name => name === 'electron' ? electron : name === './policy.cjs' ? policy : name === './updater.cjs' ? require('../updater.cjs') : name === './watch.cjs' ? require('../watch.cjs') : name === 'node:fs' ? fsStub : require(name),
+  vm.runInNewContext(source, { require: name => name === 'electron' ? electron : name === './policy.cjs' ? policy : name === './updater.cjs' ? require('../updater.cjs') : name === './watch.cjs' ? require('../watch.cjs') : name === './mac-install.cjs' ? require('../mac-install.cjs') : name === 'node:fs' ? fsStub : require(name),
     __dirname: path.dirname(path.join(__dirname, '../main.cjs')), process: { argv: ['electron', 'app', ...(selfTest ? ['--startup-check'] : [])], platform: 'win32', arch: 'x64', execPath: '/electron' },
     URL, Buffer, console: { log() {}, error() {} },
     setTimeout: (fn, ms) => { const timer = { fn, ms, cleared: false, unref() {} }; state.timers.push(timer); return timer; }, clearTimeout: timer => { if (timer) timer.cleared = true; },

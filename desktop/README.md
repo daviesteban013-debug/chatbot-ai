@@ -43,7 +43,7 @@ npm test --prefix desktop
 npm run package --prefix desktop
 ```
 
-En un Mac, `npm run package:mac --prefix desktop` genera `NEXO-0.2.4-mac-universal.dmg`. El workflow **NEXO · macOS beta** permite construirlo manualmente en GitHub Actions y comprobar el arranque del mismo DMG en máquinas Intel y Apple Silicon. Solo empaqueta los archivos declarados en `build.files`; nunca requiere las claves del backend.
+En un Mac, `npm run package:mac --prefix desktop` genera `NEXO-<versión>-mac-universal.dmg`. El workflow **NEXO · macOS beta** permite construirlo manualmente en GitHub Actions y comprobar el arranque del mismo DMG en máquinas Intel y Apple Silicon. Solo empaqueta los archivos declarados en `build.files`; nunca requiere las claves del backend.
 
 La beta de macOS usa firma ad hoc, sin certificado Developer ID ni notarización de Apple. Gatekeeper puede bloquear su apertura. La distribución sin ese aviso requiere el certificado del editor y notarización, pendientes de configurar. No desactives las protecciones del sistema. La web sigue disponible para usar el CRM sin instalar la beta.
 
@@ -65,7 +65,7 @@ En Windows, NEXO busca una versión al iniciar y cada seis horas. El CRM y la pe
 
 La fuente es la última release estable de este repositorio público. Electron Updater usa el archivo generado `latest.yml`, SHA512 y el instalador NSIS; la publicación verifica la versión, el nombre, el tamaño y el hash contra el binario probado. Esta beta Windows sigue sin certificado del editor, por lo que no aporta verificación de firma Authenticode.
 
-En Mac, el aviso ofrece **Descargar para Mac** y abre el DMG oficial en el navegador. Cierra NEXO y reemplázalo en Aplicaciones. La actualización automática completa en macOS requiere firma Developer ID y distribución compatible; con la firma ad hoc actual se mantiene este proceso asistido sin modificar las protecciones de macOS.
+En Mac, desde 0.2.6 la actualización también ocurre dentro de la app, con los mismos botones que en Windows. NEXO descarga el DMG de la release oficial, comprueba su SHA-256 contra el archivo `SHA256SUMS-<versión>.txt` publicado junto a él, monta la imagen, verifica la firma, el identificador y la versión de la app que contiene, la copia junto a la instalada y las intercambia en Aplicaciones con dos renombrados; después se reinicia sola. La versión anterior queda oculta como `.NEXO-previous.app` hasta el siguiente arranque, que la elimina. Si NEXO no corre desde una carpeta en la que pueda escribir (desde Descargas, desde el propio DMG, en una ruta translocada o sin permisos sobre Aplicaciones), vuelve al modo asistido: **Descargar para Mac** abre el DMG oficial y lo arrastras tú. El workflow de macOS ejecuta ese mismo reemplazo sobre una copia instalada en máquinas Intel y Apple Silicon y arranca el resultado antes de publicar. Instala 0.2.6 una vez a mano; las versiones anteriores de Mac solo ofrecen la descarga. Como la firma sigue siendo ad hoc, macOS puede volver a pedir el permiso del micrófono tras actualizar; no se modifican las protecciones del sistema.
 
 Publicar únicamente la web cambia el asistente al recargar, pero no actualiza el código nativo instalado. Los enlaces de descarga deben cambiarse solo después de construir y publicar los artefactos correspondientes. Las comprobaciones de arranque y el modo de desarrollo nunca buscan actualizaciones.
 

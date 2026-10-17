@@ -214,7 +214,12 @@ else {
       return text ? { kind: 'text', text } : { kind: 'empty' };
     });
     const updateEnabled = Boolean(app.isPackaged && !selfTest);
-    updates = createUpdates({ version: app.getVersion(), platform: process.platform, enabled: updateEnabled,
+    // macOS updates itself like Windows: verified DMG, swap in Applications, relaunch (see mac-install.cjs).
+    const macInstaller = updateEnabled && process.platform === 'darwin' ? require('./mac-install.cjs').createMacInstaller({
+      execPath: process.execPath, tempDir: app.getPath('temp'), fetchImpl: (...args) => fetch(...args), relaunch: () => { app.relaunch(); app.quit(); }, openPath: target => shell.openPath(target),
+    }) : undefined;
+    void macInstaller?.cleanup();
+    updates = createUpdates({ version: app.getVersion(), platform: process.platform, enabled: updateEnabled, macInstaller,
       updater: updateEnabled && process.platform === 'win32' ? require('electron-updater').autoUpdater : undefined,
       fetchRelease: async () => {
         const response = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, { headers: { Accept: 'application/vnd.github+json' }, signal: AbortSignal.timeout(15_000) });

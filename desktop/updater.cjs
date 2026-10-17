@@ -10,15 +10,19 @@ function macRelease(release, current) {
   if (!release || release.draft || release.prerelease) return null;
   const version = release.tag_name?.replace(/^nexo-desktop-v/, '');
   if (release.tag_name !== `nexo-desktop-v${version}` || !newer(version, current)) return null;
-  const name = `NEXO-${version}-mac-universal.dmg`;
-  const url = `https://github.com/${REPO}/releases/download/nexo-desktop-v${version}/${name}`;
-  return release.assets?.some(asset => asset.name === name && asset.browser_download_url === url && asset.size > 0) ? { version, url } : null;
+  const name = `NEXO-${version}-mac-universal.dmg`, sums = `SHA256SUMS-${version}.txt`;
+  const base = `https://github.com/${REPO}/releases/download/nexo-desktop-v${version}/`;
+  const asset = (file, maxSize = Infinity) => release.assets?.find(item => item.name === file && item.browser_download_url === base + file && item.size > 0 && item.size <= maxSize);
+  const dmg = asset(name), checksums = asset(sums, 16_384);
+  return dmg && checksums ? { version, url: dmg.browser_download_url, size: dmg.size, checksumsUrl: checksums.browser_download_url } : null;
 }
 // All native update decisions stay in the main process; renderers supply no URLs or paths.
-function createUpdates({ version, platform, enabled, updater, fetchRelease, openExternal, changed = () => {}, available = () => {}, now = Date.now }) {
-  const mode = !enabled ? 'development' : platform === 'win32' ? 'automatic' : 'assisted';
+function createUpdates({ version, platform, enabled, updater, macInstaller, fetchRelease, openExternal, changed = () => {}, available = () => {}, now = Date.now }) {
+  // macOS installs in place when the bundle sits in a writable Applications folder; otherwise the person gets the DMG.
+  const macAutomatic = Boolean(enabled && platform === 'darwin' && macInstaller?.installable());
+  const mode = !enabled ? 'development' : platform === 'win32' || macAutomatic ? 'automatic' : 'assisted';
   let state = { status: 'idle', mode, currentVersion: version, message: enabled ? 'Busca una nueva versión de NEXO.' : 'Actualizaciones disponibles en la app instalada.' };
-  let checking, downloading, lastCheck = 0, notified, macUrl;
+  let checking, downloading, installing, lastCheck = 0, notified, macAsset, macDmg;
   const snapshot = () => ({ ...state });
   const set = patch => { state = { ...state, ...patch }; changed(snapshot()); };
   function found(latestVersion) {
@@ -54,7 +58,7 @@ function createUpdates({ version, platform, enabled, updater, fetchRelease, open
         if (platform === 'win32') await updater.checkForUpdates();
         else {
           const result = macRelease(await fetchRelease(), version);
-          if (result) { macUrl = result.url; found(result.version); }
+          if (result) { macAsset = result; found(result.version); }
           else set({ status: 'current', message: 'Tienes la última versión.' });
         }
       }).catch(fail).then(snapshot).finally(() => { checking = null; });
@@ -63,8 +67,13 @@ function createUpdates({ version, platform, enabled, updater, fetchRelease, open
     download() {
       if (downloading) return downloading;
       if (!enabled || state.status !== 'available') return Promise.resolve(snapshot());
-      if (platform === 'darwin') {
-        downloading = Promise.resolve().then(() => openExternal(macUrl)).then(() => {
+      if (platform === 'darwin' && macAutomatic) {
+        set({ status: 'downloading', progress: 0, message: 'Descargando la actualización…' });
+        downloading = macInstaller.download({ ...macAsset, onProgress: percent => { if (state.status === 'downloading' && percent !== state.progress) set({ progress: percent }); } })
+          .then(({ dmg }) => { macDmg = dmg; set({ status: 'downloaded', progress: 100, message: 'Guardamos tu sesión. Reinicia para instalar la actualización.' }); })
+          .catch(fail).then(snapshot).finally(() => { downloading = null; });
+      } else if (platform === 'darwin') {
+        downloading = Promise.resolve().then(() => openExternal(macAsset.url)).then(() => {
           set({ message: 'Descarga abierta. Cierra NEXO y reemplázalo en Aplicaciones; conserva tus datos.' });
         }).catch(fail).then(snapshot).finally(() => { downloading = null; });
       } else if (platform === 'win32') {
@@ -77,6 +86,16 @@ function createUpdates({ version, platform, enabled, updater, fetchRelease, open
       if (enabled && platform === 'win32' && state.status === 'downloaded') {
         set({ status: 'installing', message: 'Reiniciando para instalar…' });
         try { updater.quitAndInstall(false, true); } catch { fail(); }
+      } else if (macAutomatic && state.status === 'downloaded' && macDmg) {
+        if (installing) return installing;
+        const dmg = macDmg, latest = state.latestVersion;
+        set({ status: 'installing', message: 'Instalando y reiniciando…' });
+        installing = macInstaller.install({ dmg, version: latest }).catch(async () => {
+          // The swap was refused (permissions, unexpected location): hand over the verified image instead.
+          set({ status: 'error', message: 'No pude reemplazar NEXO en Aplicaciones. Abrí el instalador verificado: arrastra NEXO a Aplicaciones y vuelve a abrirlo.' });
+          await macInstaller.openInstaller(dmg).catch(() => {});
+        }).then(snapshot).finally(() => { installing = null; });
+        return installing;
       }
       return snapshot();
     },
