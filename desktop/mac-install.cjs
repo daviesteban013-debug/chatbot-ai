@@ -25,9 +25,9 @@ function bundlePath(execPath) {
 const previousPath = bundle => path.join(path.dirname(bundle), `.${path.basename(bundle, '.app')}-previous.app`);
 const stagingPath = (bundle, version) => path.join(path.dirname(bundle), `.${path.basename(bundle, '.app')}-${version}-update.app`);
 
-/** Only a bundle in a regular, writable folder can be swapped; translocated or mounted copies cannot. */
+/** Only a bundle in a regular, writable folder can be swapped; Gatekeeper-translocated or mounted copies cannot. */
 function installable(bundle, tools = TOOLS) {
-  if (!bundle || /^\/(?:private\/)?var\/folders\//.test(bundle) || bundle.startsWith('/Volumes/')) return false;
+  if (!bundle || /\/AppTranslocation\//.test(bundle) || bundle.startsWith('/Volumes/')) return false;
   try {
     tools.fs.accessSync(path.dirname(bundle), tools.fs.constants.W_OK);
     tools.fs.accessSync(bundle, tools.fs.constants.W_OK);
