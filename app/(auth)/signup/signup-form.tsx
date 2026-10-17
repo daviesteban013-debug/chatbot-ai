@@ -8,8 +8,12 @@ import { ArrowRight, Loader2, Mail } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { authErrorMessage } from "@/lib/auth-messages";
 import { provisionTenant } from "./actions";
+import { LaunchCurtain } from "./launch-curtain";
 import { AuthError, AuthField, GoogleSignIn, ResendConfirmation } from "../auth-controls";
 import styles from "../auth.module.css";
+
+/** The curtain stays up at least this long, so its two lines can be read before the portal opens. */
+const LAUNCH_MIN_MS = 1900;
 
 const signupSchema = z.object({
   businessName: z.string().trim().min(2, "Ingresa el nombre de tu negocio").max(60, "Máximo 60 caracteres"),
@@ -27,6 +31,7 @@ export function SignupForm() {
   const [loading, setLoading] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
   const [needsConfirmation, setNeedsConfirmation] = useState(false);
+  const [launching, setLaunching] = useState(false);
   const busy = loading || googleBusy;
   const change = (key: FieldKey, value: string) => setValues(previous => ({ ...previous, [key]: value }));
 
@@ -50,9 +55,11 @@ export function SignupForm() {
       } });
       if (error) throw error;
       if (data.session) {
-        const provisioned = await provisionTenant();
-        if (!provisioned.ok) throw new Error("business_provision_failed");
-        router.replace("/dashboard/jarvis"); router.refresh(); return;
+        // The account exists: the curtain goes up while the business is created, then the welcome portal.
+        setLaunching(true);
+        const [provisioned] = await Promise.all([provisionTenant(), new Promise(resolve => setTimeout(resolve, LAUNCH_MIN_MS))]);
+        if (!provisioned.ok) { setLaunching(false); throw new Error("business_provision_failed"); }
+        router.replace("/onboarding"); router.refresh(); return;
       }
       // No service-role writes until the user has verified their email and owns a session.
       setValues(previous => ({ ...previous, email: parsed.data.email, password: "", confirmPassword: "" }));
@@ -73,6 +80,7 @@ export function SignupForm() {
   </div>;
 
   return <div>
+    {launching && <LaunchCurtain />}
     <span className={styles.eyebrow}>EMPECEMOS ALGO GRANDE</span>
     <h1 className={styles.heading}>Conoce a tu NEXO.</h1>
     <p className={styles.description}>Crea tu cuenta. Tu agente será lo primero que verás.</p>

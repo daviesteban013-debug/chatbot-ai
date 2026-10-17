@@ -103,3 +103,24 @@ test("replaying keeps the existing agent and NEXO's other settings; only the own
   state.user = null;
   assert.match((await savePortal(complete)).error, /sesión/);
 });
+
+// ---------- The handoff to the CRM ----------
+const arrival = await import(await moduleUrl("lib/arrival.ts"));
+test("the portal leaves a short note for the CRM: read once, only while fresh, never trusted beyond presentation", () => {
+  const store = new Map();
+  const storage = { setItem: (key, value) => store.set(key, value), getItem: key => store.has(key) ? store.get(key) : null, removeItem: key => store.delete(key) };
+  arrival.rememberArrival(storage, { agent: "Lía", you: "David", accent: "#22d3ee" }, 1_000);
+  assert.deepEqual(arrival.takeArrival(storage, 2_000), { agent: "Lía", you: "David", accent: "#22d3ee", at: 1_000 });
+  assert.equal(arrival.takeArrival(storage, 2_000), null, "taken once");
+  arrival.rememberArrival(storage, { agent: "Lía", you: "David", accent: "#22d3ee" }, 1_000);
+  assert.equal(arrival.takeArrival(storage, 1_000 + arrival.ARRIVAL_MAX_AGE_MS + 1), null, "stale notes are ignored");
+  assert.equal(arrival.parseArrival('{"agent":"Lía","you":"David","accent":"red","at":1}', 2), null, "colors must be hex");
+  assert.equal(arrival.parseArrival('{"agent":"Lía","you":"David","accent":"#22d3ee","at":1,"role":"owner"}', 2), null, "no extra keys");
+  assert.equal(arrival.parseArrival("not json", 2), null);
+  assert.equal(arrival.parseArrival('{"agent":"Lía","you":"David","accent":"#22d3ee","at":5000}', 2), null, "nothing from the future");
+  const throwing = { setItem() { throw new Error("quota"); }, getItem() { throw new Error("blocked"); }, removeItem() {} };
+  assert.doesNotThrow(() => arrival.rememberArrival(throwing, { agent: "Lía", you: "", accent: "#facc15" }));
+  assert.equal(arrival.takeArrival(throwing), null);
+  assert.equal(arrival.arrivalGreeting({ you: "David" }), "Ya estoy aquí, David. Este es mi puesto: desde aquí hablamos y manejo tu CRM. ¿Por dónde empezamos?");
+  assert.match(arrival.arrivalGreeting({ you: "  " }), /^Ya estoy aquí\. /);
+});

@@ -18,15 +18,20 @@ const PULSES: Record<Exclude<FieldPulse, null>, [number, number]> = { speaking: 
  * cursor, a click or tap sends a wave, and NEXO's voice sends waves from its orb.
  * Canvas 2D only; it pauses in hidden tabs and stays still with reduced motion.
  */
-export function DotField({ accent = "#facc15", gap = 26, className, pulse = null, originRef }: {
+export function DotField({ accent = "#facc15", gap = 26, className, pulse = null, originRef, burstKey }: {
   accent?: string; gap?: number; className?: string; pulse?: FieldPulse; originRef?: RefObject<HTMLElement | null>;
+  /** Change this value to send three strong waves from the origin (or the center): a moment worth marking. */
+  burstKey?: string | number;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pulseRef = useRef<FieldPulse>(pulse);
   const accentRef = useRef(accent);
   const wakeRef = useRef<() => void>(() => {});
+  const burstRef = useRef<() => void>(() => {});
+  const lastBurst = useRef(burstKey);
   useEffect(() => { pulseRef.current = pulse; wakeRef.current(); }, [pulse]);
   useEffect(() => { accentRef.current = accent; wakeRef.current(); }, [accent]);
+  useEffect(() => { if (burstKey !== lastBurst.current) { lastBurst.current = burstKey; burstRef.current(); } }, [burstKey]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -114,6 +119,15 @@ export function DotField({ accent = "#facc15", gap = 26, className, pulse = null
       ripples.push({ x, y, at: time, power });
       if (ripples.length > MAX_RIPPLES) ripples.shift();
     }
+    const burstTimers: ReturnType<typeof setTimeout>[] = [];
+    function burst() {
+      if (motion.matches) return;
+      const box = originRef?.current?.getBoundingClientRect();
+      const x = box?.width ? box.left + box.width / 2 - rect.left : width / 2;
+      const y = box?.width ? box.top + box.height / 2 - rect.top : height / 2;
+      addRipple(x, y, 1); start();
+      burstTimers.push(setTimeout(() => { addRipple(x, y, 0.9); start(); }, 150), setTimeout(() => { addRipple(x, y, 0.75); start(); }, 300));
+    }
     function start() {
       if (motion.matches) { draw(true); return; }
       if (frame === null && !document.hidden) { previous = 0; frame = requestAnimationFrame(tick); }
@@ -135,6 +149,7 @@ export function DotField({ accent = "#facc15", gap = 26, className, pulse = null
 
     layout();
     wakeRef.current = start;
+    burstRef.current = burst;
     const observer = new ResizeObserver(resize);
     observer.observe(canvas);
     window.addEventListener("pointermove", move, { passive: true });
@@ -148,6 +163,8 @@ export function DotField({ accent = "#facc15", gap = 26, className, pulse = null
     return () => {
       if (frame !== null) cancelAnimationFrame(frame);
       wakeRef.current = () => {};
+      burstRef.current = () => {};
+      burstTimers.forEach(clearTimeout);
       observer.disconnect();
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerdown", down);

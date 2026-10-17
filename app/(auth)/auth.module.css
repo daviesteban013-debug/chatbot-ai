@@ -11,4 +11,5 @@
 .shell a:focus-visible,.shell button:focus-visible{outline:2px solid #facc15;outline-offset:4px}
 @media(max-width:900px){.main{gap:35px;grid-template-columns:1fr 390px}.story h2{font-size:44px}.points li{font-size:14px}.card{padding:28px}}
 @media(max-width:760px){.nav{padding:22px 24px}.main{display:flex;flex-direction:column;justify-content:center;gap:24px;padding:22px 20px 32px;min-height:calc(100svh - 128px)}.story{display:none}.card{width:100%;max-width:440px;padding:30px 26px;border-radius:20px}.heading{font-size:28px}.footer{padding:10px 24px 24px}.back{font-size:12px}.input{font-size:16px}}
-@media(prefers-reduced-motion:reduce){.spin{animation:none}.input,.primary,.google,.secondary{transition:none}}
+.launch{position:fixed;inset:0;z-index:60;display:grid;align-content:center;justify-items:center;gap:24px;background:#07080b;animation:launchIn .45s ease both}.launchOrb{--orb-size:96px;--nexo-color:#facc15;width:96px;height:96px}.launchText{margin:0;font-size:13px;letter-spacing:.08em;color:#a1a1aa;animation:launchIn .4s ease both}@keyframes launchIn{from{opacity:0}to{opacity:1}}
+@media(prefers-reduced-motion:reduce){.spin{animation:none}.input,.primary,.google,.secondary{transition:none}.launch,.launchText{animation:none}}

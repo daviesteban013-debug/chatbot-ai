@@ -43,6 +43,8 @@ import { buildBriefing, type Briefing } from "@/lib/briefing";
 import { OperatorTask } from "@/components/jarvis/operator-task";
 import { normalizeOperatorActions, parseOperatorNavigation, type OperatorNavigation } from "@/lib/crm-operator";
 import { completedOperatorNavigation, desktopPanelFallback } from "@/lib/operator-interface";
+import { ArrivalCurtain } from "@/components/jarvis/arrival";
+import { arrivalGreeting, takeArrival, type Arrival } from "@/lib/arrival";
 import type { ChatMessage } from "@/types/jarvis";
 
 const pageAccent = "#facc15";
@@ -93,6 +95,13 @@ function JarvisFullscreenInner({
   const desktopMode = useDesktopMode();
   const { state, setAudioLevel, setState } = useJarvisAvatar();
   const [isPoweredOn, setIsPoweredOn] = useState(false);
+  // Straight from the welcome portal: a curtain with the agent's name, then it greets the owner by name.
+  const [arrival, setArrival] = useState<Arrival | null>(null);
+  useEffect(() => {
+    if (desktopMode) return;
+    const timer = setTimeout(() => { const note = takeArrival(sessionStorage); if (note) setArrival(note); }, 0);
+    return () => clearTimeout(timer);
+  }, [desktopMode]);
   const poweredRef = useRef(false);
   const [commandNotice, setCommandNotice] = useState("Estoy aquí. ¿Qué vamos a hacer hoy?");
   const [navigationNotice, setNavigationNotice] = useState<string | null>(null);
@@ -227,19 +236,23 @@ function JarvisFullscreenInner({
       } catch { /* The hooks show their own errors. */ }
     })(); });
   }, [desktopMode, userId]);
-  const powerOn = useCallback(() => {
+  // Options come only from code (the arrival from the portal); clicks and claps call it bare.
+  const powerOn = useCallback((options?: { greeting?: string; microphone?: boolean }) => {
+    const custom = options && typeof options === "object" && typeof options.greeting === "string" ? options.greeting : null;
+    const microphone = !(options && typeof options === "object" && options.microphone === false);
     clapStopRef.current();
     setPanel(null);
     microphoneStopRef.current();
     poweredRef.current = true;
     setIsPoweredOn(true);
     setState("IDLE");
-    let greeting = profile.displayName
-      ? `Hola, ${profile.displayName}. NEXO activo. ¿Qué hacemos con tu negocio hoy?`
-      : "NEXO activo. ¿Qué hacemos con tu negocio hoy?";
+    const who = initialConfig.name?.trim() || "NEXO";
+    let greeting = custom ?? (profile.displayName
+      ? `Hola, ${profile.displayName}. ${who} en línea. ¿Qué hacemos con tu negocio hoy?`
+      : `${who} en línea. ¿Qué hacemos con tu negocio hoy?`);
     // The first time each day, NEXO opens with the daily briefing instead of a generic greeting.
     const today = briefingRef.current;
-    if (today) {
+    if (today && !custom) {
       let spoken = false;
       const key = `nexo-briefing-spoken:${userId ?? "public"}:${today.date}`;
       try { spoken = localStorage.getItem(key) === "1"; localStorage.setItem(key, "1"); } catch { /* Private mode: speak it. */ }
@@ -247,8 +260,8 @@ function JarvisFullscreenInner({
     }
     setCommandNotice(greeting);
     speak(greeting);
-    microphoneStartRef.current(false, true, true);
-  }, [profile.displayName, setState, speak, userId]);
+    if (microphone) microphoneStartRef.current(false, true, true);
+  }, [profile.displayName, initialConfig.name, setState, speak, userId]);
 
   const powerOff = useCallback(() => {
     clapStopRef.current();
@@ -446,6 +459,7 @@ function JarvisFullscreenInner({
 
   return (
     <div className={styles.experience} style={{ "--jarvis-accent": pageAccent } as CSSProperties}>
+      {arrival && <ArrivalCurtain arrival={arrival} onLift={() => powerOn({ greeting: arrivalGreeting(arrival), microphone: false })} onDone={() => setArrival(null)} />}
       <DotField className={styles.field} accent={pageAccent} originRef={avatarRef}
         pulse={avatarState === "SPEAKING" ? "speaking" : avatarState === "LISTENING" ? "listening" : avatarState === "PROCESSING" ? "processing" : null} />
       <header className={styles.header}>
@@ -465,7 +479,7 @@ function JarvisFullscreenInner({
             <p className={styles.activity} role="status"><span data-active={isPoweredOn || claps.listening || isRecording} />{activity}</p>
           </div>
           <div className={styles.activation}>
-            <button type="button" onClick={isPoweredOn ? powerOff : powerOn} aria-pressed={isPoweredOn} className={styles.powerButton}><Power size={16} />{isPoweredOn ? "En espera" : "Encender NEXO"}</button>
+            <button type="button" onClick={() => { if (isPoweredOn) powerOff(); else powerOn(); }} aria-pressed={isPoweredOn} className={styles.powerButton}><Power size={16} />{isPoweredOn ? "En espera" : "Encender NEXO"}</button>
             {!isPoweredOn && claps.supported && <button type="button" onClick={toggleClaps} aria-pressed={claps.listening || claps.pending} className={styles.clapButton}><Hand size={16} />{claps.pending ? "Cancelar permiso" : claps.listening ? "Detener aplausos" : "Activar 2 aplausos"}</button>}
           </div>
           <p className={styles.wakeHint}>{claps.listening ? "Dos aplausos rápidos, separados por medio segundo. Solo se analizan aquí." : !isPoweredOn ? "Un toque, dos aplausos o «NEXO, enciéndete»." : microphoneArmed ? "Escucha continua. Habla cuando termine mi respuesta." : speechSupported ? "Escucha pausada. Puedes activarla o escribir aquí abajo." : "Escribe aquí abajo; este navegador no ofrece reconocimiento de voz."}</p>

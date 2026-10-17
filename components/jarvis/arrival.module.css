@@ -1,0 +1,8 @@
+.curtain { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; background: radial-gradient(90% 60% at 50% 50%, color-mix(in srgb, var(--nexo-color), transparent 86%), transparent 70%), #07080b; opacity: 1; visibility: visible; transition: opacity .9s cubic-bezier(.65, 0, .35, 1), visibility 0s .9s; }
+.curtain[data-lifted=true] { opacity: 0; visibility: hidden; }
+.card { display: grid; justify-items: center; gap: 14px; transition: transform .9s cubic-bezier(.65, 0, .35, 1), opacity .5s; animation: arrive .6s cubic-bezier(.2, .8, .2, 1) both; }
+.curtain[data-lifted=true] .card { transform: scale(1.1); opacity: 0; }
+.card span { font: 800 clamp(40px, 7vw, 84px)/1 var(--font-display, Inter), Inter, system-ui, sans-serif; letter-spacing: .04em; color: #fafafa; text-shadow: 0 0 40px color-mix(in srgb, var(--nexo-color), transparent 40%); }
+.card small { font: 600 11px/1 ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace; letter-spacing: .3em; color: var(--nexo-color); }
+@keyframes arrive { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .curtain, .card { transition: none; animation: none; } }
