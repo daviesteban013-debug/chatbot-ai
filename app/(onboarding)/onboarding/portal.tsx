@@ -1,12 +1,13 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Check, Loader2, Volume2, VolumeX } from "lucide-react";
+import { ArrowRight, Check, Loader2, Maximize2, Minimize2, Volume2, VolumeX } from "lucide-react";
 import { DotField, type FieldPulse } from "@/components/brand/dot-field";
 import { NexoMark } from "@/components/brand/nexo-mark";
 import { NexoOrb, type OrbState } from "@/components/jarvis/nexo-orb";
 import { useJarvisVoice } from "@/hooks/useJarvisVoice";
-import { personalizationDefaults } from "@/lib/jarvis-personalization";
+import { personalizationDefaults, type JarvisPersonalization } from "@/lib/jarvis-personalization";
+import { voiceEngine, type VoiceAvailability } from "@/lib/jarvis-voice";
 import {
   ACCENT_NAMES, PORTAL_SCENES, PORTAL_TOTAL, TONE_LABELS, TONE_PREVIEWS, afterLine, describeAnswer, fillLine, portalDefaults, portalSubmission, portalSummary,
   typingSchedule, validateAnswer, type PortalAnswers, type PortalScene,
@@ -21,13 +22,42 @@ type Telemetry = { store: string | null; plan: string; products: number; whatsap
 const stamp = () => new Date().toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
 const PLAN_LABELS: Record<string, string> = { pilot: "PILOTO", trial: "PRUEBA", starter: "STARTER", pro: "PRO", business: "BUSINESS" };
 
+/** A few synthesized notes (no files): the portal waking up, a line ready for you, an answer taken, done. */
+function createSound() {
+  let context: AudioContext | null = null;
+  const audio = () => {
+    try {
+      const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!Ctor) return null;
+      context ??= new Ctor();
+      if (context.state === "suspended") void context.resume();
+      return context;
+    } catch { return null; }
+  };
+  const tone = (frequency: number, at: number, duration: number, gain: number, type: OscillatorType = "sine") => {
+    const ctx = audio(); if (!ctx) return;
+    const oscillator = ctx.createOscillator(), volume = ctx.createGain(), start = ctx.currentTime + at;
+    oscillator.type = type; oscillator.frequency.setValueAtTime(frequency, start);
+    volume.gain.setValueAtTime(0.0001, start); volume.gain.exponentialRampToValueAtTime(gain, start + 0.03); volume.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+    oscillator.connect(volume).connect(ctx.destination); oscillator.start(start); oscillator.stop(start + duration + 0.05);
+  };
+  return {
+    boot: () => { tone(196, 0, 1.2, 0.05); tone(392, 0.14, 1, 0.04); tone(587, 0.3, 1.4, 0.035); },
+    ready: () => tone(880, 0, 0.2, 0.025, "triangle"),
+    confirm: () => { tone(523, 0, 0.14, 0.03); tone(784, 0.09, 0.2, 0.03); },
+    done: () => { tone(392, 0, 0.6, 0.04); tone(523, 0.16, 0.6, 0.04); tone(659, 0.32, 0.9, 0.04); tone(784, 0.48, 1.4, 0.035); },
+  };
+}
+
 /**
  * The welcome portal. NEXO wakes up on a full screen, speaks and types one question per scene,
  * and the whole screen takes the answers at once: its name in the brand, the chosen color
  * everywhere, the voice out loud. Side panels show real telemetry and the live transcript;
  * they fade when NEXO is configured and the person enters the CRM.
  */
-export function WelcomePortal({ initial, replay, telemetry }: { initial: Partial<PortalAnswers>; replay: boolean; telemetry: Telemetry }) {
+export function WelcomePortal({ initial, replay, telemetry, voiceAvailability, voiceProfile }: {
+  initial: Partial<PortalAnswers>; replay: boolean; telemetry: Telemetry; voiceAvailability: VoiceAvailability; voiceProfile?: JarvisPersonalization["voice"];
+}) {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>("boot");
   const [scene, setScene] = useState(0);
@@ -39,6 +69,11 @@ export function WelcomePortal({ initial, replay, telemetry }: { initial: Partial
   const [draft, setDraft] = useState("");
   const [slider, setSlider] = useState(initial.maxDiscountPct ?? portalDefaults.maxDiscountPct);
   const [clock, setClock] = useState("");
+  const [fullscreen, setFullscreen] = useState(false);
+  const [canFullscreen, setCanFullscreen] = useState(false);
+  // ElevenLabs when the account has it; the device voice takes over if a request fails mid-portal.
+  const [engineOverride, setEngineOverride] = useState<"browser" | null>(null);
+  const sound = useRef<ReturnType<typeof createSound> | null>(null);
   const orbRef = useRef<HTMLDivElement>(null);
   const feedRef = useRef<HTMLDivElement>(null);
   const answersRef = useRef(answers);
@@ -47,17 +82,32 @@ export function WelcomePortal({ initial, replay, telemetry }: { initial: Partial
   const ids = useRef(0);
   useEffect(() => { answersRef.current = answers; }, [answers]);
 
-  const profile = useMemo(() => ({ ...personalizationDefaults, displayName: answers.displayName, voice: { ...personalizationDefaults.voice, enabled: !muted } }), [answers.displayName, muted]);
-  const voice = useJarvisVoice(profile, answers.tone, undefined, { elevenLabs: false });
+  const profile = useMemo(() => ({ ...personalizationDefaults, displayName: answers.displayName,
+    voice: { ...personalizationDefaults.voice, ...(voiceProfile ?? {}), engine: engineOverride ?? voiceProfile?.engine ?? "auto", enabled: !muted } }), [answers.displayName, muted, voiceProfile, engineOverride]);
+  const voice = useJarvisVoice(profile, answers.tone, undefined, voiceAvailability);
+  const engine = voiceEngine(profile, voiceAvailability);
+  useEffect(() => {
+    if (!voice.error || engineOverride) return;
+    const fallback = setTimeout(() => setEngineOverride("browser"), 0);
+    return () => clearTimeout(fallback);
+  }, [voice.error, engineOverride]);
+  useEffect(() => {
+    const sync = () => setFullscreen(Boolean(document.fullscreenElement));
+    const ready = setTimeout(() => { setCanFullscreen(Boolean(document.fullscreenEnabled) && !window.nexoDesktop); sync(); }, 0);
+    document.addEventListener("fullscreenchange", sync);
+    return () => { clearTimeout(ready); document.removeEventListener("fullscreenchange", sync); };
+  }, []);
+  const toggleFullscreen = () => { void (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()).catch(() => {}); };
   const mutedRef = useRef(muted);
   useEffect(() => { mutedRef.current = muted; }, [muted]);
+  const play = (name: keyof ReturnType<typeof createSound>) => { if (!mutedRef.current) sound.current?.[name](); };
   const speakRef = useRef(voice.speak);
   useEffect(() => { speakRef.current = voice.speak; }, [voice.speak]);
   const say = useCallback((text: string, then?: () => void) => {
-    ids.current += 1;
+    const id = ++ids.current, at = stamp();
     afterTyping.current = then ?? null;
-    setTyping({ id: ids.current, text, count: 0 });
-    setLog(list => [...list, { id: ids.current, who: "nexo", text, at: stamp() }]);
+    setTyping({ id, text, count: 0 });
+    setLog(list => [...list, { id, who: "nexo", text, at }]);
     if (!mutedRef.current) speakRef.current(text);
   }, []);
 
@@ -95,9 +145,16 @@ export function WelcomePortal({ initial, replay, telemetry }: { initial: Partial
   const current: PortalScene = PORTAL_SCENES[Math.min(scene, PORTAL_TOTAL - 1)];
   const startScene = useCallback((index: number, known: PortalAnswers) => {
     setScene(index); setDraft(""); setError(null); setPhase("typing");
-    say(fillLine(PORTAL_SCENES[index].say, known), () => { setPhase("asking"); lock.current = false; });
+    say(fillLine(PORTAL_SCENES[index].say, known), () => { setPhase("asking"); lock.current = false; if (!mutedRef.current) sound.current?.ready(); });
   }, [say]);
-  const begin = () => { if (phase !== "boot") return; startScene(0, answersRef.current); };
+  const begin = () => {
+    if (phase !== "boot") return;
+    // The click is the gesture browsers need before audio and fullscreen are allowed.
+    sound.current ??= createSound();
+    play("boot");
+    if (canFullscreen && !document.fullscreenElement) void document.documentElement.requestFullscreen().catch(() => {});
+    startScene(0, answersRef.current);
+  };
 
   const finishPortal = useCallback(async (known: PortalAnswers) => {
     setPhase("saving");
@@ -105,6 +162,7 @@ export function WelcomePortal({ initial, replay, telemetry }: { initial: Partial
     const result = parsed.success ? await savePortal(parsed.data) : { ok: false as const, error: "Falta una respuesta. Revisa los pasos anteriores." };
     if (!result.ok) { setError(result.error); setPhase("asking"); lock.current = false; return; }
     setPhase("done");
+    if (!mutedRef.current) sound.current?.done();
     say(`Listo${known.displayName ? `, ${known.displayName}` : ""}. ${known.agentName} en línea. Tu tienda ya tiene agente.`);
   }, [say]);
 
@@ -117,8 +175,9 @@ export function WelcomePortal({ initial, replay, telemetry }: { initial: Partial
     const next = { ...answersRef.current, [current.key]: clean } as PortalAnswers;
     answersRef.current = next; setAnswers(next);
     if (current.key === "voice") setMuted(!clean);
-    ids.current += 1;
-    setLog(list => [...list, { id: ids.current, who: "you", text: describeAnswer(current.key, clean), at: stamp() }]);
+    play("confirm");
+    const id = ++ids.current, at = stamp(), said = describeAnswer(current.key, clean);
+    setLog(list => [...list, { id, who: "you", text: said, at }]);
     setPhase("after");
     const last = scene === PORTAL_TOTAL - 1;
     say(afterLine(current, next, clean), () => { if (last) void finishPortal(next); else startScene(scene + 1, next); });
@@ -133,9 +192,10 @@ export function WelcomePortal({ initial, replay, telemetry }: { initial: Partial
   return <main className={styles.portal} data-phase={phase} style={{ "--nexo-color": answers.accent } as CSSProperties}>
     <DotField className={styles.field} accent={answers.accent} pulse={pulse} originRef={orbRef} />
     <header className={styles.top}>
-      <div className={styles.brand}><NexoMark className={styles.mark} /><div><strong>{agent.toUpperCase()} <span>{"// AGENTE"}</span></strong><small><i data-on={phase !== "boot"} />{phase === "boot" ? "EN ESPERA" : "EN LÍNEA"} · {muted ? "VOZ EN SILENCIO" : voice.supported ? "VOZ ACTIVA" : "VOZ NO DISPONIBLE"}</small></div></div>
+      <div className={styles.brand}><NexoMark className={styles.mark} /><div><strong>{agent.toUpperCase()} <span>{"// AGENTE"}</span></strong><small><i data-on={phase !== "boot"} />{phase === "boot" ? "EN ESPERA" : "EN LÍNEA"} · {muted ? "VOZ EN SILENCIO" : !voice.supported ? "VOZ NO DISPONIBLE" : engine === "elevenlabs" ? "VOZ · ELEVENLABS" : "VOZ · DISPOSITIVO"}</small></div></div>
       <div className={styles.topRight}>
-        <button type="button" className={styles.ghost} onClick={() => { setMuted(value => !value); voice.stop(); }} aria-pressed={!muted}>{muted ? <VolumeX size={14} /> : <Volume2 size={14} />}{muted ? "Activar voz" : "Silenciar"}</button>
+        {canFullscreen && <button type="button" className={styles.ghost} onClick={toggleFullscreen} aria-pressed={fullscreen} title={fullscreen ? "Salir de pantalla completa" : "Pantalla completa"}>{fullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}<span>{fullscreen ? "Salir" : "Pantalla completa"}</span></button>}
+        <button type="button" className={styles.ghost} onClick={() => { setMuted(value => !value); voice.stop(); }} aria-pressed={!muted}>{muted ? <VolumeX size={14} /> : <Volume2 size={14} />}<span>{muted ? "Activar voz" : "Silenciar"}</span></button>
         {phase !== "boot" && phase !== "done" && <span className={styles.counter}>{String(scene + 1).padStart(2, "0")} / {PORTAL_TOTAL}</span>}
       </div>
     </header>
@@ -180,7 +240,7 @@ export function WelcomePortal({ initial, replay, telemetry }: { initial: Partial
         </div>}
         {phase === "done" && <div className={styles.summary} data-enter>
           <dl>{portalSummary(portalSubmission.parse(answers)).map(item => <div key={item.label}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl>
-          <button type="button" className={styles.primary} onClick={() => { voice.stop(); router.replace("/dashboard/jarvis"); router.refresh(); }}>Entrar a mi CRM<ArrowRight size={15} /></button>
+          <button type="button" className={styles.primary} onClick={() => { voice.stop(); if (document.fullscreenElement) void document.exitFullscreen().catch(() => {}); router.replace("/dashboard/jarvis"); router.refresh(); }}>Entrar a mi CRM<ArrowRight size={15} /></button>
           <small className={styles.note}>Puedes cambiar cualquier cosa luego en Personalización y en Agente y autonomía.</small>
         </div>}
         {error && <p role="alert" className={styles.error} data-enter>{error}</p>}

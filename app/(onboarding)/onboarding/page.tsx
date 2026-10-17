@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { sanitizeJarvisConfig } from "@/lib/jarvis";
 import { sanitizePersonalization } from "@/lib/jarvis-personalization";
 import { portalDefaults, type PortalAnswers } from "@/lib/onboarding-portal";
+import { voiceAvailability } from "@/lib/voice/elevenlabs";
 import { WelcomePortal } from "./portal";
 
 export const metadata: Metadata = {
@@ -40,7 +41,7 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
     maxDiscountPct: agent?.max_discount_pct ?? portalDefaults.maxDiscountPct, autoConfirmMaxTotal: agent?.auto_confirm_max_total ?? portalDefaults.autoConfirmMaxTotal,
     rules: typeof rules.reglas === "string" ? rules.reglas : "",
   } : { displayName: typeof user.user_metadata?.full_name === "string" ? String(user.user_metadata.full_name).split(" ")[0] : "" };
-  return <WelcomePortal initial={initial} replay={replay} telemetry={{
+  return <WelcomePortal initial={initial} replay={replay} voiceAvailability={voiceAvailability()} voiceProfile={profile.voice} telemetry={{
     store: current.tenant?.name ?? null, plan: current.tenant?.plan ?? "pilot", products: products ?? 0, whatsapp: (whatsapp ?? 0) > 0, email: user.email ?? "",
   }} />;
 }
