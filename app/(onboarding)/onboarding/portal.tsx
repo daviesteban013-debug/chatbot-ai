@@ -7,7 +7,7 @@ import { NexoMark } from "@/components/brand/nexo-mark";
 import { NexoOrb, type OrbState } from "@/components/jarvis/nexo-orb";
 import { useJarvisVoice } from "@/hooks/useJarvisVoice";
 import { personalizationDefaults, type JarvisPersonalization } from "@/lib/jarvis-personalization";
-import { voiceEngine, type VoiceAvailability } from "@/lib/jarvis-voice";
+import type { VoiceAvailability } from "@/lib/jarvis-voice";
 import {
   ACCENT_NAMES, PORTAL_SCENES, PORTAL_TOTAL, TONE_LABELS, TONE_PREVIEWS, afterLine, describeAnswer, fillLine, portalDefaults, portalSubmission, portalSummary,
   typingSchedule, validateAnswer, type PortalAnswers, type PortalScene,
@@ -85,7 +85,6 @@ export function WelcomePortal({ initial, replay, telemetry, voiceAvailability, v
   const profile = useMemo(() => ({ ...personalizationDefaults, displayName: answers.displayName,
     voice: { ...personalizationDefaults.voice, ...(voiceProfile ?? {}), engine: engineOverride ?? voiceProfile?.engine ?? "auto", enabled: !muted } }), [answers.displayName, muted, voiceProfile, engineOverride]);
   const voice = useJarvisVoice(profile, answers.tone, undefined, voiceAvailability);
-  const engine = voiceEngine(profile, voiceAvailability);
   useEffect(() => {
     if (!voice.error || engineOverride) return;
     const fallback = setTimeout(() => setEngineOverride("browser"), 0);
@@ -192,7 +191,7 @@ export function WelcomePortal({ initial, replay, telemetry, voiceAvailability, v
   return <main className={styles.portal} data-phase={phase} style={{ "--nexo-color": answers.accent } as CSSProperties}>
     <DotField className={styles.field} accent={answers.accent} pulse={pulse} originRef={orbRef} />
     <header className={styles.top}>
-      <div className={styles.brand}><NexoMark className={styles.mark} /><div><strong>{agent.toUpperCase()} <span>{"// AGENTE"}</span></strong><small><i data-on={phase !== "boot"} />{phase === "boot" ? "EN ESPERA" : "EN LÍNEA"} · {muted ? "VOZ EN SILENCIO" : !voice.supported ? "VOZ NO DISPONIBLE" : engine === "elevenlabs" ? "VOZ · ELEVENLABS" : "VOZ · DISPOSITIVO"}</small></div></div>
+      <div className={styles.brand}><NexoMark className={styles.mark} /><div><strong>{agent.toUpperCase()} <span>{"// AGENTE"}</span></strong><small><i data-on={phase !== "boot"} />{phase === "boot" ? "EN ESPERA" : "EN LÍNEA"}</small></div></div>
       <div className={styles.topRight}>
         {canFullscreen && <button type="button" className={styles.ghost} onClick={toggleFullscreen} aria-pressed={fullscreen} title={fullscreen ? "Salir de pantalla completa" : "Pantalla completa"}>{fullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}<span>{fullscreen ? "Salir" : "Pantalla completa"}</span></button>}
         <button type="button" className={styles.ghost} onClick={() => { setMuted(value => !value); voice.stop(); }} aria-pressed={!muted}>{muted ? <VolumeX size={14} /> : <Volume2 size={14} />}<span>{muted ? "Activar voz" : "Silenciar"}</span></button>
