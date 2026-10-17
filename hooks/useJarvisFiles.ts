@@ -27,13 +27,15 @@ export function useJarvisFiles(sessionId: string, enabled: boolean) {
     const timer = setTimeout(() => { setSelected([]); setFiles([]); setLibrary([]); setError(null); setPending(false); void refresh(); }, 0);
     return () => { clearTimeout(timer); invalidate(); };
   }, [refresh, invalidate]);
-  const upload = useCallback(async (input: FileList | File[]) => {
-    if (!enabled || uploading.current) return;
+  /** Uploads and selects the files; returns what was uploaded (empty when refused or interrupted). */
+  const upload = useCallback(async (input: FileList | File[]): Promise<FileSummary[]> => {
+    const uploaded: FileSummary[] = [];
+    if (!enabled || uploading.current) return uploaded;
     const incoming = Array.from(input);
-    if (selected.length + incoming.length > MAX_ATTACHMENTS) { setError("Adjunta hasta tres archivos por mensaje."); return; }
+    if (selected.length + incoming.length > MAX_ATTACHMENTS) { setError("Adjunta hasta tres archivos por mensaje."); return uploaded; }
     for (const file of incoming) {
-      if (!file.size || file.size > MAX_FILE_BYTES) { setError(`${file.name}: el archivo debe pesar hasta 3 MB y tener contenido.`); return; }
-      if (!FILE_ACCEPT.split(",").includes(`.${fileExtension(file.name)}`)) { setError("Formatos disponibles: PDF, PNG, JPG, WebP, XLSX, CSV, DOCX, TXT y MD."); return; }
+      if (!file.size || file.size > MAX_FILE_BYTES) { setError(`${file.name}: el archivo debe pesar hasta 3 MB y tener contenido.`); return uploaded; }
+      if (!FILE_ACCEPT.split(",").includes(`.${fileExtension(file.name)}`)) { setError("Formatos disponibles: PDF, PNG, JPG, WebP, XLSX, CSV, DOCX, TXT y MD."); return uploaded; }
     }
     const current = epoch.current, controller = new AbortController();
     abort.current = controller; uploading.current = true; setPending(true); setError(null);
@@ -41,13 +43,15 @@ export function useJarvisFiles(sessionId: string, enabled: boolean) {
       for (const file of incoming) {
         const response = await fetch("/api/jarvis/files", { method: "POST", headers: { "Content-Type": "application/octet-stream", "X-File-Name": encodeURIComponent(file.name) }, body: file, signal: controller.signal });
         const data = await response.json();
-        if (current !== epoch.current) return;
+        if (current !== epoch.current) return uploaded;
         if (!response.ok) throw new Error(data.error || "No se pudo cargar el archivo.");
+        uploaded.push(data.file);
         setSelected(previous => [...previous, data.file]);
         setLibrary(previous => [{ ...data.file, sessionId: null }, ...previous]);
       }
     } catch (error) { if (current === epoch.current && !controller.signal.aborted) setError((error as Error).message); }
     finally { uploading.current = false; if (current === epoch.current) setPending(false); }
+    return uploaded;
   }, [enabled, selected.length]);
   const remove = useCallback(async (id: string) => {
     const current = epoch.current; setError(null);

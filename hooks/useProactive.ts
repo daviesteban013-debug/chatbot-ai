@@ -101,5 +101,7 @@ export function useProactive(enabled: boolean, userId: string | undefined, onAnn
   const dismiss = useCallback((key: string) => setAlerts(previous => previous.filter(alert => alert.key !== key)), []);
   const clear = useCallback(() => setAlerts([]), []);
   const closeRoutine = useCallback(() => setRoutine(null), []);
-  return { settings, ready, update, alerts, dismiss, clear, routine, closeRoutine, error };
+  /** Look at the business right now (a job just finished) instead of waiting for the next poll. */
+  const refresh = useCallback(() => { void check().catch(() => {}); }, [check]);
+  return { settings, ready, update, alerts, dismiss, clear, routine, closeRoutine, error, refresh };
 }

@@ -10,6 +10,7 @@ import {
   CreditCard,
   ListTodo,
   type LucideIcon,
+  ListChecks,
 } from "lucide-react";
 
 export interface NavItem {
@@ -44,6 +45,7 @@ export const navGroups: NavGroup[] = [
   ] },
   { label: "Operación", items: [
     { label: "Memoria y tareas", href: "/dashboard/workspace", icon: ListTodo },
+    { label: "Trabajos", href: "/dashboard/jobs", icon: ListChecks },
     { label: "WhatsApp", href: "/dashboard/whatsapp", icon: MessageCircle },
   ] },
   { label: "Ajustes", items: [

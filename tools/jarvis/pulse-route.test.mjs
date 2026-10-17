@@ -19,7 +19,7 @@ test("the pulse needs a signed-in member and always uses the session's business"
   state.user = null; assert.equal((await pulse.GET()).status, 401); assert.equal(state.rpc.length, 0);
   state.user = { id: "user-1" }; state.result = { data: empty, error: null };
   const response = await pulse.GET();
-  assert.equal(response.status, 200); assert.deepEqual((await response.json()).pulse, empty);
+  assert.equal(response.status, 200); assert.deepEqual((await response.json()).pulse, { ...empty, jobs: [] }, "older pulses gain an empty jobs list");
   assert.deepEqual(state.rpc[0], { name: "nexo_pulse", args: { p_tenant: "tenant-1", p_user: "user-1" } });
   assert.equal(response.headers.get("cache-control"), "private, no-store");
 });

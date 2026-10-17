@@ -5,7 +5,7 @@ import type { WebToolContext } from "./web-tools";
 
 const panels = Object.keys(commandPanels) as [keyof typeof commandPanels, ...Array<keyof typeof commandPanels>];
 const input = z.object({ panel: z.enum(panels), record_id: z.string().uuid().optional() }).strict();
-const detailTables = { orders: "orders", conversations: "conversations", handoffs: "handoffs" } as const;
+const detailTables = { orders: "orders", conversations: "conversations", handoffs: "handoffs", jobs: "nexo_jobs" } as const;
 
 export function crmNavigationTools(tenantId?: string | null, role?: string | null): LLMTool[] {
   return tenantId && role && ["owner", "agent", "viewer"].includes(role) ? [{

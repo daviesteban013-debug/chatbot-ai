@@ -26,13 +26,15 @@ const PANELS: Record<string, string> = {
   "/dashboard/agent": "Configuración del agente",
   "/dashboard/billing": "Planes y pagos",
   "/dashboard/workspace": "Memoria y tareas",
+  "/dashboard/jobs": "Trabajos",
 };
 const DETAIL_LABELS: Record<string, string> = {
   orders: "Ver pedido",
   conversations: "Ver conversación",
   handoffs: "Ver handoff",
+  jobs: "Ver trabajo",
 };
-const DETAIL_PATH = /^\/dashboard\/(orders|conversations|handoffs)\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
+const DETAIL_PATH = /^\/dashboard\/(orders|conversations|handoffs|jobs)\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
 const MAX_ACTIONS = 64;
 
 function record(value: unknown): value is Record<string, unknown> {

@@ -44,11 +44,16 @@ export async function POST(request: NextRequest) {
   if (session.tenant.role === "viewer") return json({ error: "Tu rol no permite iniciar trabajos." }, 403);
   try {
     const admin = createAdminClient();
-    const { data: owned } = await admin.from("jarvis_sessions").select("session_id").eq("session_id", parsed.data.session_id)
+    // From the CRM (no chat open) jobs live in one private session per person: "jobs".
+    const sessionId = parsed.data.session_id === "jobs" ? `jobs:${session.user.id}` : parsed.data.session_id;
+    const { data: owned } = await admin.from("jarvis_sessions").select("session_id").eq("session_id", sessionId)
       .eq("user_id", session.user.id).eq("tenant_id", session.tenant.tenantId).maybeSingle();
-    if (!owned) return json({ error: "Esta conversación no es tuya. Abre NEXO de nuevo." }, 403);
+    if (!owned && parsed.data.session_id === "jobs") {
+      const { error: createError } = await admin.from("jarvis_sessions").insert({ session_id: sessionId, user_id: session.user.id, tenant_id: session.tenant.tenantId, title: "Trabajos en segundo plano" });
+      if (createError && createError.code !== "23505") return json({ error: "No pude preparar tus trabajos. Inténtalo de nuevo." }, 503);
+    } else if (!owned) return json({ error: "Esta conversación no es tuya. Abre NEXO de nuevo." }, 403);
     const { data, error } = await admin.rpc("nexo_start_job", {
-      p_tenant: session.tenant.tenantId, p_user: session.user.id, p_session: parsed.data.session_id, p_kind: parsed.data.kind,
+      p_tenant: session.tenant.tenantId, p_user: session.user.id, p_session: sessionId, p_kind: parsed.data.kind,
       p_input: { file_ids: parsed.data.file_ids, ...(parsed.data.note ? { note: parsed.data.note } : {}), options: options.data },
       p_key: `ui:${parsed.data.request_key ?? crypto.randomUUID()}`,
     });

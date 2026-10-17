@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type FormEvent, type ReactNode } from "react";
-import { ArrowLeft, ArrowUpRight, Check, ChevronDown, Copy, GripHorizontal, LayoutDashboard, ListTodo, Mic, MicOff, Package, Power, Send, Settings2, ShoppingBag, Square, UserRound, Volume2, VolumeX, X } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Check, ChevronDown, ClipboardPaste, Copy, GripHorizontal, LayoutDashboard, ListTodo, Mic, MicOff, Package, Power, Send, Settings2, ShoppingBag, Square, UserRound, Volume2, VolumeX, X } from "lucide-react";
 import { commandPanels } from "@/lib/jarvis-commands";
 import { compactCOP } from "@/lib/sales-metrics";
 import { parseRichText, plainText } from "@/lib/rich-text";
@@ -9,6 +9,7 @@ import { NexoOrb, type OrbState } from "./nexo-orb";
 import { RichText } from "./rich-text";
 import styles from "./desktop-bubble.module.css";
 import { DesktopUpdates } from "@/components/pwa/desktop-updates";
+import { AttachmentBar, DropHint, type BubbleAttachments } from "./jobs";
 const subscribe = () => () => {};
 export function useDesktopMode() {
   return useSyncExternalStore(subscribe, () => Boolean(window.nexoDesktop && window.nexoDesktop.surface !== "crm") || (process.env.NODE_ENV === "development" && new URLSearchParams(window.location.search).get("desktopPreview") === "1"), () => false);
@@ -26,6 +27,10 @@ interface Props {
   latestAlert?: string | null;
   /** Alerts and routines settings, shown in the settings view. */
   settingsPanel?: ReactNode;
+  /** Background job cards, shown with the operator steps. */
+  jobs?: ReactNode;
+  /** Files for the next message: drop anywhere on the bubble, paste, chips and quick actions. */
+  attachments?: BubbleAttachments;
   today?: BubbleToday | null;
   /** What the person asked in the current turn, shown above the answer. */
   question?: string | null;
@@ -50,6 +55,7 @@ export function DesktopBubble(props: Props) {
   const [notice, setNotice] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [look, setLook] = useState({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState(0);
   const conversation = useRef<HTMLElement>(null);
   useEffect(() => {
     const bridge = window.nexoDesktop;
@@ -95,8 +101,15 @@ export function DesktopBubble(props: Props) {
   const compactOrb = expanded && Boolean(props.hasProposals || hasReply);
   const trackLook = (event: React.PointerEvent<HTMLElement>) => { const box = event.currentTarget.getBoundingClientRect(); setLook({ x: (event.clientX - box.left - box.width / 2) / 16, y: (event.clientY - box.top - box.height / 2) / 16 }); };
   const orb = <NexoOrb state={orbState} look={look} pulseKey={`${unread}|${props.question ?? ""}`} errorKey={props.error ?? null} />;
+  const attachments = props.attachments;
+  const hasFiles = (event: React.DragEvent) => event.dataTransfer.types.includes("Files");
 
-  return <main className={styles.shell} data-expanded={expanded} data-compact={compactOrb} data-state={orbState} style={{ "--nexo-color": preferences.color } as CSSProperties}>
+  return <main className={styles.shell} data-expanded={expanded} data-compact={compactOrb} data-state={orbState} style={{ "--nexo-color": preferences.color } as CSSProperties}
+    onDragEnter={attachments ? event => { if (hasFiles(event)) { event.preventDefault(); setDragging(count => count + 1); } } : undefined}
+    onDragOver={attachments ? event => { if (hasFiles(event)) event.preventDefault(); } : undefined}
+    onDragLeave={attachments ? () => setDragging(count => Math.max(0, count - 1)) : undefined}
+    onDrop={attachments ? event => { event.preventDefault(); setDragging(0); if (!event.dataTransfer.files.length) return; if (!expanded) void expand(); attachments.onDrop(event.dataTransfer.files); } : undefined}>
+    {dragging > 0 && <DropHint />}
     <header className={styles.handle}>
       {expanded ? <>
         <span className={styles.wordmark}>NEXO<span>.</span></span>
@@ -131,6 +144,7 @@ export function DesktopBubble(props: Props) {
       </section> : <section ref={conversation} className={styles.conversation} aria-label="Conversación con NEXO">
         {props.alerts}
         {props.operator}
+        {props.jobs}
         {props.navigationNotice && <p className={styles.hint} role="status">{props.navigationNotice}</p>}
         {props.proposals}
         {hasReply ? <div className={styles.turn} data-enter style={{ "--i": 1 } as CSSProperties}>
@@ -163,12 +177,15 @@ export function DesktopBubble(props: Props) {
           <button type="button" className={styles.power} onClick={props.onPower} aria-pressed={props.powered}><span className={styles.powerDot} data-on={props.powered} /><Power size={13} />{props.powered ? "Encendido" : "Activar NEXO"}</button>
           <button type="button" onClick={props.onMicrophone} aria-pressed={props.armed} aria-label={props.armed ? "Apagar micrófono" : "Activar escucha continua"} title={props.armed ? "Apagar micrófono" : "Activar escucha continua"}>{props.armed ? <Mic size={16} /> : <MicOff size={16} />}</button>
           <button type="button" onClick={props.onVoice} aria-pressed={props.voice} aria-label={props.voice ? "Silenciar voz" : "Activar voz"} title={props.voice ? "Silenciar voz" : "Activar voz"}>{props.voice ? <Volume2 size={16} /> : <VolumeX size={16} />}</button>
+          {attachments?.canPaste && <button type="button" onClick={attachments.onPasteButton} disabled={attachments.pending} aria-label="Pegar lo copiado" title="Pegar texto o imagen copiados"><ClipboardPaste size={16} /></button>}
           <button type="button" onClick={() => setSettings(true)} aria-label="Ajustes de NEXO: avisos, rutinas y apariencia" title="Ajustes"><Settings2 size={16} /></button>
         </div>
+        {attachments && <AttachmentBar files={attachments.selected} pending={attachments.pending} error={attachments.error} quickActions={props.input.trim() ? [] : attachments.quickActions} onRemove={attachments.onRemove} />}
         <form className={styles.composer} data-listening={props.listening} onSubmit={props.onSubmit}>
           {props.listening && <span className={styles.wave} aria-hidden="true"><i /><i /><i /><i /></span>}
-          <input aria-label="Mensaje a NEXO" placeholder={props.listening ? "Te escucho…" : props.busy ? "Puedes escribir lo siguiente…" : "Escribe o habla con NEXO…"} value={props.input} onChange={event => props.onInput(event.target.value)} maxLength={4000} />
-          {props.busy ? <button type="button" onClick={props.onStop} aria-label="Interrumpir respuesta" data-stop><Square size={14} /></button> : <button type="submit" aria-label="Enviar mensaje" disabled={!props.input.trim()}><Send size={15} /></button>}
+          <input aria-label="Mensaje a NEXO" placeholder={props.listening ? "Te escucho…" : props.busy ? "Puedes escribir lo siguiente…" : attachments?.selected.length ? "Dime qué hacer con el archivo…" : "Escribe o habla con NEXO…"}
+            value={props.input} onChange={event => props.onInput(event.target.value)} onPaste={attachments?.onPaste} maxLength={4000} />
+          {props.busy ? <button type="button" onClick={props.onStop} aria-label="Interrumpir respuesta" data-stop><Square size={14} /></button> : <button type="submit" aria-label="Enviar mensaje" disabled={!props.input.trim() && !attachments?.selected.length}><Send size={15} /></button>}
         </form>
         <p className={styles.hint}>{props.speaking ? "Espera a que termine para hablar" : props.busy ? "Preparando tu respuesta" : props.armed ? props.listening ? "Micrófono activo · te escucho" : "Micrófono en pausa temporal" : "Micrófono apagado · tú decides cuándo hablar"}</p>
       </div>}

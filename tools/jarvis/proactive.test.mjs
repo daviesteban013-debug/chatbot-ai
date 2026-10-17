@@ -40,6 +40,18 @@ test("only the chosen kinds are shown, and three or more of a kind become one al
   assert.equal(selectAlerts(sales, { ...on, kinds: { ...on.kinds, sale: false } }).length, 0);
 });
 
+test("finished jobs are announced once with their summary and open the job", () => {
+  const start = diffPulse(pulse(), null, morning);
+  const done = pulse({ jobs: [{ id: id(9), kind: "collections_review", status: "done", at: "2026-10-14T14:59:00Z", summary: "Revisé 4 pedidos" }, { id: id(8), kind: "catalog_import", status: "failed", at: "2026-10-14T14:58:00Z", summary: null }] });
+  const fresh = diffPulse(done, start.seen, morning + 1000).fresh;
+  assert.deepEqual(fresh.map(alert => [alert.kind, alert.text, alert.href, alert.action]), [
+    ["job", "Terminé: Revisé 4 pedidos", `/dashboard/jobs/${id(9)}`, "Ver resultado"], ["job", "No pude terminar: Importar catálogo", `/dashboard/jobs/${id(8)}`, "Ver detalle"]]);
+  assert.equal(selectAlerts(fresh, on).length, 2, "job alerts are on by default");
+  assert.equal(diffPulse(done, diffPulse(done, start.seen, morning + 1000).seen, morning + 2000).fresh.length, 0, "announced once");
+  assert.equal(parseSettings({ ...on, kinds: { handoff: true, approval: true, payment: true, sale: true, stock: true, task: true } }).kinds.job, true, "settings saved before jobs existed still parse");
+  assert.deepEqual(pulse().jobs, [], "pulses from older servers parse without jobs");
+});
+
 test("settings start off, survive bad storage, and quiet hours cross midnight in Colombia time", () => {
   assert.equal(defaultSettings.alerts, false);
   assert.ok(Object.values(defaultSettings.routines).every(routine => !routine.enabled));

@@ -21,6 +21,8 @@ test("a newer failed navigation does not replay an earlier destination", () => {
 
 test("legacy desktop fallback keeps exact approved base panels", () => {
   assert.deepEqual(desktopPanelFallback("/dashboard/workspace"), { href: "/dashboard", label: "Resumen" });
+  assert.deepEqual(desktopPanelFallback("/dashboard/jobs"), { href: "/dashboard", label: "Resumen" }, "desktop 0.2.4 has no jobs panel");
+  assert.deepEqual(desktopPanelFallback("/dashboard/jobs/11111111-1111-4111-8111-111111111111"), { href: "/dashboard", label: "Resumen" });
   assert.deepEqual(desktopPanelFallback("/dashboard/orders/11111111-1111-4111-8111-111111111111"), { href: "/dashboard/orders", label: "Pedidos" });
   for (const href of ["/dashboard/orders", "https://example.com/dashboard/orders/x", "/dashboard/orders/../billing", "/dashboard/orders/not-an-id", "/dashboard/unknown/x"]) assert.equal(desktopPanelFallback(href), null);
 });

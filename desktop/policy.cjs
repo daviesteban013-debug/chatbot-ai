@@ -1,7 +1,7 @@
 const APP_ORIGIN = 'https://chatbot-ai-gold-two.vercel.app';
 const AUTH_ORIGIN = 'https://hdrjzcxlhpzpayhrjafk.supabase.co';
-const PANELS = new Set(['/dashboard', '/dashboard/orders', '/dashboard/catalog', '/dashboard/conversations', '/dashboard/handoffs', '/dashboard/approval', '/dashboard/agent', '/dashboard/billing', '/dashboard/jarvis', '/dashboard/whatsapp', '/dashboard/workspace']);
-const DETAIL_PANEL = /^\/dashboard\/(?:orders|conversations|handoffs)\/[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
+const PANELS = new Set(['/dashboard', '/dashboard/orders', '/dashboard/catalog', '/dashboard/conversations', '/dashboard/handoffs', '/dashboard/approval', '/dashboard/agent', '/dashboard/billing', '/dashboard/jarvis', '/dashboard/whatsapp', '/dashboard/workspace', '/dashboard/jobs']);
+const DETAIL_PANEL = /^\/dashboard\/(?:orders|conversations|handoffs|jobs)\/[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
 function trustedUrl(value) {
   try { const url = new URL(value); return url.origin === APP_ORIGIN && !url.username && !url.password; } catch { return false; }
 }

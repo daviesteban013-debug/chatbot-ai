@@ -24,7 +24,8 @@ export function useAutomationSuggestions(enabled: boolean) {
   useEffect(() => {
     if (!enabled) return;
     const controller = new AbortController();
-    void load(controller.signal).catch(cause => { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : FAILED); });
+    const start = () => load(controller.signal).catch(cause => { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : FAILED); });
+    void start();
     const poll = setInterval(() => { if (document.visibilityState === "visible") void refresh(); }, 600000);
     const update = () => void refresh();
     window.addEventListener(ACTIVITY_EVENT, update);

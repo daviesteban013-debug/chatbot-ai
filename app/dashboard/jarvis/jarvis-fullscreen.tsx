@@ -34,6 +34,8 @@ import { DotField } from "@/components/brand/dot-field";
 import { useProactive, type Announcement } from "@/hooks/useProactive";
 import { AutomationSuggestion, ProactiveAlerts, ProactiveInvite, ProactiveSettingsPanel, RoutineSummary } from "@/components/jarvis/proactive";
 import { useAutomationSuggestions } from "@/hooks/useAutomationSuggestions";
+import { useJobs } from "@/hooks/useJobs";
+import { CopiedNotice, JobCards, WatchFolderSettings, type BubbleAttachments } from "@/components/jarvis/jobs";
 import { SUGGESTION_TEXTS } from "@/lib/suggestions";
 import { NexoActivity } from "@/components/dashboard/nexo-activity";
 import { RichText } from "@/components/jarvis/rich-text";
@@ -200,6 +202,31 @@ function JarvisFullscreenInner({
   const proactive = useProactive(desktopMode && Boolean(userId), userId, announce, profile.displayName || undefined);
   const suggestions = useAutomationSuggestions(desktopMode && Boolean(userId));
   const suggestion = suggestions.suggestions[0] ?? null;
+  const proactiveRefresh = proactive.refresh;
+  const jobs = useJobs(desktopMode && Boolean(userId), { sessionId: fileSession || undefined, onFinished: proactiveRefresh });
+  const [copiedJob, setCopiedJob] = useState(false);
+  const attachmentsRef = useRef(attachments);
+  const jobsRef = useRef(jobs);
+  useEffect(() => { attachmentsRef.current = attachments; jobsRef.current = jobs; });
+  // Desktop 0.2.5+: a file saved in Descargas/NEXO arrives here and, by subfolder or preference, starts its job.
+  useEffect(() => {
+    const bridge = window.nexoDesktop;
+    if (!desktopMode || !userId || !bridge?.onFileReady || !bridge.readWatchedFile) return;
+    const readWatched = bridge.readWatchedFile;
+    return bridge.onFileReady(event => { void (async () => {
+      try {
+        const file = await readWatched(event.token);
+        const bytes = Uint8Array.from(atob(file.base64), char => char.charCodeAt(0));
+        const uploaded = await attachmentsRef.current.upload([new File([bytes], file.name, { type: file.mime })]);
+        if (!uploaded.length) return;
+        const preference = bridge.getWatch ? await bridge.getWatch().catch(() => null) : null;
+        const kind = file.folder === "catalogo" ? "catalog_import" : file.folder === "stock" ? "catalog_update" : preference && preference.action !== "ask" ? preference.action : null;
+        if (!kind) return;
+        const job = await jobsRef.current.start({ kind, file_ids: uploaded.map(item => item.id), note: `Archivo de la carpeta vigilada: ${file.name}` });
+        if (job) attachmentsRef.current.submitted();
+      } catch { /* The hooks show their own errors. */ }
+    })(); });
+  }, [desktopMode, userId]);
   const powerOn = useCallback(() => {
     clapStopRef.current();
     setPanel(null);
@@ -365,11 +392,53 @@ function JarvisFullscreenInner({
     {nightly && <RoutineSummary card={nightly} onOpen={openFromCard} onClose={proactive.closeRoutine} />}
   </>;
   const facts = dailyBriefing.data;
-  if (desktopMode) return <DesktopBubble hasProposals={orderProposals.proposals.length > 0 || catalogProposals.proposals.length > 0 || Boolean(briefingCard) || operatorActions.length > 0 || proactive.alerts.length > 0 || Boolean(nightly) || invite || Boolean(suggestion)}
+  // Files in the bubble: dropped, pasted or picked up from the watched folder; each can start a job with one click.
+  const startFileJob = async (kind: "catalog_import" | "catalog_update", ids: string[]) => { const job = await jobs.start({ kind, file_ids: ids }); if (job) attachments.submitted(); };
+  const uploadReady = Boolean(userId) && !isLoading && !attachments.pending;
+  const sheetOnly = attachments.selected.length === 1 && ["xlsx", "csv"].includes(attachments.selected[0].name.toLowerCase().split(".").pop() ?? "");
+  const pasteFromDesktop = async () => {
+    const bridge = window.nexoDesktop;
+    if (!bridge?.readClipboard || !uploadReady) return;
+    try {
+      const content = await bridge.readClipboard();
+      if (content.kind === "image") await attachments.upload([new File([Uint8Array.from(atob(content.png), char => char.charCodeAt(0))], `captura-${Date.now()}.png`, { type: "image/png" })]);
+      else if (content.kind === "text" && content.text.length > 2000) await attachments.upload([new File([content.text], "texto-pegado.txt", { type: "text/plain" })]);
+      else if (content.kind === "text" && content.text.trim()) setInput(input ? `${input} ${content.text}` : content.text);
+    } catch { /* The bubble shows the hook's error. */ }
+  };
+  const bubbleAttachments: BubbleAttachments = {
+    selected: attachments.selected, pending: attachments.pending, error: attachments.error ?? jobs.error, canPaste: typeof window !== "undefined" && Boolean(window.nexoDesktop?.readClipboard),
+    quickActions: [
+      { id: "import", label: "Importar al catálogo", onPick: () => void startFileJob("catalog_import", attachments.selected.map(file => file.id)) },
+      ...(sheetOnly ? [{ id: "stock", label: "Actualizar stock o precios", onPick: () => void startFileJob("catalog_update", attachments.selected.map(file => file.id)) }] : []),
+      { id: "read", label: "Leer y resumir", onPick: () => { claps.stop(); submitInstruction("Lee este archivo y resume lo importante."); } },
+    ],
+    onDrop: files => { if (uploadReady) void attachments.upload(files); },
+    onRemove: id => void attachments.remove(id),
+    onPaste: event => {
+      const files = Array.from(event.clipboardData.files);
+      if (files.length) {
+        event.preventDefault();
+        if (uploadReady) void attachments.upload(files.map((file, index) => !file.name || /^image\.png$/i.test(file.name) ? new File([file], `pegado-${Date.now()}-${index}.${file.type.split("/")[1] || "png"}`, { type: file.type }) : file));
+        return;
+      }
+      const text = event.clipboardData.getData("text/plain");
+      if (text.length > 2000 && uploadReady) { event.preventDefault(); void attachments.upload([new File([text], "texto-pegado.txt", { type: "text/plain" })]); }
+    },
+    onPasteButton: () => void pasteFromDesktop(),
+  };
+  const copyReport = async (id: string) => {
+    try {
+      const { result } = await jobs.detail(id);
+      if (typeof result?.csv === "string") { await navigator.clipboard.writeText(result.csv); setCopiedJob(true); setTimeout(() => setCopiedJob(false), 1600); }
+    } catch { /* The hook keeps the error. */ }
+  };
+  const jobCards = <><CopiedNotice visible={copiedJob} /><JobCards jobs={jobs.jobs.slice(0, 5)} busy={jobs.busy} onOpen={openFromCard} onCancel={id => void jobs.cancel(id)} onApply={id => void jobs.apply(id)} onCopy={id => void copyReport(id)} onRetry={job => void jobs.start({ kind: job.kind })} /></>;
+  if (desktopMode) return <DesktopBubble hasProposals={orderProposals.proposals.length > 0 || catalogProposals.proposals.length > 0 || Boolean(briefingCard) || operatorActions.length > 0 || proactive.alerts.length > 0 || Boolean(nightly) || invite || Boolean(suggestion) || jobs.jobs.length > 0}
     alerts={proactiveCards} unread={proactive.alerts.length} latestAlert={proactive.alerts[0]?.text ?? null}
-    settingsPanel={<ProactiveSettingsPanel settings={proactive.settings} update={proactive.update} systemAvailable={typeof window !== "undefined" && Boolean(window.nexoDesktop?.notify)} />}
+    settingsPanel={<><ProactiveSettingsPanel settings={proactive.settings} update={proactive.update} systemAvailable={typeof window !== "undefined" && Boolean(window.nexoDesktop?.notify)} /><WatchFolderSettings /></>}
     today={facts ? { sales: facts.today.sales, orders: facts.today.orders, unpaid: facts.unpaid.count, unpaidTotal: facts.unpaid.total, waiting: facts.handoffs.count } : null}
-    operator={operator} proposals={proposals} powered={isPoweredOn} listening={isRecording} armed={microphoneArmed} busy={isLoading || voiceBusy} speaking={voiceSpeaking}
+    operator={operator} jobs={jobCards} attachments={bubbleAttachments} proposals={proposals} powered={isPoweredOn} listening={isRecording} armed={microphoneArmed} busy={isLoading || voiceBusy} speaking={voiceSpeaking}
     activity={activity} reply={latest?.content || commandNotice} question={latest ? question ?? null : null} navigationNotice={navigationNotice} error={error || voiceError || microphoneError} input={input} voice={isVoiceOutputEnabled} readyToPlay={readyToPlay}
     onPower={isPoweredOn ? powerOff : powerOn} onMicrophone={toggleRecording} onVoice={() => { stopSpokenTurn(); setIsVoiceOutputEnabled(value => !value); }}
     onStop={() => { stopSpokenTurn(); cancelResponse(); }} onResume={() => { pauseMicrophone(); resume(); }}

@@ -1,12 +1,14 @@
 import { z } from "zod";
 import type { BriefingData, BriefingItem } from "@/lib/briefing";
 import type { SalesMetrics } from "@/lib/sales-metrics";
+import { jobKinds } from "@/lib/jobs/types";
+import { jobShortLabels } from "@/lib/jobs/labels";
 
 /**
  * NEXO's proactive bubble: alerts about what happens in the business and scheduled
  * routines. Everything here is deterministic (no model) so it costs no credits.
  */
-export type AlertKind = "handoff" | "approval" | "payment" | "sale" | "stock" | "task";
+export type AlertKind = "handoff" | "approval" | "payment" | "sale" | "stock" | "task" | "job";
 export const ALERT_KINDS: { kind: AlertKind; label: string }[] = [
   { kind: "handoff", label: "Un cliente espera un asesor" },
   { kind: "approval", label: "Pedido por aprobar" },
@@ -14,6 +16,7 @@ export const ALERT_KINDS: { kind: AlertKind; label: string }[] = [
   { kind: "sale", label: "Venta cerrada por NEXO" },
   { kind: "stock", label: "Producto agotado" },
   { kind: "task", label: "Tarea vencida" },
+  { kind: "job", label: "Trabajo terminado" },
 ];
 
 export type RoutineId = "morning" | "evening" | "weekly";
@@ -25,7 +28,8 @@ export const ROUTINES: { id: RoutineId; label: string; detail: string; monday?: 
 
 const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
 const routine = z.object({ enabled: z.boolean(), time });
-const kinds = z.object({ handoff: z.boolean(), approval: z.boolean(), payment: z.boolean(), sale: z.boolean(), stock: z.boolean(), task: z.boolean() });
+// New kinds default to on so settings saved by older versions keep working.
+const kinds = z.object({ handoff: z.boolean(), approval: z.boolean(), payment: z.boolean(), sale: z.boolean(), stock: z.boolean(), task: z.boolean(), job: z.boolean().default(true) });
 export const settingsSchema = z.object({
   alerts: z.boolean(), kinds, voice: z.boolean(), system: z.boolean(),
   quiet: z.object({ enabled: z.boolean(), from: time, to: time }),
@@ -36,7 +40,7 @@ export type ProactiveSettings = z.infer<typeof settingsSchema>;
 /** Everything starts off: the owner of the computer decides what NEXO announces. */
 export const defaultSettings: ProactiveSettings = {
   alerts: false, voice: false, system: true, asked: false,
-  kinds: { handoff: true, approval: true, payment: true, sale: true, stock: true, task: true },
+  kinds: { handoff: true, approval: true, payment: true, sale: true, stock: true, task: true, job: true },
   quiet: { enabled: true, from: "21:00", to: "07:00" },
   routines: { morning: { enabled: false, time: "08:00" }, evening: { enabled: false, time: "18:00" }, weekly: { enabled: false, time: "08:30" } },
 };
@@ -52,6 +56,7 @@ export const pulseSchema = z.object({
   handoffs: z.array(person), approvals: z.array(sale), payments: z.array(sale), sales: z.array(sale),
   stockouts: z.array(z.object({ id: z.string().uuid(), label: z.string() })),
   tasks: z.array(z.object({ id: z.string().uuid(), title: z.string(), due_at: z.string() })),
+  jobs: z.array(z.object({ id: z.string().uuid(), kind: z.enum(jobKinds), status: z.enum(["done", "failed"]), at: z.string(), summary: z.string().nullable() })).default([]),
 });
 export type Pulse = z.infer<typeof pulseSchema>;
 
@@ -67,6 +72,8 @@ export function pulseAlerts(pulse: Pulse): ProactiveAlert[] {
     ...pulse.sales.map(o => ({ key: `sale:${o.id}`, kind: "sale" as const, text: `NEXO vendió ${money(o.total)} a ${o.customer}`, action: "Ver pedido", href: `/dashboard/orders/${o.id}`, at: o.at, amount: o.total })),
     ...pulse.stockouts.map(v => ({ key: `stock:${v.id}`, kind: "stock" as const, text: `Se agotó ${v.label}`, action: "Actualizar stock", href: "/dashboard/catalog", at: pulse.at })),
     ...pulse.tasks.map(t => ({ key: `task:${t.id}:${t.due_at}`, kind: "task" as const, text: `Tarea vencida: ${t.title}`, action: "Ver tareas", href: "/dashboard/workspace", at: t.due_at })),
+    ...pulse.jobs.map(j => ({ key: `job:${j.id}`, kind: "job" as const, text: j.status === "done" ? `Terminé: ${j.summary ?? jobShortLabels[j.kind]}` : `No pude terminar: ${jobShortLabels[j.kind]}${j.summary ? ` (${j.summary})` : ""}`,
+      action: j.status === "done" ? "Ver resultado" : "Ver detalle", href: `/dashboard/jobs/${j.id}`, at: j.at })),
   ];
 }
 
@@ -97,6 +104,7 @@ const GROUPED: Record<AlertKind, (items: ProactiveAlert[], total: number) => Pic
   sale: (items, total) => ({ text: `NEXO vendió ${items.length} pedidos por ${money(total)}`, action: "Ver pedidos", href: "/dashboard/orders" }),
   stock: items => ({ text: `Se agotaron ${items.length} productos`, action: "Actualizar stock", href: "/dashboard/catalog" }),
   task: items => ({ text: `Tienes ${items.length} tareas vencidas`, action: "Ver tareas", href: "/dashboard/workspace" }),
+  job: items => ({ text: `Terminaron ${items.length} trabajos`, action: "Ver trabajos", href: "/dashboard/jobs" }),
 };
 /** Only the kinds the person wants, and three or more of a kind become a single alert. */
 export function selectAlerts(fresh: ProactiveAlert[], settings: ProactiveSettings): ProactiveAlert[] {
