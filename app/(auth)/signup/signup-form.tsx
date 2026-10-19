@@ -4,8 +4,9 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
-import { ArrowRight, Loader2, Mail } from "lucide-react";
+import { ArrowRight, KeyRound, Loader2, Mail, UserCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { rememberLoginEmail } from "@/lib/auth-handoff";
 import { authErrorMessage } from "@/lib/auth-messages";
 import { provisionTenant } from "./actions";
 import { LaunchCurtain } from "./launch-curtain";
@@ -31,6 +32,8 @@ export function SignupForm() {
   const [loading, setLoading] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
   const [needsConfirmation, setNeedsConfirmation] = useState(false);
+  // The e-mail already has an account and the typed password did not open it (wrong, or the e-mail is still unconfirmed).
+  const [existing, setExisting] = useState<"password" | "unconfirmed" | null>(null);
   const [launching, setLaunching] = useState(false);
   const busy = loading || googleBusy;
   const change = (key: FieldKey, value: string) => setValues(previous => ({ ...previous, [key]: value }));
@@ -50,9 +53,26 @@ export function SignupForm() {
     }
     setLoading(true);
     try {
-      const { data, error } = await createClient().auth.signUp({ email: parsed.data.email, password: parsed.data.password, options: {
+      const client = createClient();
+      const credentials = { email: parsed.data.email, password: parsed.data.password };
+      const { data, error } = await client.auth.signUp({ ...credentials, options: {
         data: { business_name: parsed.data.businessName }, emailRedirectTo: `${window.location.origin}/auth/callback`,
       } });
+      // An e-mail that already has an account comes back as an error (auto-confirm) or as a user without
+      // identities (confirmations on). That is a sign-in, not a new account: the typed password decides.
+      const taken = error ? /already (?:been )?registered/i.test(error.message) : Boolean(data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0);
+      if (taken) {
+        const signedIn = await client.auth.signInWithPassword(credentials);
+        if (!signedIn.error) {
+          const provisioned = await provisionTenant();
+          if (!provisioned.ok) throw new Error("business_provision_failed");
+          router.replace("/dashboard/jarvis"); router.refresh(); return;
+        }
+        rememberLoginEmail(parsed.data.email);
+        setValues(previous => ({ ...previous, email: parsed.data.email, password: "", confirmPassword: "" }));
+        setExisting(signedIn.error.code === "email_not_confirmed" ? "unconfirmed" : "password");
+        return;
+      }
       if (error) throw error;
       if (data.session) {
         // The account exists: the curtain goes up while the business is created, then the welcome portal.
@@ -67,6 +87,21 @@ export function SignupForm() {
     } catch (error) { setFormError(authErrorMessage(error instanceof Error ? error.message : "")); }
     finally { setLoading(false); }
   }
+
+  if (existing) return <div>
+    <div className={styles.envelope}>{existing === "unconfirmed" ? <Mail size={28} /> : <UserCheck size={28} />}</div>
+    <span className={styles.eyebrow}>YA NOS CONOCEMOS</span>
+    <h1 className={styles.heading}>{existing === "unconfirmed" ? "Tu cuenta existe; falta confirmar el correo." : "Este correo ya tiene cuenta."}</h1>
+    {existing === "unconfirmed" ? <>
+      <p className={styles.description}><strong className={styles.email}>{values.email}</strong> ya está registrado en NEXO, pero aún no abriste el enlace de confirmación. Te enviamos uno nuevo.</p>
+      <ResendConfirmation email={values.email} initiallySent />
+    </> : <>
+      <p className={styles.description}><strong className={styles.email}>{values.email}</strong> ya está en NEXO. No hace falta crear otra cuenta: entra con tu contraseña o recupérala.</p>
+      <Link href="/login" className={styles.primary}>Iniciar sesión <ArrowRight size={16} /></Link>
+      <Link href="/auth/forgot" className={styles.secondary} style={{ marginTop: 10 }}><KeyRound size={16} /> Recuperar mi contraseña</Link>
+    </>}
+    <p className={styles.bottom}><button type="button" className={styles.textButton} onClick={() => { setExisting(null); setFormError(null); }}>Usar otro correo</button></p>
+  </div>;
 
   if (needsConfirmation) return <div>
     <div className={styles.envelope}><Mail size={28} /></div>

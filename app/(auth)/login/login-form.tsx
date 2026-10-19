@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { takeLoginEmail } from "@/lib/auth-handoff";
 import { authErrorMessage, callbackErrorMessage } from "@/lib/auth-messages";
 import { provisionTenant } from "../signup/actions";
 import { AuthError, AuthField, GoogleSignIn, ResendConfirmation } from "../auth-controls";
@@ -24,6 +25,11 @@ export function LoginForm({ callbackError }: { callbackError?: string }) {
   const [googleBusy, setGoogleBusy] = useState(false);
   const [needsConfirmation, setNeedsConfirmation] = useState(callbackError === "otp_expired");
   const busy = loading || googleBusy;
+  // Coming from sign-up with an e-mail that already had an account: the address is filled in, only the password is missing.
+  useEffect(() => {
+    const timer = setTimeout(() => { const remembered = takeLoginEmail(); if (remembered) setEmail(current => current || remembered); }, 0);
+    return () => clearTimeout(timer);
+  }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

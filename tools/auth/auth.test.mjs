@@ -100,3 +100,18 @@ test("verified confirmation redirects with a session; provisioning failures can 
   provisionOk = false;
   await assert.rejects(confirmEmail({ error: null }, form), /REDIRECT:\/auth\/finish/);
 });
+const handoff = await load("../../lib/auth-handoff.ts");
+test("an existing e-mail typed on sign-up reaches the login form once, through session storage, and only if it is an e-mail", () => {
+  const store = new Map();
+  const storage = { getItem: key => store.has(key) ? store.get(key) : null, setItem: (key, value) => store.set(key, value), removeItem: key => store.delete(key) };
+  handoff.rememberLoginEmail("  Dueno@Tienda.co ", storage);
+  assert.equal(handoff.takeLoginEmail(storage), "Dueno@Tienda.co");
+  assert.equal(handoff.takeLoginEmail(storage), "", "read once");
+  handoff.rememberLoginEmail("not an email", storage);
+  assert.equal(store.size, 0, "junk is never stored");
+  store.set(handoff.LOGIN_EMAIL_KEY, "<script>alert(1)</script>");
+  assert.equal(handoff.takeLoginEmail(storage), "", "junk is never returned"); assert.equal(store.size, 0);
+  const broken = { getItem() { throw new Error("blocked"); }, setItem() { throw new Error("quota"); }, removeItem() {} };
+  assert.doesNotThrow(() => handoff.rememberLoginEmail("a@b.co", broken)); assert.equal(handoff.takeLoginEmail(broken), "");
+  assert.equal(handoff.takeLoginEmail(undefined), "", "no storage at all (server) is fine");
+});
