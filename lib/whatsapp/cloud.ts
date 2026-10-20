@@ -44,8 +44,16 @@ export async function verifyCloudPhone(wabaId: string, phoneId: string, token: s
   const result = await graphRequest(`${wabaId}/phone_numbers?fields=id,display_phone_number,verified_name,code_verification_status&limit=100`,token);
   const phone = result.data?.find(item=>item.id===phoneId);
   if (!phone || typeof phone.display_phone_number !== "string") throw new CloudSetupError("NUMBER_NOT_IN_WABA");
-  if (phone.code_verification_status !== "VERIFIED") throw new CloudSetupError("NUMBER_NOT_VERIFIED");
+  if (phone.code_verification_status !== "VERIFIED" && !isMetaTestNumber(phone)) throw new CloudSetupError("NUMBER_NOT_VERIFIED");
   return phone;
+}
+
+/**
+ * Meta's sandbox numbers (+1 555 …, shown as "Test Number") are never SMS-verified, yet they are
+ * the official way to try the Cloud API with up to five recipients before a real SIM exists.
+ */
+export function isMetaTestNumber(phone: Pick<CloudPhone,"display_phone_number"|"verified_name">): boolean {
+  return /^\+1\s?555[\s-]?\d{3}[\s-]?\d{4}$/.test(phone.display_phone_number ?? "") || phone.verified_name === "Test Number";
 }
 
 /** Explicit owner action; does not send any customer message. */

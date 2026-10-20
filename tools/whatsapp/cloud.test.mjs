@@ -27,6 +27,13 @@ test("verification checks app, scopes, WABA ownership and SMS verification befor
   debug.scopes=["whatsapp_business_management","whatsapp_business_messaging"];
   await assert.rejects(verifyCloudPhone("1111122222","5555566666","fixture-token"),/NUMBER_NOT_IN_WABA/);
   phone.code_verification_status="NOT_VERIFIED";await assert.rejects(verifyCloudPhone("1111122222",phone.id,"fixture-token"),/NUMBER_NOT_VERIFIED/);
+  // Meta's sandbox number is never SMS-verified and is still accepted; a real unverified SIM is not.
+  phone.display_phone_number="+1 555 629 0862";phone.verified_name="Test Number";
+  assert.equal((await verifyCloudPhone("1111122222",phone.id,"fixture-token")).display_phone_number,"+1 555 629 0862");
+  phone.display_phone_number="+1 555 629 0862";phone.verified_name="Bellisima";
+  assert.equal((await verifyCloudPhone("1111122222",phone.id,"fixture-token")).id,phone.id,"the +1 555 range alone identifies the sandbox");
+  phone.display_phone_number="+1 555 629 08620";phone.verified_name="Bellisima";
+  await assert.rejects(verifyCloudPhone("1111122222",phone.id,"fixture-token"),/NUMBER_NOT_VERIFIED/,"a number that only resembles the sandbox range is not excused");
 });
 test("registration sets the explicit PIN then subscribes; subscribe-only does not re-register",async()=>{
   await activateCloudPhone("1111122222",phone.id,"fixture-token","123456");
