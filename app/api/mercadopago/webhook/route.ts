@@ -11,7 +11,7 @@ const ID = /^[\w-]{1,64}$/;
 /**
  * Notificaciones de Mercado Pago (pagos y suscripciones). Valida `x-signature`,
  * re-consulta el recurso en la API y lo aplica. Responde 500 si no pudo registrarlo
- * para que Mercado Pago reintente; los recursos ajenos a NEXO se ignoran con 200.
+ * para que Mercado Pago reintente; los recursos ajenos a Zorax se ignoran con 200.
  */
 export async function POST(request: Request) {
   const secret = process.env.MERCADOPAGO_WEBHOOK_SECRET?.trim();

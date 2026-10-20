@@ -17,14 +17,14 @@ const { jarvisCommand } = await load("../../lib/jarvis-commands.ts");
 const { createJarvisListener } = await load("../../lib/jarvis-listener.ts");
 
 test("spoken and typed commands tolerate accents and punctuation, without matching ordinary requests", () => {
-  for (const text of ["¡Jarvis, enciéndete!", "Jarvis, actívate por favor", "Encender Jarvis", "¡NEXO, enciéndete!", "Activar Nexo", "Nexo, actívate por favor"]) assert.equal(jarvisCommand(text), "wake");
-  assert.equal(jarvisCommand("NEXO, apágate"), "sleep");
-  assert.equal(jarvisCommand("NEXO, abre el CRM"), "crm");
+  for (const text of ["¡Jarvis, enciéndete!", "Jarvis, actívate por favor", "Encender Jarvis", "¡Zorax, enciéndete!", "Activar Nexo", "Nexo, actívate por favor"]) assert.equal(jarvisCommand(text), "wake");
+  assert.equal(jarvisCommand("Zorax, apágate"), "sleep");
+  assert.equal(jarvisCommand("Zorax, abre el CRM"), "crm");
   assert.equal(jarvisCommand("Jarvis, apágate"), "sleep");
   assert.equal(jarvisCommand("Jarvis, abre el CRM"), "crm");
   for (const text of ["Dime cómo decir Jarvis enciéndete", "Dime cómo decir Nexo enciéndete", "No abras el CRM", "recuerda que apágate es mi comando", "encender las luces"]) assert.equal(jarvisCommand(text), null);
   for (const text of ["¡Lía, enciéndete!", "Encender Lía", "Lia, abre el CRM"]) assert.notEqual(jarvisCommand(text, "Lía"), null, "the agent's own name wakes it");
-  assert.equal(jarvisCommand("Lía, enciéndete"), null, "a name NEXO was not given does not wake it");
+  assert.equal(jarvisCommand("Lía, enciéndete"), null, "a name Zorax was not given does not wake it");
   assert.equal(jarvisCommand("Doña Lía, enciéndete", "Doña Lía"), "wake", "accents and spaces in the name are tolerated");
   assert.equal(jarvisCommand("Lía, muéstrame los pedidos", "Lía"), "orders");
   assert.equal(jarvisCommand("muéstrame los pedidos de Lía", "Lía"), null, "the name is stripped only as a prefix");
@@ -204,7 +204,7 @@ test("email confirmation lands in Jarvis, honors internal destinations, and reje
   assert.match((await GET(new Request("https://app.example/auth/callback?code=bad"))).location, /auth_callback_error/);
 });
 function request(path, doneCookie) { const url = `https://app.example${path}`; return { url, nextUrl: new URL(url), cookies: { get: name => name === "onboarding_done" && doneCookie ? { value: doneCookie } : undefined, getAll: () => [], set() {} } }; }
-test("a new account meets NEXO in the welcome portal before any screen; afterwards it lands in Jarvis and can replay the portal", async () => {
+test("a new account meets Zorax in the welcome portal before any screen; afterwards it lands in Jarvis and can replay the portal", async () => {
   authState = { user: { id: "user-1" }, onboarded: false };
   assert.equal((await proxy(request("/login"))).location, "https://app.example/dashboard/jarvis");
   assert.equal((await proxy(request("/signup"))).location, "https://app.example/dashboard/jarvis");
@@ -215,7 +215,7 @@ test("a new account meets NEXO in the welcome portal before any screen; afterwar
   assert.equal((await proxy(request("/dashboard/jarvis"))).location, undefined);
   assert.equal((await proxy(request("/dashboard"))).location, undefined);
   assert.equal((await proxy(request("/onboarding", "user-1"))).location, "https://app.example/dashboard/jarvis", "once done the portal is skipped");
-  assert.equal((await proxy(request("/onboarding?replay=1", "user-1"))).location, undefined, "unless the person asks to meet NEXO again");
+  assert.equal((await proxy(request("/onboarding?replay=1", "user-1"))).location, undefined, "unless the person asks to meet Zorax again");
   authState.user = null;
   assert.equal((await proxy(request("/dashboard/jarvis"))).location, "https://app.example/login");
   assert.equal((await proxy(request("/dashboard"))).location, "https://app.example/login");

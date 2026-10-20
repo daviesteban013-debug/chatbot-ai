@@ -71,7 +71,7 @@ export const AGENT_TOOLS: LLMTool[] = [
     }, required: ["category", "evidence_quote"], additionalProperties: false },
   } },
   { type: "function", function: {
-    name: "get_payment_options", description: "Consulta los medios de pago reales configurados por el dueño de ESTE negocio: enlace y transferencia. No inventes cuentas ni uses el cobro de los planes de NEXO.",
+    name: "get_payment_options", description: "Consulta los medios de pago reales configurados por el dueño de ESTE negocio: enlace y transferencia. No inventes cuentas ni uses el cobro de los planes de Zorax.",
     parameters: { type: "object", properties: {}, required: [], additionalProperties: false },
   } },
   { type: "function", function: {

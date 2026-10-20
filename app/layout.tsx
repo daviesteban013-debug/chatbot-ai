@@ -10,11 +10,11 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "NEXO — Tu vendedor de IA para ecommerce por WhatsApp",
+  title: "Zorax — Tu vendedor de IA para ecommerce por WhatsApp",
   description:
-    "NEXO vende por WhatsApp con tu catálogo: responde por tallas y stock, cotiza envíos, registra pedidos y hace seguimiento de pagos desde tu CRM.",
-  applicationName: "NEXO",
-  appleWebApp: { capable: true, title: "NEXO", statusBarStyle: "black-translucent" },
+    "Zorax vende por WhatsApp con tu catálogo: responde por tallas y stock, cotiza envíos, registra pedidos y hace seguimiento de pagos desde tu CRM.",
+  applicationName: "Zorax",
+  appleWebApp: { capable: true, title: "Zorax", statusBarStyle: "black-translucent" },
   icons: { icon: "/icons/jarvis-192.png", apple: "/icons/jarvis-apple-180.png" },
 };
 

@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   // Decisions require a deliberate same-origin click, never a model tool call.
   if (request.headers.get("origin") !== request.nextUrl.origin || request.headers.get("sec-fetch-site") === "cross-site")
-    return json({ error: "Abre NEXO para confirmar esta acción." }, 403);
+    return json({ error: "Abre Zorax para confirmar esta acción." }, 403);
   if (!request.headers.get("content-type")?.startsWith("application/json")) return json({ error: "Solicitud no válida." }, 400);
   try {
     const text = await request.text();

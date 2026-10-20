@@ -111,7 +111,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   // Browser chat can prepare actions and update personal memory. Require its own origin.
   if (request.headers.get("origin") !== new URL(request.url).origin || request.headers.get("sec-fetch-site") === "cross-site")
-    return NextResponse.json({ error: "Abre NEXO para enviar esta solicitud." }, { status: 403 });
+    return NextResponse.json({ error: "Abre Zorax para enviar esta solicitud." }, { status: 403 });
   try {
     const parsed = await readChatBody(request);
     if (!parsed.ok) return NextResponse.json({ error: parsed.status === 413 ? "La solicitud es demasiado grande." : "Solicitud no válida." }, { status: parsed.status });
@@ -178,7 +178,7 @@ export async function POST(request: NextRequest) {
     let memoryReply: string | undefined;
     // Business requests go to the reviewed CRM memory tools; personal memory
     // remains private and requires an explicit personal command in a business.
-    const personalCommand = userMessage.trim().replace(/^(?:(?:nexo|jarvis)[,\s]+)?recuerda\s+sobre\s+m[ií]\s+que\s+/i, "recuerda que ");
+    const personalCommand = userMessage.trim().replace(/^(?:(?:nexo|zorax|jarvis)[,\s]+)?recuerda\s+sobre\s+m[ií]\s+que\s+/i, "recuerda que ");
     const memory = personalCommand !== userMessage.trim() || !resolvedTenantId ? explicitMemory(personalCommand) : null;
     if (memory) {
       if (!user) memoryReply = "Inicia sesión para que pueda recordar tus preferencias entre conversaciones.";
@@ -225,7 +225,7 @@ export async function POST(request: NextRequest) {
           if (signal.aborted) return;
           const errorPayload = `data: ${JSON.stringify({
             status: "error",
-            error: "NEXO no pudo terminar la solicitud. Revisa el estado antes de repetir una acción.",
+            error: "Zorax no pudo terminar la solicitud. Revisa el estado antes de repetir una acción.",
             sessionId,
           })}\n\n`;
           controller.enqueue(encoder.encode(errorPayload));

@@ -2,11 +2,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { activityItemSchema, type ActivityItem } from "@/lib/activity";
 
-const FAILED = "No pude cargar lo que hizo NEXO.";
+const FAILED = "No pude cargar lo que hizo Zorax.";
 /** Fired after any undo so every list on screen refreshes from the database. */
 export const ACTIVITY_EVENT = "nexo:activity";
 
-/** What NEXO did on its own; state always comes from the database. */
+/** What Zorax did on its own; state always comes from the database. */
 export function useNexoActivity(enabled: boolean, { limit = 8, version = "" }: { limit?: number; version?: string } = {}) {
   const [items, setItems] = useState<ActivityItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);

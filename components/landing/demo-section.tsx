@@ -564,7 +564,7 @@ export function DemoSection() {
                 </div>
               </div>
 
-              {/* What Nexo did in this chat */}
+              {/* What Zorax did in this chat */}
               <div className="mt-5 space-y-2.5 border-t border-white/5 pt-4">
                 <p className="text-xs font-medium text-zinc-300">
                   ¿Por qué vende más que una respuesta automática típica?

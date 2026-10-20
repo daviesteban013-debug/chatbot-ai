@@ -16,7 +16,7 @@ const action = z.discriminatedUnion("action", [
 ]);
 const IMPORT_ERRORS: Record<string, string> = {
   catalog_forbidden: "Tu rol no permite editar el catálogo.",
-  catalog_invalid: "Los productos del trabajo ya no son válidos. Pídele a NEXO que lea el archivo de nuevo.",
+  catalog_invalid: "Los productos del trabajo ya no son válidos. Pídele a Zorax que lea el archivo de nuevo.",
 };
 /** In an import, an empty field means "not in the file": it must not erase stored data. */
 const present = <T extends object>(value: T) => Object.fromEntries(Object.entries(value).filter(([, v]) => v !== null && v !== undefined));
@@ -39,7 +39,7 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
 /** Cancel, or apply the drafts an import left for review (a deliberate same-origin click). */
 export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   if (request.headers.get("origin") !== request.nextUrl.origin || request.headers.get("sec-fetch-site") === "cross-site")
-    return json({ error: "Abre NEXO para gestionar este trabajo." }, 403);
+    return json({ error: "Abre Zorax para gestionar este trabajo." }, 403);
   const { id } = await context.params;
   if (!UUID.test(id)) return json({ error: "Trabajo no válido." }, 400);
   if (!request.headers.get("content-type")?.startsWith("application/json")) return json({ error: "Solicitud no válida." }, 400);

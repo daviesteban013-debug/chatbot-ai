@@ -72,12 +72,12 @@ export function BillingView({ mode, owner, current, subscription, pendingPayment
 
   const notes = "rounded-lg border border-line bg-surface p-4 text-sm text-ink-soft";
   return <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-    <PageHeader title="Planes y pagos" description="Capacidad de NEXO para tu negocio. Suscripción automática o pago por periodo con tarjeta, PSE o Efecty." />
+    <PageHeader title="Planes y pagos" description="Capacidad de Zorax para tu negocio. Suscripción automática o pago por periodo con tarjeta, PSE o Efecty." />
     <div className="space-y-3">
       {mode === "test" && <aside className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"><span className="font-medium">Modo de prueba · No se cobra dinero real</span><p className="mt-1 text-amber-900/80">Paga con la cuenta compradora de prueba de Mercado Pago. Tarjeta Visa <code className="font-mono">4013 5406 8274 6260</code>, CVV <code className="font-mono">123</code>, vence <code className="font-mono">11/30</code>, titular <code className="font-mono">APRO</code>. No introduzcas una tarjeta real.</p></aside>}
       {unavailable && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">Los pagos no están disponibles en este momento. Recarga la página en unos minutos.</p>}
       {!owner && <p className={notes}>El propietario de tu negocio puede contratar y gestionar el plan.</p>}
-      {verified && <p role="status" className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800"><Check size={16} />Pago recibido. Si ya fue aprobado, tu plan está disponible en NEXO.</p>}
+      {verified && <p role="status" className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800"><Check size={16} />Pago recibido. Si ya fue aprobado, tu plan está disponible en Zorax.</p>}
       {notice && <p role="status" className={notes}>{notice}</p>}
       {returned && !verified && owner && <button disabled={!!busy} onClick={() => void verifyPayment()} className="rounded-md border border-line bg-surface px-3 py-1.5 text-[13px] font-medium text-ink hover:bg-subtle disabled:opacity-50">{busy === "verify" ? "Verificando pago…" : "Verificar mi pago"}</button>}
       {canceled && !current && <p className={notes}>Saliste del pago sin completarlo. Puedes intentarlo de nuevo cuando quieras.</p>}
@@ -88,7 +88,7 @@ export function BillingView({ mode, owner, current, subscription, pendingPayment
         <PanelHeader title="Tu plan" actions={subscription ? <Badge variant={subscribed ? "success" : "neutral"}>Suscripción {(subscriptionNames[subscription.status] ?? subscription.status).toLowerCase()}</Badge> : null} />
         <div className="px-4 py-4 sm:px-5">
           <p className="text-xl font-semibold tracking-tight text-ink">{current?.plan ?? "Sin plan vigente"}</p>
-          <p className="mt-1 text-sm text-muted">{current ? `${subscribed ? "Se renueva automáticamente. Pagado hasta" : "Vigente hasta"} el ${date(current.activeUntil)}.` : "Usas el cupo de prueba. Elige un plan para darle más capacidad a NEXO."}</p>
+          <p className="mt-1 text-sm text-muted">{current ? `${subscribed ? "Se renueva automáticamente. Pagado hasta" : "Vigente hasta"} el ${date(current.activeUntil)}.` : "Usas el cupo de prueba. Elige un plan para darle más capacidad a Zorax."}</p>
           {subscribed && owner && <button onClick={() => void cancel()} disabled={!!busy} className="mt-4 rounded-md border border-line px-3 py-1.5 text-[13px] font-medium text-ink-soft hover:bg-subtle disabled:opacity-50">{busy === "cancel" ? "Cancelando…" : "Cancelar suscripción automática"}</button>}
         </div>
       </Panel>
@@ -106,7 +106,7 @@ export function BillingView({ mode, owner, current, subscription, pendingPayment
       <ul className="my-5 space-y-2 border-t border-line pt-4">{plan.features.map(feature => <li key={feature} className="flex gap-2 text-[13px] text-ink-soft"><Check size={15} className="mt-0.5 shrink-0 text-emerald-600" />{feature}</li>)}</ul>
       <button onClick={() => setSelected(plan)} disabled={!!busy || disabled} className={`mt-auto flex items-center justify-center gap-2 rounded-md px-3 py-2 text-[13px] font-medium transition disabled:opacity-45 ${plan.featured ? "bg-ink text-white hover:bg-ink-soft" : "border border-line bg-surface text-ink hover:bg-subtle"}`}>{busy === plan.id ? <Loader2 size={15} className="animate-spin" /> : <CreditCard size={15} />}{label}</button>
     </Panel>; })}</div>
-    <p className="mt-6 flex items-start gap-2 text-xs leading-5 text-muted"><ShieldCheck size={15} className="mt-0.5 shrink-0" />Mercado Pago procesa tu pago. NEXO recupera cada mensaje tras 3 horas, con cupo compartido por negocio. WhatsApp conserva créditos mensuales separados, incluso con pago anual. Cargos de Meta no incluidos.</p>
+    <p className="mt-6 flex items-start gap-2 text-xs leading-5 text-muted"><ShieldCheck size={15} className="mt-0.5 shrink-0" />Mercado Pago procesa tu pago. Zorax recupera cada mensaje tras 3 horas, con cupo compartido por negocio. WhatsApp conserva créditos mensuales separados, incluso con pago anual. Cargos de Meta no incluidos.</p>
     {selected && <CheckoutModal plan={selected} annual={annual} onClose={() => setSelected(null)} />}
   </div>;
 }

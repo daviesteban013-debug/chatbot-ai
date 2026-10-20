@@ -73,11 +73,11 @@ export function JobDetail({ id, canWrite }: { id: string; canWrite: boolean }) {
       <p className="mb-4 text-xs text-muted">Creado {timeAgo(job.created_at)}{job.finished_at ? ` · ${jobStatusLabels[job.status].toLowerCase()} ${timeAgo(job.finished_at)}` : ""}{job.note ? ` · ${job.note}` : ""}</p>
       {error && <p role="alert" className="mb-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2.5 text-[13px] text-rose-800">{error}</p>}
       {notice && <p role="status" className="mb-4 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-[13px] text-emerald-800">{notice}</p>}
-      {isActiveJob(job) && <Panel><p className="flex items-center gap-2 px-5 py-8 text-[13px] text-ink-soft"><Loader2 className="size-4 animate-spin" />NEXO sigue trabajando. Esta página se actualiza sola.</p></Panel>}
+      {isActiveJob(job) && <Panel><p className="flex items-center gap-2 px-5 py-8 text-[13px] text-ink-soft"><Loader2 className="size-4 animate-spin" />Zorax sigue trabajando. Esta página se actualiza sola.</p></Panel>}
       {job.status === "done" && result && job.kind === "catalog_import" && <ImportResult job={job} result={result} canWrite={canWrite} busy={busy} onApply={(mode, selected) => act({ action: "apply", mode, selected }, "Productos importados.")} />}
       {job.status === "done" && result && job.kind === "catalog_update" && <UpdateResult result={result} canWrite={canWrite} onChanged={() => void load()} />}
       {job.status === "done" && result && job.kind === "collections_review" && <CollectionsResult result={result} />}
-      {job.status === "failed" && <Panel><div className="px-5 py-6 text-[13px] text-ink-soft"><p className="flex items-center gap-2 font-medium text-ink"><AlertTriangle className="size-4 text-amber-600" />{job.error ?? "No terminó"}</p><p className="mt-2 text-muted">Pídele a NEXO que lo intente de nuevo{job.kind !== "collections_review" ? " con el archivo adjunto en la conversación" : ""}.</p></div></Panel>}
+      {job.status === "failed" && <Panel><div className="px-5 py-6 text-[13px] text-ink-soft"><p className="flex items-center gap-2 font-medium text-ink"><AlertTriangle className="size-4 text-amber-600" />{job.error ?? "No terminó"}</p><p className="mt-2 text-muted">Pídele a Zorax que lo intente de nuevo{job.kind !== "collections_review" ? " con el archivo adjunto en la conversación" : ""}.</p></div></Panel>}
     </div>
   );
 }
@@ -97,7 +97,7 @@ function ImportResult({ job, result, canWrite, busy, onApply }: { job: JobView; 
         <Button size="sm" disabled={busy || !selected.size} onClick={() => void onApply(mode, [...selected].sort((a, b) => a - b))}><CheckCircle2 className="size-4" />Importar {selected.size}</Button>
       </div> : null} />
     {warnings.map(warning => <p key={warning} className="mx-4 mt-3 flex gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 sm:mx-5"><AlertTriangle className="size-4 shrink-0" />{warning}</p>)}
-    {missing > 0 && !applied && <p className="mx-4 mt-3 rounded-md border border-line bg-subtle px-3 py-2 text-xs text-ink-soft sm:mx-5">{missing} producto{missing === 1 ? "" : "s"} sin precio quedan sin marcar: complétalos después en Catálogo o pídele a NEXO que relea el archivo.</p>}
+    {missing > 0 && !applied && <p className="mx-4 mt-3 rounded-md border border-line bg-subtle px-3 py-2 text-xs text-ink-soft sm:mx-5">{missing} producto{missing === 1 ? "" : "s"} sin precio quedan sin marcar: complétalos después en Catálogo o pídele a Zorax que relea el archivo.</p>}
     <ul className="mt-2 divide-y divide-line">
       {drafts.map((draft, index) => {
         const outcome = applied?.results.find(item => item.index === index);
@@ -132,7 +132,7 @@ function UpdateResult({ result, canWrite, onChanged }: { result: Record<string, 
   return <div className="space-y-5">
     {warnings.map(warning => <p key={warning} className="flex gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800"><AlertTriangle className="size-4 shrink-0" />{warning}</p>)}
     {pending.length > 0 && <Panel>
-      <PanelHeader title={`${counts.pending ?? 0} cambios esperan tu confirmación`} description="Tarjetas que NEXO preparó; valen 24 horas. Cada una se aplica solo si nada cambió desde que se preparó." />
+      <PanelHeader title={`${counts.pending ?? 0} cambios esperan tu confirmación`} description="Tarjetas que Zorax preparó; valen 24 horas. Cada una se aplica solo si nada cambió desde que se preparó." />
       {error && <p role="alert" className="mx-5 mt-3 text-xs text-rose-700">{error}</p>}
       <ul className="divide-y divide-line">{pending.map(proposal => <li key={proposal.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-[13px] sm:px-5">
         <span className="text-ink">{proposal.title} · {proposal.lines} {proposal.lines === 1 ? "producto" : "productos"}<span className="ml-2 text-xs text-muted">vence {timeAgo(proposal.expires_at).replace("hace", "en")}</span></span>
@@ -141,12 +141,12 @@ function UpdateResult({ result, canWrite, onChanged }: { result: Record<string, 
       </li>)}</ul>
     </Panel>}
     <Panel>
-      <PanelHeader title={`${applied.length} cambios aplicados`} description={applied.length ? "Aplicados por NEXO con la autonomía que activó el dueño; cada uno se puede deshacer 7 días desde «Lo que hizo NEXO»." : "NEXO no aplicó cambios por su cuenta en este archivo."} />
+      <PanelHeader title={`${applied.length} cambios aplicados`} description={applied.length ? "Aplicados por Zorax con la autonomía que activó el dueño; cada uno se puede deshacer 7 días desde «Lo que hizo Zorax»." : "Zorax no aplicó cambios por su cuenta en este archivo."} />
       {applied.length > 0 && <table className="w-full text-[13px]"><thead><tr className="text-left text-[11px] uppercase tracking-wide text-muted"><th className="px-5 py-2 font-medium">Producto</th><th className="px-2 py-2 font-medium">SKU</th><th className="px-2 py-2 text-right font-medium">Antes</th><th className="px-5 py-2 text-right font-medium">Después</th></tr></thead>
         <tbody className="divide-y divide-line">{applied.map((line, index) => <tr key={`${line.sku}-${index}`}><td className="px-5 py-2 text-ink">{line.label}</td><td className="px-2 py-2 font-mono text-xs text-muted">{line.sku}</td><td className="px-2 py-2 text-right tabular-nums text-ink-soft">{line.kind === "price" ? formatCOP(line.before) : line.before}</td><td className="px-5 py-2 text-right tabular-nums text-ink">{line.kind === "price" ? formatCOP(line.after) : line.after}</td></tr>)}</tbody></table>}
     </Panel>
     {(skipped.length > 0 || (counts.pending_later ?? 0) > 0) && <Panel>
-      <PanelHeader title={`${skipped.length} filas omitidas`} description={(counts.pending_later ?? 0) > 0 ? `Además, ${counts.pending_later} filas quedaron para después porque había demasiadas tarjetas pendientes: confirma o cancela las tarjetas y pídele a NEXO que repita el archivo.` : "Revisa estas filas en el archivo y vuelve a intentarlo si hace falta."} />
+      <PanelHeader title={`${skipped.length} filas omitidas`} description={(counts.pending_later ?? 0) > 0 ? `Además, ${counts.pending_later} filas quedaron para después porque había demasiadas tarjetas pendientes: confirma o cancela las tarjetas y pídele a Zorax que repita el archivo.` : "Revisa estas filas en el archivo y vuelve a intentarlo si hace falta."} />
       <ul className="divide-y divide-line text-[13px]">{skipped.map((row, index) => <li key={index} className="flex flex-wrap gap-2 px-4 py-2 sm:px-5"><span className="w-16 text-muted">Fila {row.row}</span>{row.sku && <span className="font-mono text-xs text-ink-soft">{row.sku}</span>}<span className="text-ink-soft">{row.reason}</span></li>)}</ul>
     </Panel>}
   </div>;
@@ -162,7 +162,7 @@ function CollectionsResult({ result }: { result: Record<string, unknown> }) {
   const download = () => { const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" })); const link = document.createElement("a"); link.href = url; link.download = "cobros-nexo.csv"; link.click(); URL.revokeObjectURL(url); };
   return <Panel>
     <PanelHeader title={`${counts.orders ?? 0} pedidos por cobrar · ${formatCOP(counts.total ?? 0)}`}
-      description={`${counts.scheduled ?? 0} con recordatorio en cola · ${counts.reminded ?? 0} ya recordados · ${counts.requires_call ?? 0} requieren tu llamada. NEXO solo recuerda pagos por WhatsApp cuando el pedido se confirmó por ese canal y los recordatorios están activos.`}
+      description={`${counts.scheduled ?? 0} con recordatorio en cola · ${counts.reminded ?? 0} ya recordados · ${counts.requires_call ?? 0} requieren tu llamada. Zorax solo recuerda pagos por WhatsApp cuando el pedido se confirmó por ese canal y los recordatorios están activos.`}
       actions={csv ? <div className="flex gap-2"><Button variant="secondary" size="sm" onClick={() => void copy()}><ClipboardCopy className="size-4" />{copied ? "Copiado" : "Copiar informe"}</Button><Button variant="secondary" size="sm" onClick={download}><Download className="size-4" />CSV</Button></div> : null} />
     {result.csv_truncated === true && <p className="mx-5 mt-3 text-xs text-muted">El CSV incluye solo los primeros pedidos (64 KB).</p>}
     <ul className="divide-y divide-line">

@@ -16,7 +16,7 @@ const DEMO_JOBS: JobView[] = [
   { id: "11111111-1111-4111-8111-aaaaaaaaaaa3", kind: "collections_review", status: "done", session_id: "preview", created_at: new Date(Date.now() - 3600000).toISOString(), started_at: null, finished_at: new Date(Date.now() - 3500000).toISOString(), applied_at: null, progress: {}, summary: "Revisé 12 pedidos por cobrar ($ 1.450.000): 4 con recordatorio en cola, 2 ya recordados, 6 requieren tu llamada", error: null, counts: { orders: 12 }, note: null },
 ];
 
-const RICH_REPLY = `Esta semana vendiste **$ 4.870.000** en 35 pedidos, un 19 % más que la anterior. NEXO cerró 29 de ellos por WhatsApp.
+const RICH_REPLY = `Esta semana vendiste **$ 4.870.000** en 35 pedidos, un 19 % más que la anterior. Zorax cerró 29 de ellos por WhatsApp.
 
 **Lo más vendido**
 

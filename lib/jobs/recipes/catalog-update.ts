@@ -84,7 +84,7 @@ async function plan(ctx: JobContext, cp: State, fields: "auto" | "stock" | "pric
   const { data: file, error } = await ctx.admin.from("jarvis_files").select("filename,sections,truncated").eq("user_id", ctx.job.user_id).eq("id", ctx.fileIds[0] ?? "").maybeSingle();
   if (error || !file) throw new Error("No encontré el archivo adjunto. Vuelve a adjuntarlo e inténtalo de nuevo.");
   cp.file = file.filename;
-  if (file.truncated) cp.warnings.push("El archivo es muy largo: NEXO leyó solo la primera parte.");
+  if (file.truncated) cp.warnings.push("El archivo es muy largo: Zorax leyó solo la primera parte.");
   const sheets = sheetRows(file.sections as unknown as FileSection[]);
   if (!sheets.size) throw new Error("La hoja no tiene filas con datos. Revisa que la primera fila tenga encabezados como SKU, Stock o Precio.");
   let sheet: string | null = null; let columns: ReturnType<typeof detectColumns> = null;

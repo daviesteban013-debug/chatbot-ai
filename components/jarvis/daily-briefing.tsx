@@ -10,7 +10,7 @@ const TONE = { good: "#6ee7b7", warning: "#fbbf24", info: "#a3a3ad" } as const;
 export function DailyBriefing({ briefing, onOpen, onDismiss, compact = false }: {
   briefing: Briefing; onOpen(href: string, label: string): void; onDismiss(): void; compact?: boolean;
 }) {
-  // Always full height: the NEXO dock already scrolls, a nested scroll would hide items.
+  // Always full height: the Zorax dock already scrolls, a nested scroll would hide items.
   return <section className={styles.list} data-compact aria-label="Resumen del día" data-desktop={compact}>
     <article className={styles.card}>
       <div className={styles.heading}><span>TU RESUMEN DEL DÍA</span><button type="button" onClick={onDismiss} aria-label="Ocultar resumen del día"><X size={13} /></button></div>

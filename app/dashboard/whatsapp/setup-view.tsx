@@ -64,7 +64,7 @@ export function WhatsAppSetupView({initial}:{initial:WhatsAppSetup}) {
               <p className="mt-2">El Verify Token debe coincidir con el guardado en el servidor. No lo pegues en un chat.</p></div></li>
             <li className="flex gap-3 px-4 py-3 sm:px-5"><span className="w-3 shrink-0 font-medium tabular-nums text-muted">4</span><div className="min-w-0"><strong className="block font-semibold text-ink">Guarda las credenciales y activa el canal</strong>Usa un token de usuario del sistema con acceso a tu cuenta y permisos de gestión y mensajería. El token temporal de Meta sirve para pruebas y caduca; sustitúyelo antes de usar el canal a diario.</div></li>
           </ol>
-          <p className="border-t border-line bg-subtle/50 px-4 py-3 text-xs leading-5 text-muted sm:px-5">Al tomar un handoff, la conversación y su historial siguen en el CRM y NEXO cede la atención.</p>
+          <p className="border-t border-line bg-subtle/50 px-4 py-3 text-xs leading-5 text-muted sm:px-5">Al tomar un handoff, la conversación y su historial siguen en el CRM y Zorax cede la atención.</p>
         </Panel>
         <div className="space-y-5">
           {setup.canManage ? <>

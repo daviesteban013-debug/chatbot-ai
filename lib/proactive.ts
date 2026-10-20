@@ -5,7 +5,7 @@ import { jobKinds } from "@/lib/jobs/types";
 import { jobShortLabels } from "@/lib/jobs/labels";
 
 /**
- * NEXO's proactive bubble: alerts about what happens in the business and scheduled
+ * Zorax's proactive bubble: alerts about what happens in the business and scheduled
  * routines. Everything here is deterministic (no model) so it costs no credits.
  */
 export type AlertKind = "handoff" | "approval" | "payment" | "sale" | "stock" | "task" | "job";
@@ -13,7 +13,7 @@ export const ALERT_KINDS: { kind: AlertKind; label: string }[] = [
   { kind: "handoff", label: "Un cliente espera un asesor" },
   { kind: "approval", label: "Pedido por aprobar" },
   { kind: "payment", label: "Pago recibido" },
-  { kind: "sale", label: "Venta cerrada por NEXO" },
+  { kind: "sale", label: "Venta cerrada por Zorax" },
   { kind: "stock", label: "Producto agotado" },
   { kind: "task", label: "Tarea vencida" },
   { kind: "job", label: "Trabajo terminado" },
@@ -37,7 +37,7 @@ export const settingsSchema = z.object({
   asked: z.boolean(),
 });
 export type ProactiveSettings = z.infer<typeof settingsSchema>;
-/** Everything starts off: the owner of the computer decides what NEXO announces. */
+/** Everything starts off: the owner of the computer decides what Zorax announces. */
 export const defaultSettings: ProactiveSettings = {
   alerts: false, voice: false, system: true, asked: false,
   kinds: { handoff: true, approval: true, payment: true, sale: true, stock: true, task: true, job: true },
@@ -69,7 +69,7 @@ export function pulseAlerts(pulse: Pulse): ProactiveAlert[] {
     ...pulse.handoffs.map(h => ({ key: `handoff:${h.id}`, kind: "handoff" as const, text: `${h.customer} espera un asesor`, action: "Atender", href: `/dashboard/handoffs/${h.id}`, at: h.at })),
     ...pulse.approvals.map(o => ({ key: `approval:${o.id}`, kind: "approval" as const, text: `Pedido de ${money(o.total)} de ${o.customer} por aprobar`, action: "Revisar", href: "/dashboard/approval", at: o.at, amount: o.total })),
     ...pulse.payments.map(o => ({ key: `payment:${o.id}`, kind: "payment" as const, text: `${o.customer} pagó ${money(o.total)}`, action: "Ver pedido", href: `/dashboard/orders/${o.id}`, at: o.at, amount: o.total })),
-    ...pulse.sales.map(o => ({ key: `sale:${o.id}`, kind: "sale" as const, text: `NEXO vendió ${money(o.total)} a ${o.customer}`, action: "Ver pedido", href: `/dashboard/orders/${o.id}`, at: o.at, amount: o.total })),
+    ...pulse.sales.map(o => ({ key: `sale:${o.id}`, kind: "sale" as const, text: `Zorax vendió ${money(o.total)} a ${o.customer}`, action: "Ver pedido", href: `/dashboard/orders/${o.id}`, at: o.at, amount: o.total })),
     ...pulse.stockouts.map(v => ({ key: `stock:${v.id}`, kind: "stock" as const, text: `Se agotó ${v.label}`, action: "Actualizar stock", href: "/dashboard/catalog", at: pulse.at })),
     ...pulse.tasks.map(t => ({ key: `task:${t.id}:${t.due_at}`, kind: "task" as const, text: `Tarea vencida: ${t.title}`, action: "Ver tareas", href: "/dashboard/workspace", at: t.due_at })),
     ...pulse.jobs.map(j => ({ key: `job:${j.id}`, kind: "job" as const, text: j.status === "done" ? `Terminé: ${j.summary ?? jobShortLabels[j.kind]}` : `No pude terminar: ${jobShortLabels[j.kind]}${j.summary ? ` (${j.summary})` : ""}`,
@@ -77,7 +77,7 @@ export function pulseAlerts(pulse: Pulse): ProactiveAlert[] {
   ];
 }
 
-/** Keys NEXO already knows about, with the last time each was present. */
+/** Keys Zorax already knows about, with the last time each was present. */
 export type Seen = Record<string, number>;
 const FORGET_AFTER = 2 * 86400000;
 
@@ -101,7 +101,7 @@ const GROUPED: Record<AlertKind, (items: ProactiveAlert[], total: number) => Pic
   handoff: items => ({ text: `${items.length} clientes esperan un asesor`, action: "Atender", href: "/dashboard/handoffs" }),
   approval: items => ({ text: `${items.length} pedidos esperan tu aprobación`, action: "Revisar", href: "/dashboard/approval" }),
   payment: (items, total) => ({ text: `Recibiste ${items.length} pagos por ${money(total)}`, action: "Ver pedidos", href: "/dashboard/orders" }),
-  sale: (items, total) => ({ text: `NEXO vendió ${items.length} pedidos por ${money(total)}`, action: "Ver pedidos", href: "/dashboard/orders" }),
+  sale: (items, total) => ({ text: `Zorax vendió ${items.length} pedidos por ${money(total)}`, action: "Ver pedidos", href: "/dashboard/orders" }),
   stock: items => ({ text: `Se agotaron ${items.length} productos`, action: "Actualizar stock", href: "/dashboard/catalog" }),
   task: items => ({ text: `Tienes ${items.length} tareas vencidas`, action: "Ver tareas", href: "/dashboard/workspace" }),
   job: items => ({ text: `Terminaron ${items.length} trabajos`, action: "Ver trabajos", href: "/dashboard/jobs" }),
@@ -151,7 +151,7 @@ export function buildEvening(data: BriefingData): RoutineCard {
   const { today } = data;
   const items: BriefingItem[] = [];
   if (today.orders > 0) {
-    const nexo = today.agentOrders > 0 ? ` NEXO cerró ${today.agentOrders === today.orders ? "todos" : today.agentOrders}.` : "";
+    const nexo = today.agentOrders > 0 ? ` Zorax cerró ${today.agentOrders === today.orders ? "todos" : today.agentOrders}.` : "";
     items.push({ id: "today", tone: "good", text: `Hoy vendiste ${money(today.sales)} en ${plural(today.orders, "pedido", "pedidos")}.${nexo}`, action: { label: "Ver pedidos", href: "/dashboard/orders" } });
   } else items.push({ id: "today", tone: "info", text: "Hoy no hubo ventas confirmadas." });
   if (today.collected > 0) items.push({ id: "collected", tone: "good", text: `Cobraste ${money(today.collected)} en ${plural(today.paidOrders, "pedido", "pedidos")}.` });
@@ -168,7 +168,7 @@ export function buildWeekly(metrics: SalesMetrics): RoutineCard {
     const delta = before.sales > 0 ? Math.round(((now.sales - before.sales) / before.sales) * 100) : null;
     const trend = delta === null || delta === 0 ? "" : ` (${Math.abs(delta)}% ${delta > 0 ? "más" : "menos"} que la anterior)`;
     items.push({ id: "sales", tone: delta !== null && delta < 0 ? "info" : "good", text: `Esta semana vendiste ${money(now.sales)} en ${plural(now.orders, "pedido", "pedidos")}${trend}.`, action: { label: "Ver resultados", href: "/dashboard" } });
-    if (now.agentOrders > 0) items.push({ id: "nexo", tone: "good", text: `NEXO cerró ${plural(now.agentOrders, "venta", "ventas")} por ${money(now.agentSales)}.` });
+    if (now.agentOrders > 0) items.push({ id: "nexo", tone: "good", text: `Zorax cerró ${plural(now.agentOrders, "venta", "ventas")} por ${money(now.agentSales)}.` });
   } else items.push({ id: "sales", tone: "info", text: "Esta semana no hubo ventas confirmadas." });
   if (now.collected > 0) items.push({ id: "collected", tone: "good", text: `Cobraste ${money(now.collected)}${now.recovered > 0 ? `; ${money(now.recovered)} llegaron tras un recordatorio` : ""}.` });
   if (metrics.topProducts[0]) items.push({ id: "top", tone: "info", text: `Lo más vendido: ${metrics.topProducts[0].name} (${metrics.topProducts[0].qty} u).` });

@@ -1,5 +1,5 @@
 /**
- * A small, safe reader for the Markdown NEXO writes: paragraphs, emphasis, lists,
+ * A small, safe reader for the Markdown Zorax writes: paragraphs, emphasis, lists,
  * tables, quotes, code and links. It produces a tree, never HTML, so nothing from a
  * model answer can inject markup. Only CRM paths and https links become links.
  */
@@ -25,7 +25,7 @@ const BULLET = /^\s*(?:[-*•]|\d+[.)])\s+/;
 const ORDERED = /^\s*(\d+)[.)]\s+/;
 const TABLE_SEP = /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/;
 
-/** Links NEXO may offer: screens of the CRM and public https pages. */
+/** Links Zorax may offer: screens of the CRM and public https pages. */
 export function safeHref(raw: string): string | null {
   const href = raw.trim();
   if (/^\/dashboard(?:\/[\w\-/]*)?$/.test(href)) return href;

@@ -6,7 +6,7 @@ import { ArrowRight, MessageCircleMore, SlidersHorizontal, Zap } from "lucide-re
 
 const steps = [
   { icon: MessageCircleMore, title: "Conecta tu WhatsApp", copy: "Vincula tu cuenta de WhatsApp Business siguiendo el proceso de conexión. Sin cambiar cómo te encuentran tus clientes.", note: "Tu canal de siempre" },
-  { icon: SlidersHorizontal, title: "Enséñale tu tienda", copy: "Sube tu catálogo con variantes, stock, precios, costos de envío y medios de pago. Define qué puede resolver Nexo y cuándo debe llamarte.", note: "Tus reglas, tu voz" },
+  { icon: SlidersHorizontal, title: "Enséñale tu tienda", copy: "Sube tu catálogo con variantes, stock, precios, costos de envío y medios de pago. Define qué puede resolver Zorax y cuándo debe llamarte.", note: "Tus reglas, tu voz" },
   { icon: Zap, title: "Empieza a vender por WhatsApp", copy: "Prueba las respuestas antes de activar el asistente. Revisa su actividad y ajusta lo que necesites desde tu panel.", note: "Tú mantienes el control" },
 ];
 

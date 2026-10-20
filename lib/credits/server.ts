@@ -97,12 +97,12 @@ export async function reserveMessage(account: CreditAccount): Promise<string> {
     if (data.reason === "retry_limit") {
       if (typeof data.retryAt !== "string" || !Number.isFinite(Date.parse(data.retryAt))) unavailable();
       const retry = new Date(data.retryAt).toLocaleString("es-CO", { timeZone: "America/Bogota", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-      throw new CreditError("MESSAGES_RETRY_LIMIT", `Pausamos los reintentos repetidos de NEXO hasta ${retry} (hora de Colombia). Los mensajes fallidos no descontaron tu cupo. Tu CRM sigue disponible; revisa el error anterior antes de reintentar.`);
+      throw new CreditError("MESSAGES_RETRY_LIMIT", `Pausamos los reintentos repetidos de Zorax hasta ${retry} (hora de Colombia). Los mensajes fallidos no descontaron tu cupo. Tu CRM sigue disponible; revisa el error anterior antes de reintentar.`);
     }
     const next = balance.resetsAt ? new Date(balance.resetsAt).toLocaleString("es-CO", {
       timeZone: "America/Bogota", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
     }) : "dentro de unas horas";
-    throw new CreditError("MESSAGES_EXHAUSTED", `Alcanzaste el límite de mensajes de NEXO. Recuperas espacio ${next} (hora de Colombia). Tu CRM sigue disponible; abrir otra conversación no cambia el cupo.`);
+    throw new CreditError("MESSAGES_EXHAUSTED", `Alcanzaste el límite de mensajes de Zorax. Recuperas espacio ${next} (hora de Colombia). Tu CRM sigue disponible; abrir otra conversación no cambia el cupo.`);
   }
   if (data.ok !== true) unavailable();
   return id;

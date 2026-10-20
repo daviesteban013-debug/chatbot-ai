@@ -40,7 +40,7 @@ function orderOf(raw: unknown, status: unknown): CollectionOrder | null {
   };
 }
 
-/** Deterministic report: who owes what, and whether NEXO is already reminding them. No model. */
+/** Deterministic report: who owes what, and whether Zorax is already reminding them. No model. */
 export function buildReport(orders: CollectionOrder[]) {
   const byCustomer = new Map<string, CollectionCustomer>();
   for (const { customer, ...order } of orders) {

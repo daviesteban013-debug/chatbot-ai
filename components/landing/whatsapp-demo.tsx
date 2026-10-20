@@ -58,7 +58,7 @@ export function WhatsAppDemo() {
       <div className="overflow-hidden rounded-[1.75rem] border border-white/15 bg-[#101b20] shadow-[0_32px_90px_#0009]">
         <div className="flex items-center gap-3 border-b border-white/5 bg-[#1b2a30] px-5 py-4">
           <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-yellow-300 text-zinc-950"><MessageCircleMore className="size-5" /></span>
-          <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-white">{current.business}</p><p className="mt-1 text-[11px] text-emerald-300">Asistente Nexo · En línea</p></div>
+          <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-white">{current.business}</p><p className="mt-1 text-[11px] text-emerald-300">Asistente Zorax · En línea</p></div>
           <span className="text-[10px] text-zinc-400">WhatsApp</span>
         </div>
         <div className="flex gap-1 border-b border-white/5 px-4 py-3" aria-label="Escenario de demostración">

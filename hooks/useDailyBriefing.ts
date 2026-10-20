@@ -20,7 +20,7 @@ export function useDailyBriefing(enabled: boolean) {
     const controller = new AbortController();
     const start = () => load(controller.signal).catch(cause => { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : FAILED); });
     void start();
-    // Keep it current while NEXO stays open (orders and handoffs change during the day).
+    // Keep it current while Zorax stays open (orders and handoffs change during the day).
     const poll = setInterval(() => void refresh(), 10 * 60 * 1000);
     return () => { controller.abort(); clearInterval(poll); };
   }, [enabled, load, refresh]);

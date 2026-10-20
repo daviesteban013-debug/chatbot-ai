@@ -4,12 +4,12 @@ import { moduleUrl } from "../lib/load-module.mjs";
 
 const { parseRichText, parseInline, plainText, safeHref } = await import(await moduleUrl("lib/rich-text.ts"));
 
-test("paragraphs keep NEXO's line breaks and emphasis", () => {
-  const blocks = parseRichText("Ayer vendiste **$ 1.200.000** en 8 pedidos.\nNEXO cerró *todos*.\n\nSegundo párrafo con `TU-40`.");
+test("paragraphs keep Zorax's line breaks and emphasis", () => {
+  const blocks = parseRichText("Ayer vendiste **$ 1.200.000** en 8 pedidos.\nZorax cerró *todos*.\n\nSegundo párrafo con `TU-40`.");
   assert.equal(blocks.length, 2);
   assert.deepEqual(blocks[0].c, [
     { t: "text", v: "Ayer vendiste " }, { t: "strong", c: [{ t: "text", v: "$ 1.200.000" }] }, { t: "text", v: " en 8 pedidos." },
-    { t: "br" }, { t: "text", v: "NEXO cerró " }, { t: "em", c: [{ t: "text", v: "todos" }] }, { t: "text", v: "." },
+    { t: "br" }, { t: "text", v: "Zorax cerró " }, { t: "em", c: [{ t: "text", v: "todos" }] }, { t: "text", v: "." },
   ]);
   assert.deepEqual(blocks[1].c.at(-2), { t: "code", v: "TU-40" });
 });

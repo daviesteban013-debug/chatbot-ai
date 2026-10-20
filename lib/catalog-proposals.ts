@@ -21,7 +21,7 @@ export type CatalogProposalLine = CatalogProposal["snapshot"]["lines"][number];
 export const catalogDecisionInput = z.object({ id: z.string().uuid(), decision: z.enum(["confirm", "cancel"]) }).strict();
 
 const sku = z.string().trim().min(1).max(100);
-/** What NEXO may request. Prices, stock and identity are re-read by the database. */
+/** What Zorax may request. Prices, stock and identity are re-read by the database. */
 export const catalogChangeInput = z.discriminatedUnion("action", [
   z.object({ action: z.literal("stock"), items: z.array(z.object({ sku, mode: z.enum(["add", "set"]), qty: z.number().int().min(-100000).max(10000000) }).strict()).min(1).max(20) }).strict(),
   z.object({ action: z.literal("price"), percent: z.number().min(-90).max(500).optional(), items: z.array(z.object({ sku, price: z.number().int().min(0).max(1_000_000_000).optional() }).strict()).min(1).max(20) }).strict(),
@@ -35,7 +35,7 @@ export const catalogChangeInput = z.discriminatedUnion("action", [
 ]);
 
 export const catalogProposalErrors: Record<string, string> = {
-  changed: "El catálogo cambió desde que NEXO preparó esta propuesta. No se aplicó nada: pídele una nueva.",
-  expired: "La propuesta venció. Pídele a NEXO que la prepare de nuevo.",
+  changed: "El catálogo cambió desde que Zorax preparó esta propuesta. No se aplicó nada: pídele una nueva.",
+  expired: "La propuesta venció. Pídele a Zorax que la prepare de nuevo.",
   decided: "Esta propuesta ya se decidió.",
 };

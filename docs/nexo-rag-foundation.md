@@ -1,11 +1,11 @@
-# NEXO: base de conocimiento por negocio — paso 1
+# Zorax: base de conocimiento por negocio — paso 1
 
 Implementado el 9 de octubre de 2026. La migración `20261009153340_tenant_knowledge_base.sql` está aplicada en Supabase; pgvector instalado: **0.8.2**, esquema `extensions`.
 
 ## Qué se tomó de la guía
 
 - Embeddings de `text-embedding-3-small`, con **1536 dimensiones**, y búsqueda por distancia coseno mediante índice HNSW.
-- Separación de conocimiento e identidad del agente. Se conservan `agents` (agente comercial) y `jarvis_configs` (configuración de NEXO); no se introduce una tercera tabla `agent_configs` con datos duplicados. La voz por negocio queda pendiente de integrar con su configuración existente.
+- Separación de conocimiento e identidad del agente. Se conservan `agents` (agente comercial) y `jarvis_configs` (configuración de Zorax); no se introduce una tercera tabla `agent_configs` con datos duplicados. La voz por negocio queda pendiente de integrar con su configuración existente.
 - El negocio es `tenants.id`; las cuentas acceden mediante `tenant_members`. Una empresa puede tener varios usuarios y un usuario varias empresas. `tenant_id = auth.uid()` no representa este modelo.
 
 ## Estructura y acceso
@@ -40,7 +40,7 @@ Los asesores de Supabase no detectaron problemas de RLS, permisos, search_path o
 
 ## Siguiente entrega
 
-La base está creada y vacía. **NEXO todavía no consulta estos documentos en sus respuestas.** No se ha añadido interfaz, realizado consumo de OpenAI ni cambiado la voz.
+La base está creada y vacía. **Zorax todavía no consulta estos documentos en sus respuestas.** No se ha añadido interfaz, realizado consumo de OpenAI ni cambiado la voz.
 
 El siguiente paso es la ingesta: subir un documento desde el CRM, comprobar rol y cuotas antes de usar la API, extraer/dividir texto, generar embeddings y publicar una revisión completa de forma atómica. Después se conectará la recuperación con el agente/simulador, guardando los fragmentos usados en cada respuesta. Precios, stock y pedidos seguirán consultando las tablas del CRM; un PDF no sustituirá su fuente operativa ni la confirmación humana.
 

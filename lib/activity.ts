@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-/** One thing NEXO did on its own: a chat change, a WhatsApp payment reminder, a WhatsApp sale or a finished job. */
+/** One thing Zorax did on its own: a chat change, a WhatsApp payment reminder, a WhatsApp sale or a finished job. */
 export const activityItemSchema = z.object({
   at: z.string(),
   kind: z.enum(["catalog", "work", "job", "reminder", "sale"]),
@@ -21,7 +21,7 @@ export const undoErrors: Record<string, string> = {
   not_undoable: "Un trabajo terminado no se deshace; revisa sus resultados en Trabajos.",
 };
 
-/** Low-risk actions the owner can let NEXO do alone. Prices, new products and orders always need a click. */
+/** Low-risk actions the owner can let Zorax do alone. Prices, new products and orders always need a click. */
 export const autonomyKeys = ["catalog_stock", "catalog_availability", "work_items", "learn_from_chat"] as const;
 export type AutonomyKey = (typeof autonomyKeys)[number];
 export type AutonomySettings = Record<AutonomyKey, boolean>;

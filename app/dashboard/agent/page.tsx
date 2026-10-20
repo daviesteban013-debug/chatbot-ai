@@ -50,7 +50,7 @@ export default async function AgentPage() {
     <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
       <PageHeader
         title="Agente y autonomía"
-        description="Cómo vende NEXO por WhatsApp, cómo cobra y qué puede hacer por su cuenta."
+        description="Cómo vende Zorax por WhatsApp, cómo cobra y qué puede hacer por su cuenta."
         actions={<Badge variant="neutral">{isOwner ? "Dueño: puedes editar" : "Solo lectura"}</Badge>}
       />
 
@@ -82,7 +82,7 @@ export default async function AgentPage() {
                     </div>
                   ))}
                 </dl>
-                {agent.mode === "autonomous" && <p className="border-t border-line px-4 py-3 text-xs leading-5 text-muted sm:px-5">NEXO presenta el resumen completo y espera que el cliente acepte. El pedido se confirma automáticamente; el pago y el despacho conservan su estado real. Una duda o un importe alto no transfiere la venta.</p>}
+                {agent.mode === "autonomous" && <p className="border-t border-line px-4 py-3 text-xs leading-5 text-muted sm:px-5">Zorax presenta el resumen completo y espera que el cliente acepte. El pedido se confirma automáticamente; el pago y el despacho conservan su estado real. Una duda o un importe alto no transfiere la venta.</p>}
               </Panel>
 
               <Panel>

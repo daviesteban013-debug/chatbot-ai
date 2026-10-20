@@ -90,7 +90,7 @@ export async function proxy(request: NextRequest) {
     }
 
     // Aún no completa y va al panel: una única consulta ligera (RLS la acota). Toda cuenta
-    // nueva conoce a NEXO en el portal de bienvenida antes de entrar a cualquier pantalla.
+    // nueva conoce a Zorax en el portal de bienvenida antes de entrar a cualquier pantalla.
     if (!onboarded && pathname.startsWith("/dashboard")) {
       const { data: memberRow, error: memberError } = await supabase
         .from("tenant_members")

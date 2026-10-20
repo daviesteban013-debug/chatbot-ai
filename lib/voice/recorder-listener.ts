@@ -67,7 +67,7 @@ export function createRecorderListener(locale: string, callbacks: {
               if (turn !== generation || !armed || paused || disposed) return;
               const accepted = typeof data.text === "string" && !!data.text && callbacks.transcript(data.text, wakeOnly);
               if (accepted && !continuous) stop();
-              // The hook pauses while NEXO is thinking/speaking; panel commands can keep listening.
+              // The hook pauses while Zorax is thinking/speaking; panel commands can keep listening.
             } catch (error) {
               if (!controller.signal.aborted && turn === generation && armed) {
                 stop(); callbacks.error(error instanceof Error ? error.message : "La escucha se interrumpió.");
@@ -87,7 +87,7 @@ export function createRecorderListener(locale: string, callbacks: {
       }, 35);
     } catch (error) {
       if (!armed || disposed) return;
-      stop(); callbacks.error(error instanceof DOMException && error.name === "NotAllowedError" ? "Permite el micrófono para hablar con NEXO." : error instanceof Error ? error.message : "No se pudo activar el micrófono.");
+      stop(); callbacks.error(error instanceof DOMException && error.name === "NotAllowedError" ? "Permite el micrófono para hablar con Zorax." : error instanceof Error ? error.message : "No se pudo activar el micrófono.");
     }
   }
   return { start, stop, setPaused, dispose() { disposed = true; stop(); } };

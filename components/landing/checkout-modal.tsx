@@ -52,7 +52,7 @@ export function CheckoutModal({ plan, annual, onClose }: { plan: Plan; annual: b
           <button onClick={() => void checkout("one_time")} disabled={!!busy} className="landing-secondary w-full disabled:opacity-50">{busy === "one_time" ? <Loader2 size={18} className="animate-spin" /> : <CreditCard size={18} />}Pagar este {period}: tarjeta, PSE o Efecty</button>
           <p className="text-xs text-zinc-500">Pago único por {annual ? "12 meses" : "1 mes"}. Renuevas desde Planes y pagos cuando quieras; el tiempo se suma al que te quede.</p>
         </div>}
-      <p className="mt-6 flex gap-2 text-xs text-zinc-500"><ShieldCheck size={16} className="shrink-0" />Mercado Pago procesa tu pago. NEXO solo recibe la confirmación.</p>
+      <p className="mt-6 flex gap-2 text-xs text-zinc-500"><ShieldCheck size={16} className="shrink-0" />Mercado Pago procesa tu pago. Zorax solo recibe la confirmación.</p>
     </section>
   </div>;
 }

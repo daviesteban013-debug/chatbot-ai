@@ -10,7 +10,7 @@ const json = (data: unknown, status = 200) => Response.json(data, { status, head
  * EXIF/location removed, max 1600 px) as JPEG, which WhatsApp accepts by link.
  */
 export async function POST(request: Request) {
-  if (!sameSite(request)) return json({ error: "Sube la foto desde NEXO." }, 403);
+  if (!sameSite(request)) return json({ error: "Sube la foto desde Zorax." }, 403);
   const editor = await catalogEditor();
   if (!editor.ok) return json({ error: editor.error }, editor.status);
   const data = await readLimited(request, MAX_BYTES);

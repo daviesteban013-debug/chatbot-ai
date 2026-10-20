@@ -24,7 +24,7 @@ function progressText(job: JobView) {
   return [step, count].filter(Boolean).join(" · ") || (job.status === "queued" ? "En cola" : "Trabajando");
 }
 
-/** What NEXO is doing or finished in the background, with the one next step for each. */
+/** What Zorax is doing or finished in the background, with the one next step for each. */
 export function JobCards({ jobs, busy, onOpen, onCancel, onApply, onCopy, onRetry }: {
   jobs: JobView[]; busy: string | null;
   onOpen(href: string): void; onCancel(id: string): void; onApply(id: string): void; onCopy(id: string): void; onRetry?(job: JobView): void;
@@ -64,7 +64,7 @@ export function JobCards({ jobs, busy, onOpen, onCancel, onApply, onCopy, onRetr
   </section>;
 }
 
-/** Files waiting to go with the next message, and what NEXO can do with them right away. */
+/** Files waiting to go with the next message, and what Zorax can do with them right away. */
 export function AttachmentBar({ files, pending, error, quickActions, onRemove }: {
   files: { id: string; name: string; status: "ready" | "needs_ocr" }[]; pending: boolean; error: string | null;
   quickActions: { id: string; label: string; onPick(): void }[]; onRemove(id: string): void;
@@ -86,7 +86,7 @@ export function DropHint() {
 const ACTIONS: { value: WatchPreference["action"]; label: string }[] = [
   { value: "ask", label: "Preguntarme qué hacer" }, { value: "catalog_import", label: "Importar al catálogo" }, { value: "catalog_update", label: "Actualizar stock o precios" },
 ];
-/** Desktop 0.2.5+: NEXO watches Descargas/NEXO and picks up what you save there. */
+/** Desktop 0.2.5+: Zorax watches Descargas/Zorax and picks up what you save there. */
 export function WatchFolderSettings() {
   const bridge = typeof window !== "undefined" ? window.nexoDesktop : undefined;
   const available = Boolean(bridge?.setWatch && bridge.getWatch);
@@ -105,7 +105,7 @@ export function WatchFolderSettings() {
   return <div className={styles.watch}>
     <p>CARPETA VIGILADA</p>
     <div className={styles.box} data-disabled={!available}>
-      <label className={styles.row}><span>Vigilar Descargas/NEXO<small>{available ? "Lo que guardes ahí llega a esta conversación. Subcarpetas «catalogo» y «stock» inician su trabajo solas." : "Disponible al actualizar NEXO para escritorio."}</small></span>
+      <label className={styles.row}><span>Vigilar Descargas/Zorax<small>{available ? "Lo que guardes ahí llega a esta conversación. Subcarpetas «catalogo» y «stock» inician su trabajo solas." : "Disponible al actualizar Zorax para escritorio."}</small></span>
         <button type="button" role="switch" aria-checked={preference.enabled} aria-label="Vigilar carpeta" disabled={!available} className={styles.switch} onClick={() => void save({ enabled: !preference.enabled })} /></label>
       {available && preference.enabled && <>
         <label className={styles.row}><span>Con un archivo nuevo</span>

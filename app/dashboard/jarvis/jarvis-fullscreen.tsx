@@ -196,12 +196,12 @@ function JarvisFullscreenInner({
   const voiceOnRef = useRef(isVoiceOutputEnabled);
   const busyRef = useRef(false);
   useEffect(() => { voiceOnRef.current = isVoiceOutputEnabled; }, [isVoiceOutputEnabled]);
-  // What NEXO noticed on its own: system notification when you are elsewhere, voice if you asked for it.
+  // What Zorax noticed on its own: system notification when you are elsewhere, voice if you asked for it.
   const announce = useCallback(({ alerts, routine, quiet, settings }: Announcement) => {
     if (routine?.id === "morning") { setBriefingHidden(false); setBubbleBriefing(true); }
     const lines = routine ? [routine.headline] : alerts.map(alert => alert.text);
     if (!lines.length || quiet) return;
-    const title = routine ? routine.title : alerts.length === 1 ? "NEXO" : `NEXO · ${alerts.length} avisos nuevos`;
+    const title = routine ? routine.title : alerts.length === 1 ? "Zorax" : `Zorax · ${alerts.length} avisos nuevos`;
     const href = routine ? (routine.id === "weekly" ? "/dashboard" : undefined) : alerts.length === 1 ? alerts[0].href : undefined;
     if (settings.system && window.nexoDesktop?.notify && !document.hasFocus())
       void window.nexoDesktop.notify({ title, body: lines.join("\n").slice(0, 240), ...(href ? { href } : {}) }).catch(() => {});
@@ -217,7 +217,7 @@ function JarvisFullscreenInner({
   const attachmentsRef = useRef(attachments);
   const jobsRef = useRef(jobs);
   useEffect(() => { attachmentsRef.current = attachments; jobsRef.current = jobs; });
-  // Desktop 0.2.5+: a file saved in Descargas/NEXO arrives here and, by subfolder or preference, starts its job.
+  // Desktop 0.2.5+: a file saved in Descargas/Zorax arrives here and, by subfolder or preference, starts its job.
   useEffect(() => {
     const bridge = window.nexoDesktop;
     if (!desktopMode || !userId || !bridge?.onFileReady || !bridge.readWatchedFile) return;
@@ -246,11 +246,11 @@ function JarvisFullscreenInner({
     poweredRef.current = true;
     setIsPoweredOn(true);
     setState("IDLE");
-    const who = initialConfig.name?.trim() || "NEXO";
+    const who = initialConfig.name?.trim() || "Zorax";
     let greeting = custom ?? (profile.displayName
       ? `Hola, ${profile.displayName}. ${who} en línea. ¿Qué hacemos con tu negocio hoy?`
       : `${who} en línea. ¿Qué hacemos con tu negocio hoy?`);
-    // The first time each day, NEXO opens with the daily briefing instead of a generic greeting.
+    // The first time each day, Zorax opens with the daily briefing instead of a generic greeting.
     const today = briefingRef.current;
     if (today && !custom) {
       let spoken = false;
@@ -272,7 +272,7 @@ function JarvisFullscreenInner({
     stopSpokenTurn();
     cancelResponse();
     setState("IDLE");
-    setCommandNotice("NEXO en espera. El micrófono está apagado. Tu conversación se conserva.");
+    setCommandNotice("Zorax en espera. El micrófono está apagado. Tu conversación se conserva.");
   }, [stopSpokenTurn, cancelResponse, setState]);
 
   const submitInstruction = useCallback((text: string, wakeOnly = false) => {
@@ -281,7 +281,7 @@ function JarvisFullscreenInner({
     if (command === "wake") { setInput(""); powerOn(); return true; }
     if (command === "sleep") { setInput(""); powerOff(); return true; }
     if (command === "briefing") {
-      // Answered from database facts: instant and without spending NEXO messages.
+      // Answered from database facts: instant and without spending Zorax messages.
       setInput("");
       setTurnStart(null);
       setBriefingHidden(false);
@@ -303,7 +303,7 @@ function JarvisFullscreenInner({
       return !window.nexoDesktop;
     }
     if (!poweredRef.current) {
-      setCommandNotice("Primero pulsa Encender NEXO o escribe «NEXO, enciéndete».");
+      setCommandNotice("Primero pulsa Encender Zorax o escribe «Zorax, enciéndete».");
       return false;
     }
     if (isLoading || attachments.pending) return false;
@@ -371,7 +371,7 @@ function JarvisFullscreenInner({
   const latest = turnStart === null ? undefined : messages.slice(turnStart).reverse().find(message => message.role === "assistant");
   const question = turnStart === null ? undefined : messages.slice(turnStart).find(message => message.role === "user")?.content;
   const activity = !isPoweredOn
-    ? claps.pending ? "Esperando permiso del micrófono" : claps.listening ? "Da dos aplausos para encender" : isRecording ? "Di «NEXO, enciéndete»" : "Listo cuando tú lo estés"
+    ? claps.pending ? "Esperando permiso del micrófono" : claps.listening ? "Da dos aplausos para encender" : isRecording ? "Di «Zorax, enciéndete»" : "Listo cuando tú lo estés"
     : isRecording ? "Te escucho" : voiceSpeaking ? "Hablando contigo" : readyToPlay ? "Pulsa Reproducir voz" : voicePending ? "Preparando mi voz" : isLoading ? agentActivity ?? "Organizando tu solicitud" : "Aquí para ayudarte";
   const exit = () => { claps.stop(); stopMicrophone(); stopSpokenTurn(); cancelResponse(); };
   const avatarState = voiceSpeaking ? "SPEAKING" : isRecording || claps.listening ? "LISTENING" : isLoading || voicePending ? "PROCESSING" : state === "ERROR" ? "ERROR" : "IDLE";
@@ -464,28 +464,28 @@ function JarvisFullscreenInner({
         pulse={avatarState === "SPEAKING" ? "speaking" : avatarState === "LISTENING" ? "listening" : avatarState === "PROCESSING" ? "processing" : null} />
       <header className={styles.header}>
         <Link href="/dashboard" onClick={exit} className={styles.crm}><LayoutDashboard size={15} /><span>CRM</span></Link>
-        <span className={styles.wordmark}>NEXO<span className={styles.wordmarkDot}>.</span></span>
-        <button type="button" onClick={() => openPanel("menu")} aria-label="Abrir menú de NEXO" className={styles.iconButton}><Menu size={20} /></button>
+        <span className={styles.wordmark}>Zorax<span className={styles.wordmarkDot}>.</span></span>
+        <button type="button" onClick={() => openPanel("menu")} aria-label="Abrir menú de Zorax" className={styles.iconButton}><Menu size={20} /></button>
       </header>
 
       <main className={styles.main}>
         {userId && <TaskAlerts onOpen={() => { pauseMicrophone(); void openCrmWorkspace({ href: "/dashboard/workspace", label: "Memoria y tareas" }); }}/>}
-        <section className={styles.stage} aria-label="NEXO, tu agente">
+        <section className={styles.stage} aria-label="Zorax, tu agente">
           <div ref={avatarRef} className={styles.avatar}>
             <JarvisLiquidAvatar powered={isPoweredOn} state={avatarState} accent={pageAccent} onActivate={powerOn} />
           </div>
           <div className={styles.identity}>
-            <h1>{initialConfig.name || "NEXO"}</h1>
+            <h1>{initialConfig.name || "Zorax"}</h1>
             <p className={styles.activity} role="status"><span data-active={isPoweredOn || claps.listening || isRecording} />{activity}</p>
           </div>
           <div className={styles.activation}>
-            <button type="button" onClick={() => { if (isPoweredOn) powerOff(); else powerOn(); }} aria-pressed={isPoweredOn} className={styles.powerButton}><Power size={16} />{isPoweredOn ? "En espera" : "Encender NEXO"}</button>
+            <button type="button" onClick={() => { if (isPoweredOn) powerOff(); else powerOn(); }} aria-pressed={isPoweredOn} className={styles.powerButton}><Power size={16} />{isPoweredOn ? "En espera" : "Encender Zorax"}</button>
             {!isPoweredOn && claps.supported && <button type="button" onClick={toggleClaps} aria-pressed={claps.listening || claps.pending} className={styles.clapButton}><Hand size={16} />{claps.pending ? "Cancelar permiso" : claps.listening ? "Detener aplausos" : "Activar 2 aplausos"}</button>}
           </div>
-          <p className={styles.wakeHint}>{claps.listening ? "Dos aplausos rápidos, separados por medio segundo. Solo se analizan aquí." : !isPoweredOn ? "Un toque, dos aplausos o «NEXO, enciéndete»." : microphoneArmed ? "Escucha continua. Habla cuando termine mi respuesta." : speechSupported ? "Escucha pausada. Puedes activarla o escribir aquí abajo." : "Escribe aquí abajo; este navegador no ofrece reconocimiento de voz."}</p>
+          <p className={styles.wakeHint}>{claps.listening ? "Dos aplausos rápidos, separados por medio segundo. Solo se analizan aquí." : !isPoweredOn ? "Un toque, dos aplausos o «Zorax, enciéndete»." : microphoneArmed ? "Escucha continua. Habla cuando termine mi respuesta." : speechSupported ? "Escucha pausada. Puedes activarla o escribir aquí abajo." : "Escribe aquí abajo; este navegador no ofrece reconocimiento de voz."}</p>
         </section>
 
-        <section className={styles.dock} aria-label="Habla o escribe a NEXO" onDragOver={event => { if (event.dataTransfer.types.includes("Files")) event.preventDefault(); }} onDrop={event => { event.preventDefault(); if (userId && !isLoading && !attachments.pending) void attachments.upload(event.dataTransfer.files); }}>
+        <section className={styles.dock} aria-label="Habla o escribe a Zorax" onDragOver={event => { if (event.dataTransfer.types.includes("Files")) event.preventDefault(); }} onDrop={event => { event.preventDefault(); if (userId && !isLoading && !attachments.pending) void attachments.upload(event.dataTransfer.files); }}>
           {userId && <CreditBalancePanel compact />}
           {operator}
           {proposals}
@@ -508,26 +508,26 @@ function JarvisFullscreenInner({
             <input ref={fileInputRef} type="file" multiple accept={FILE_ACCEPT} hidden onChange={event => { if (event.target.files) void attachments.upload(event.target.files); event.target.value = ""; }} />
             <button type="button" disabled={!userId || isLoading || attachments.pending} onClick={() => fileInputRef.current?.click()} aria-label="Adjuntar archivos" title="PDF, fotos PNG/JPG/WebP, Excel, Word o texto · hasta 3 MB" className={styles.micButton}><Paperclip size={19} /></button>
             {speechSupported && <button type="button" onClick={toggleRecording} aria-label={microphoneArmed ? "Pausar escucha continua" : isPoweredOn ? "Activar escucha continua" : "Activar comando de voz"} aria-pressed={microphoneArmed} className={styles.micButton} data-recording={isRecording}>{microphoneArmed ? <MicOff size={20} /> : <Mic size={20} />}</button>}
-            <input value={input} onChange={e => { if (isPoweredOn) handleInputChange(e); else setInput(e.target.value); }} aria-label="Mensaje o comando para NEXO" placeholder={isRecording ? "Te escucho…" : "O escribe aquí…"} className={styles.input} autoComplete="off" />
+            <input value={input} onChange={e => { if (isPoweredOn) handleInputChange(e); else setInput(e.target.value); }} aria-label="Mensaje o comando para Zorax" placeholder={isRecording ? "Te escucho…" : "O escribe aquí…"} className={styles.input} autoComplete="off" />
             {(isLoading || voiceBusy) && <button type="button" onClick={() => { stopSpokenTurn(); cancelResponse(); }} aria-label="Detener respuesta y voz" className={styles.sendButton}><Square size={16} /></button>}
             <button type="submit" disabled={(!input.trim() && !attachments.selected.length) || isLoading || attachments.pending} aria-label="Enviar mensaje" className={styles.sendButton}><Send size={18} /></button>
           </form>
           <div className={styles.dockFooter}>
             <span>{isRecording ? "Escucha continua activa" : microphoneArmed ? "Escucha en pausa temporal" : claps.pending ? "Solicitando micrófono" : claps.listening ? "Aplausos: escucha activa" : "Micrófono apagado"}</span>
             <div>
-              <button type="button" onClick={() => { claps.stop(); stopSpokenTurn(); setIsVoiceOutputEnabled(value => !value); }} aria-label={isVoiceOutputEnabled ? "Silenciar voz de NEXO" : "Activar voz de NEXO"} aria-pressed={isVoiceOutputEnabled}>{isVoiceOutputEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}</button>
+              <button type="button" onClick={() => { claps.stop(); stopSpokenTurn(); setIsVoiceOutputEnabled(value => !value); }} aria-label={isVoiceOutputEnabled ? "Silenciar voz de Zorax" : "Activar voz de Zorax"} aria-pressed={isVoiceOutputEnabled}>{isVoiceOutputEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}</button>
               <button type="button" onClick={() => openPanel("history")} aria-label="Abrir historial"><MessageSquare size={15} /></button>
             </div>
           </div>
         </section>
       </main>
 
-      <dialog ref={dialogRef} className={`${styles.dialog} ${panel === "workspace" ? styles.workspace : ""}`} onCancel={() => setPanel(null)} onClose={() => setPanel(null)} aria-label={panel === "workspace" ? `CRM · ${workspace?.label}` : panel === "history" ? "Conversación con NEXO" : panel === "personalization" ? "Personalización de NEXO" : "Menú de NEXO"}>
+      <dialog ref={dialogRef} className={`${styles.dialog} ${panel === "workspace" ? styles.workspace : ""}`} onCancel={() => setPanel(null)} onClose={() => setPanel(null)} aria-label={panel === "workspace" ? `CRM · ${workspace?.label}` : panel === "history" ? "Conversación con Zorax" : panel === "personalization" ? "Personalización de Zorax" : "Menú de Zorax"}>
         {panel === "workspace" && workspace ? <>
-          <div className={styles.dialogHeader}><div><h2>{workspace.label}</h2><p className={styles.workspaceHint}>NEXO conserva tu conversación. Vuelve para darle la siguiente instrucción.</p></div><button type="button" onClick={() => setPanel(null)} className={styles.returnButton}>Volver a NEXO<X size={16}/></button></div>
+          <div className={styles.dialogHeader}><div><h2>{workspace.label}</h2><p className={styles.workspaceHint}>Zorax conserva tu conversación. Vuelve para darle la siguiente instrucción.</p></div><button type="button" onClick={() => setPanel(null)} className={styles.returnButton}>Volver a Zorax<X size={16}/></button></div>
           <iframe key={workspace.href} src={workspace.href} title={`CRM · ${workspace.label}`} className={styles.workspaceFrame} />
         </> : panel === "personalization" ? <JarvisPersonalizationPanel profile={profile} tone={initialConfig.tone} authenticated={Boolean(userId)} availability={voiceAvailability} onClose={() => setPanel(null)} onSaved={next => { onProfileChange(next); setIsVoiceOutputEnabled(next.voice.enabled); }} /> : <>
-          <div className={styles.dialogHeader}><h2>{panel === "history" ? "Tu conversación" : "Tu NEXO"}</h2><button type="button" onClick={() => setPanel(null)} aria-label="Cerrar panel" className={styles.iconButton}><X size={20} /></button></div>
+          <div className={styles.dialogHeader}><h2>{panel === "history" ? "Tu conversación" : "Tu Zorax"}</h2><button type="button" onClick={() => setPanel(null)} aria-label="Cerrar panel" className={styles.iconButton}><X size={20} /></button></div>
           {panel === "menu" && <div className={styles.menu}>
             {plan && <p className={styles.plan}>Plan {plan}</p>}
             <button type="button" onClick={() => setPanel("personalization")}><Settings2 size={18} />Voz y personalización</button>
@@ -542,10 +542,10 @@ function JarvisFullscreenInner({
               <InstallJarvisButton />
             </AppInstallOptions>
             <p className={styles.help}>Para los aplausos, pulsa «Activar 2 aplausos» y permite el micrófono. Deja esta pantalla abierta y da dos aplausos separados por medio segundo. La escucha se apaga al encender, cambiar de pestaña o salir.</p>
-            <p className={styles.help}>Al encender NEXO se activa la escucha continua con permiso del micrófono. Espera a que termine de hablar y dile tu siguiente instrucción: no necesitas pulsar el micrófono en cada turno. Puedes pausar la escucha con su botón o decir «NEXO, apágate» o «NEXO, abre el CRM». Mientras hablo, abres un panel o cambias de pestaña, la escucha queda en pausa.</p>
+            <p className={styles.help}>Al encender Zorax se activa la escucha continua con permiso del micrófono. Espera a que termine de hablar y dile tu siguiente instrucción: no necesitas pulsar el micrófono en cada turno. Puedes pausar la escucha con su botón o decir «Zorax, apágate» o «Zorax, abre el CRM». Mientras hablo, abres un panel o cambias de pestaña, la escucha queda en pausa.</p>
           </div>}
           {panel === "history" && <div ref={chatScrollRef} className={styles.history}>
-            {messages.length ? messages.map(message => <article key={message.id} data-role={message.role}><span>{message.role === "user" ? "Tú" : initialConfig.name || "NEXO"}</span>{message.role === "assistant" && message.content ? <RichText source={message.content} className={styles.richMessage} onOpen={href => { const destination = parseOperatorNavigation(href); if (destination) void openCrmWorkspace(destination); }} /> : <p>{message.content || "Preparando respuesta…"}</p>}{message.role === "assistant" && <OperatorTask actions={normalizeOperatorActions(message.metadata?.operatorActions)} busy={isLoading} onOpen={destination => void openCrmWorkspace(destination)} />}{Array.isArray(message.metadata?.attachments) && <div className={styles.fileList}>{(message.metadata.attachments as FileSummary[]).map(file => <a key={file.id} href={`/api/jarvis/files/${file.id}`} download className={styles.fileItem}><FileText size={15} />{file.name}</a>)}</div>}</article>) : <p className={styles.help}>Tu conversación aparecerá aquí cuando envíes tu primera instrucción.</p>}
+            {messages.length ? messages.map(message => <article key={message.id} data-role={message.role}><span>{message.role === "user" ? "Tú" : initialConfig.name || "Zorax"}</span>{message.role === "assistant" && message.content ? <RichText source={message.content} className={styles.richMessage} onOpen={href => { const destination = parseOperatorNavigation(href); if (destination) void openCrmWorkspace(destination); }} /> : <p>{message.content || "Preparando respuesta…"}</p>}{message.role === "assistant" && <OperatorTask actions={normalizeOperatorActions(message.metadata?.operatorActions)} busy={isLoading} onOpen={destination => void openCrmWorkspace(destination)} />}{Array.isArray(message.metadata?.attachments) && <div className={styles.fileList}>{(message.metadata.attachments as FileSummary[]).map(file => <a key={file.id} href={`/api/jarvis/files/${file.id}`} download className={styles.fileItem}><FileText size={15} />{file.name}</a>)}</div>}</article>) : <p className={styles.help}>Tu conversación aparecerá aquí cuando envíes tu primera instrucción.</p>}
           </div>}
         </>}
       </dialog>

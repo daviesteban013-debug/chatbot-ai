@@ -134,7 +134,7 @@ test("oversized tool batches perform no partial execution", async () => {
   assert.equal(f.state.executions.length, 0);
 });
 
-test("bounded specialist loops synthesize with tools disabled and reserve NEXO's final call", async () => {
+test("bounded specialist loops synthesize with tools disabled and reserve Zorax's final call", async () => {
   const f = fixture({ complete: async (_messages, tools) => response(tools ? [tool("search_customers")] : []) });
   await f.run();
   assert.equal(f.state.budget.modelCalls, 3);

@@ -60,7 +60,7 @@ export function CatalogManager({ products, canEdit }: { products: CatalogProduct
 
       {products.length === 0 ? (
         <EmptyState icon={Package} title="Tu catálogo está vacío"
-          description="Agrega tus productos para que NEXO pueda venderlos por WhatsApp. Puedes subir un Excel, un PDF, fotos de tus productos o pegar tu lista de precios."
+          description="Agrega tus productos para que Zorax pueda venderlos por WhatsApp. Puedes subir un Excel, un PDF, fotos de tus productos o pegar tu lista de precios."
           action={canEdit ? <div className="flex flex-wrap justify-center gap-2">
             <Button onClick={() => setImporting(true)}>Importar catálogo</Button>
             <Button variant="secondary" onClick={() => setEditing("new")}><Plus className="size-4" />Crear a mano</Button>

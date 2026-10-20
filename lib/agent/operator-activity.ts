@@ -23,18 +23,18 @@ export function operatorAction(id: string, tool: string, result?: ToolResult): O
   const data = result?.data && typeof result.data === "object" ? result.data as Record<string, unknown> : {};
   const navigation = result?.ok ? parseOperatorNavigation(data.navigation) : null;
   const failed = result && (!result.ok || (kind === "navigation" && (!navigation || data.destination_verified !== true || data.interface_action !== "open_panel")));
-  // Low-risk changes the owner allowed NEXO to apply alone: done, logged and undoable.
+  // Low-risk changes the owner allowed Zorax to apply alone: done, logged and undoable.
   const automatic = !failed && kind === "proposal" && data.applied_automatically === true;
   return { id, tool, label: automatic ? autoLabels[tool] ?? labels[tool] ?? "Comprobar solicitud" : labels[tool] ?? "Comprobar solicitud", kind,
     status: !result ? "running" : failed ? "failed" : automatic || data.duplicate === true ? "completed" : kind === "proposal" ? "approval_required" : "completed",
     ...(result ? { summary: failed ? "No pude completar este paso. Revisa la respuesta antes de reintentar."
-      : tool === "save_business_fact" ? (data.duplicate === true ? "NEXO ya tenía este dato; no guardó otra copia." : "Anotado como dato del negocio. Puedes deshacerlo en «Lo que hizo NEXO».")
-      : automatic ? "Aplicado por NEXO según tu configuración. Puedes deshacerlo."
+      : tool === "save_business_fact" ? (data.duplicate === true ? "Zorax ya tenía este dato; no guardó otra copia." : "Anotado como dato del negocio. Puedes deshacerlo en «Lo que hizo Zorax».")
+      : automatic ? "Aplicado por Zorax según tu configuración. Puedes deshacerlo."
       : tool === "propose_catalog_change" ? "Cambio preparado. Revisa su tarjeta para confirmarlo o cancelarlo; aún no se aplicó."
       : tool.startsWith("propose_") ? "Propuesta preparada. Abre Memoria y tareas → Por confirmar para revisarla y activarla."
       : kind === "proposal" ? "Propuesta verificada. Revisa su tarjeta para confirmar, cancelar o pasarla a una persona."
       : kind === "navigation" ? "Destino verificado; la pantalla se abrirá al terminar la respuesta."
-      : tool === "start_background_job" ? "Trabajo en cola. NEXO te avisará al terminar; puedes seguirlo en Trabajos."
+      : tool === "start_background_job" ? "Trabajo en cola. Zorax te avisará al terminar; puedes seguirlo en Trabajos."
       : typeof data.total_matches === "number" ? `${data.total_matches} coincidencias${data.truncated ? "; mostrando una parte" : ""}.`
       : "Consulta completada con datos del negocio." } : {}),
     ...(navigation && !failed ? { navigation } : {}),

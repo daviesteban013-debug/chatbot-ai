@@ -7,8 +7,8 @@ export type OrbState = "off" | "idle" | "listening" | "thinking" | "speaking" | 
 const reduced = () => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /**
- * NEXO's face. A single body with two eyes that blink at natural intervals, follow the
- * pointer, and change with what NEXO is doing: resting, listening, thinking, speaking.
+ * Zorax's face. A single body with two eyes that blink at natural intervals, follow the
+ * pointer, and change with what Zorax is doing: resting, listening, thinking, speaking.
  * Size comes from --orb-size on the container; color from --nexo-color.
  */
 export function NexoOrb({ state, look, pulseKey, errorKey, className, title }: {
@@ -17,7 +17,7 @@ export function NexoOrb({ state, look, pulseKey, errorKey, className, title }: {
   look?: { x: number; y: number };
   /** Change this value to send one ring outwards (a new alert, a new turn). */
   pulseKey?: string | number;
-  /** A new error message makes NEXO flinch for a moment without staying red. */
+  /** A new error message makes Zorax flinch for a moment without staying red. */
   errorKey?: string | null;
   className?: string;
   title?: string;

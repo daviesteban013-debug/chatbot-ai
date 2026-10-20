@@ -94,7 +94,7 @@ test("business memories go to reviewed CRM tools; explicit private preferences r
   const business = await POST(request({ ...body, userMessage: "recuerda que Ana prefiere entrega por la mañana" }));
   assert.equal(business.status, 200); await business.text();
   assert.equal(state.params.memoryReply, undefined); assert.equal(state.updates.length, 0);
-  const personal = await POST(request({ ...body, userMessage: "NEXO, recuerda sobre mí que prefiero ejemplos" }));
+  const personal = await POST(request({ ...body, userMessage: "Zorax, recuerda sobre mí que prefiero ejemplos" }));
   assert.equal(personal.status, 200); await personal.text();
   assert.match(state.params.memoryReply, /Recordaré esta preferencia/); assert.equal(state.updates.length, 1);
 });

@@ -10,7 +10,7 @@ export interface JarvisConfig {
 }
 
 export const jarvisDefaults: JarvisConfig = {
-  name: "NEXO",
+  name: "Zorax",
   business: "",
   tone: "cercano",
   accent: "#facc15",

@@ -11,7 +11,7 @@ import styles from "../../auth.module.css";
 
 const emailSchema = z.email("Ingresa un correo válido");
 const subscribe = () => () => {};
-const WEB_URL = "chatbot-ai-gold-two.vercel.app/auth/forgot";
+const WEB_URL = "zoraxpilot.com/auth/forgot";
 
 /** Sends a recovery link. The answer never reveals whether an account exists. */
 export function ForgotForm() {

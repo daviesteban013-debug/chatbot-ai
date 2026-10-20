@@ -11,7 +11,7 @@ const OPTIONS: Array<{ key: keyof AutonomySettings; title: string; example: stri
   { key: "catalog_stock", title: "Entradas y salidas de stock", example: "«Llegaron 20 tenis talla 40» queda aplicado al instante." },
   { key: "catalog_availability", title: "Ocultar o activar productos", example: "«Oculta las gorras rojas» queda aplicado al instante." },
   { key: "work_items", title: "Memoria y tareas internas", example: "Lo que le pidas recordar o agendar queda activo sin pasar por «Por confirmar»." },
-  { key: "learn_from_chat", title: "Aprender del chat", example: "Si dices «mi proveedor de tenis entrega los martes», NEXO lo anota como dato del negocio. Nunca datos de clientes ni sensibles; se puede deshacer." },
+  { key: "learn_from_chat", title: "Aprender del chat", example: "Si dices «mi proveedor de tenis entrega los martes», Zorax lo anota como dato del negocio. Nunca datos de clientes ni sensibles; se puede deshacer." },
 ];
 const ALWAYS_ASK = ["Cambios de precio", "Productos nuevos", "Pedidos preparados desde el chat", "Tomar o cerrar casos de atención humana"];
 
@@ -25,7 +25,7 @@ function Switch({ checked, disabled, onChange, label }: { checked: boolean; disa
   );
 }
 
-/** Owner-only switches for the low-risk actions NEXO may take without a click. */
+/** Owner-only switches for the low-risk actions Zorax may take without a click. */
 export function AutonomyForm({ initial, canEdit, remindersEnabled }: { initial: AutonomySettings; canEdit: boolean; remindersEnabled: boolean }) {
   const router = useRouter();
   const [settings, setSettings] = useState(initial);
@@ -35,13 +35,13 @@ export function AutonomyForm({ initial, canEdit, remindersEnabled }: { initial: 
 
   return (
     <Panel id="autonomia" className="scroll-mt-6">
-      <PanelHeader title="Autonomía de NEXO" description="Lo que NEXO puede hacer sin esperar tu clic. Cada acción queda en «Lo que hizo NEXO» y puedes deshacerla durante 7 días." />
+      <PanelHeader title="Autonomía de Zorax" description="Lo que Zorax puede hacer sin esperar tu clic. Cada acción queda en «Lo que hizo Zorax» y puedes deshacerla durante 7 días." />
       <form onSubmit={event => {
         event.preventDefault(); setNotice("");
         startTransition(async () => {
           try {
             const result = await saveAutonomy(settings);
-            setNotice(result.ok ? "Guardado. NEXO aplicará estos permisos desde su próxima respuesta." : result.error ?? "No se pudo guardar.");
+            setNotice(result.ok ? "Guardado. Zorax aplicará estos permisos desde su próxima respuesta." : result.error ?? "No se pudo guardar.");
             if (result.ok) router.refresh();
           } catch { setNotice("No se pudo conectar. Inténtalo de nuevo."); }
         });
@@ -69,7 +69,7 @@ export function AutonomyForm({ initial, canEdit, remindersEnabled }: { initial: 
         </ul>
         <div className="border-t border-line bg-subtle/50 px-4 py-3 sm:px-5">
           <p className="text-xs font-medium text-ink-soft">Siempre con tu confirmación</p>
-          <p className="mt-1 text-xs leading-5 text-muted">{ALWAYS_ASK.join(" · ")}. NEXO prepara la tarjeta y espera tu clic, sin importar estos permisos.</p>
+          <p className="mt-1 text-xs leading-5 text-muted">{ALWAYS_ASK.join(" · ")}. Zorax prepara la tarjeta y espera tu clic, sin importar estos permisos.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3 border-t border-line px-4 py-3 sm:px-5">
           {canEdit

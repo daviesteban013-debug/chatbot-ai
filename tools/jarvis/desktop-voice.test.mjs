@@ -8,7 +8,7 @@ const { createVoiceActivity } = await import(await moduleUrl('lib/voice/voice-ac
 const { desktopAuthResponse } = await import(await moduleUrl('lib/desktop-auth.ts'));
 const { createTranscriptionHandler } = await import(await moduleUrl('lib/voice/transcription.ts'));
 test('spoken commands route every actual CRM panel and do not execute chat or negation', () => {
-  for (const [text, route] of [['NEXO, abre pedidos', '/dashboard/orders'], ['Abre el catálogo por favor', '/dashboard/catalog'], ['Muéstrame conversaciones', '/dashboard/conversations'], ['Abre handoffs', '/dashboard/handoffs'], ['Abre aprobaciones', '/dashboard/approval'], ['Ve a configuración', '/dashboard/agent'], ['Abre planes y pagos', '/dashboard/billing'], ['Abre resumen', '/dashboard'], ['Abre NEXO', '/dashboard/jarvis']]) assert.equal(jarvisCommandPanel(jarvisCommand(text))?.path, route);
+  for (const [text, route] of [['Zorax, abre pedidos', '/dashboard/orders'], ['Abre el catálogo por favor', '/dashboard/catalog'], ['Muéstrame conversaciones', '/dashboard/conversations'], ['Abre handoffs', '/dashboard/handoffs'], ['Abre aprobaciones', '/dashboard/approval'], ['Ve a configuración', '/dashboard/agent'], ['Abre planes y pagos', '/dashboard/billing'], ['Abre resumen', '/dashboard'], ['Abre Zorax', '/dashboard/jarvis']]) assert.equal(jarvisCommandPanel(jarvisCommand(text))?.path, route);
   for (const text of ['No abras pedidos', '¿Cómo puedo abrir pagos?', 'Dice "abre pedidos"', 'abre https://evil.test', 'abre clientes', 'abre pedidos y borra todo']) assert.equal(jarvisCommandPanel(jarvisCommand(text)), null);
 });
 test('voice activity ignores silence, rejects short spikes and bounds a spoken phrase', () => {
@@ -27,7 +27,7 @@ test('voice activity ignores silence, rejects short spikes and bounds a spoken p
 
 test('desktop accepts every current command panel, including memory, tasks and reminders', () => {
   for (const panel of Object.values(commandPanels)) assert.equal(desktopPolicy.panelUrl(panel.path), desktopPolicy.APP_ORIGIN + panel.path);
-  for (const phrase of ['NEXO, abre memoria', 'abre tareas', 'abre recordatorios', 'abre memoria y tareas']) {
+  for (const phrase of ['Zorax, abre memoria', 'abre tareas', 'abre recordatorios', 'abre memoria y tareas']) {
     const panel = jarvisCommandPanel(jarvisCommand(phrase));
     assert.equal(panel?.path, '/dashboard/workspace');
     assert.equal(desktopPolicy.panelUrl(panel.path), desktopPolicy.APP_ORIGIN + '/dashboard/workspace');

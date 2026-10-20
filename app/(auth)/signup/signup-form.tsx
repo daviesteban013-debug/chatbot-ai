@@ -93,10 +93,10 @@ export function SignupForm() {
     <span className={styles.eyebrow}>YA NOS CONOCEMOS</span>
     <h1 className={styles.heading}>{existing === "unconfirmed" ? "Tu cuenta existe; falta confirmar el correo." : "Este correo ya tiene cuenta."}</h1>
     {existing === "unconfirmed" ? <>
-      <p className={styles.description}><strong className={styles.email}>{values.email}</strong> ya está registrado en NEXO, pero aún no abriste el enlace de confirmación. Te enviamos uno nuevo.</p>
+      <p className={styles.description}><strong className={styles.email}>{values.email}</strong> ya está registrado en Zorax, pero aún no abriste el enlace de confirmación. Te enviamos uno nuevo.</p>
       <ResendConfirmation email={values.email} initiallySent />
     </> : <>
-      <p className={styles.description}><strong className={styles.email}>{values.email}</strong> ya está en NEXO. No hace falta crear otra cuenta: entra con tu contraseña o recupérala.</p>
+      <p className={styles.description}><strong className={styles.email}>{values.email}</strong> ya está en Zorax. No hace falta crear otra cuenta: entra con tu contraseña o recupérala.</p>
       <Link href="/login" className={styles.primary}>Iniciar sesión <ArrowRight size={16} /></Link>
       <Link href="/auth/forgot" className={styles.secondary} style={{ marginTop: 10 }}><KeyRound size={16} /> Recuperar mi contraseña</Link>
     </>}
@@ -107,7 +107,7 @@ export function SignupForm() {
     <div className={styles.envelope}><Mail size={28} /></div>
     <span className={styles.eyebrow}>UN ÚLTIMO PASO</span>
     <h1 className={styles.heading}>Confirma tu correo.</h1>
-    <p className={styles.description}>Revisa <strong className={styles.email}>{values.email}</strong> y abre el enlace para entrar a NEXO. Si ya tienes una cuenta, inicia sesión.</p>
+    <p className={styles.description}>Revisa <strong className={styles.email}>{values.email}</strong> y abre el enlace para entrar a Zorax. Si ya tienes una cuenta, inicia sesión.</p>
     <p className={styles.description}>¿No aparece? Revisa spam o solicita otro correo.</p>
     <ResendConfirmation email={values.email} initiallySent />
     <Link href="/login" className={styles.primary} style={{ marginTop: 24 }}>Ir a iniciar sesión <ArrowRight size={16} /></Link>
@@ -117,7 +117,7 @@ export function SignupForm() {
   return <div>
     {launching && <LaunchCurtain />}
     <span className={styles.eyebrow}>EMPECEMOS ALGO GRANDE</span>
-    <h1 className={styles.heading}>Conoce a tu NEXO.</h1>
+    <h1 className={styles.heading}>Conoce a tu Zorax.</h1>
     <p className={styles.description}>Crea tu cuenta. Tu agente será lo primero que verás.</p>
     <GoogleSignIn disabled={busy} onBusy={setGoogleBusy} onError={setFormError} />
     <div className={styles.divider}>o regístrate con tu correo</div>

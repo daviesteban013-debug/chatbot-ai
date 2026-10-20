@@ -1,4 +1,4 @@
-# Acceso con Google y correo de Nexo.ai
+# Acceso con Google y correo de Zorax
 
 El código incluye Google, contraseña, reenvío de confirmación y entrada directa a Jarvis.
 Las plantillas de correo están en `supabase/templates/confirmation.html` y `supabase/templates/magic-link.html`. No se activan solo por subir los archivos a Vercel.
@@ -7,10 +7,10 @@ Las plantillas de correo están en `supabase/templates/confirmation.html` y `sup
 
 1. En Google Cloud → Google Auth Platform, configura la marca y el consentimiento para tu proyecto. Solicita únicamente identidad (email/profile/openid).
 2. Crea un cliente OAuth de tipo **Aplicación web**.
-3. Origen autorizado: `https://chatbot-ai-gold-two.vercel.app`.
+3. Origen autorizado: `https://zoraxpilot.com`.
 4. URI de redirección de Google: `https://hdrjzcxlhpzpayhrjafk.supabase.co/auth/v1/callback`.
 5. En Supabase → Authentication → Sign In / Providers → Google, introduce Client ID y Client Secret, activa Google y guarda. No actives “Skip nonce checks” ni “Allow users without an email”.
-6. El proyecto creado es **Nexo Jarvis** (`nexo-jarvis`) y el cliente web es **Nexo Jarvis Web Production**. Para este inicio de sesión, que solo solicita identidad (`openid`, `email`, `profile`), Google permite usuarios sin añadirlos a la lista de prueba incluso en modo Testing. Si en el futuro añades otros permisos, revisa los usuarios de prueba, la publicación y la verificación que Google requiera.
+6. El proyecto creado es **Zorax Jarvis** (`nexo-jarvis`) y el cliente web es **Zorax Jarvis Web Production**. Para este inicio de sesión, que solo solicita identidad (`openid`, `email`, `profile`), Google permite usuarios sin añadirlos a la lista de prueba incluso en modo Testing. Si en el futuro añades otros permisos, revisa los usuarios de prueba, la publicación y la verificación que Google requiera.
 
 No pegues secretos en Git, en capturas ni en el chat. No se necesita una clave de Google en el navegador ni en `.env.local` para este flujo.
 
@@ -18,8 +18,8 @@ No pegues secretos en Git, en capturas ni en el chat. No se necesita una clave d
 
 Supabase → Authentication → URL Configuration:
 
-- Site URL: `https://chatbot-ai-gold-two.vercel.app`.
-- Redirect URL: `https://chatbot-ai-gold-two.vercel.app/auth/callback`.
+- Site URL: `https://zoraxpilot.com`.
+- Redirect URL: `https://zoraxpilot.com/auth/callback`.
 
 Usa destinos exactos de producción, sin comodines. Los enlaces anteriores emitidos hacia localhost deben reenviarse después del cambio.
 
@@ -28,15 +28,15 @@ Usa destinos exactos de producción, sin comodines. Los enlaces anteriores emiti
 El SMTP predeterminado de Supabase restringe destinatarios a miembros del equipo y tiene un límite muy bajo. No sirve para registros públicos. Este proyecto Free necesita **custom SMTP** para modificar la plantilla.
 
 1. Crea/configura un proveedor de correo y verifica el remitente/dominio según sus instrucciones (por ejemplo Resend o Brevo).
-2. Copia sus ajustes SMTP directamente en Supabase → Authentication → Emails → SMTP Settings: host, puerto, usuario, contraseña SMTP, dirección y nombre del remitente. Usa **Nexo.ai · Jarvis** como nombre.
+2. Copia sus ajustes SMTP directamente en Supabase → Authentication → Emails → SMTP Settings: host, puerto, usuario, contraseña SMTP, dirección y nombre del remitente. Usa **Zorax · Jarvis** como nombre.
 3. En Emails → Confirm sign up, asunto: **Tu Jarvis te espera — confirma tu correo**. Copia el HTML de `supabase/templates/confirmation.html` y guarda.
-   En Emails → Magic link or OTP, asunto: **Tu enlace de acceso — Nexo.ai**. Copia el HTML de `supabase/templates/magic-link.html` y guarda. Este enlace también usa `/auth/confirm` para crear la sesión mediante un POST deliberado.
+   En Emails → Magic link or OTP, asunto: **Tu enlace de acceso — Zorax**. Copia el HTML de `supabase/templates/magic-link.html` y guarda. Este enlace también usa `/auth/confirm` para crear la sesión mediante un POST deliberado.
 4. Conserva **Confirm email** activado. Desactiva el seguimiento de clics del proveedor para que no altere los enlaces de autenticación.
 5. Prueba crear una cuenta con un correo ajeno al equipo, recibir el mensaje, confirmar, entrar a Jarvis y reenviar un enlace expirado.
 
 La nueva plantilla abre `/auth/confirm` y verifica el token solo al pulsar el botón (POST). Una visita de un escáner de correo no consume la confirmación. También permite confirmar en otro navegador sin depender del verificador PKCE del registro original. Los correos antiguos siguen usando `/auth/callback`; abre esos enlaces en el navegador donde te registraste o solicita un correo nuevo después de activar la plantilla.
 
-Un Gmail personal no equivale a tener un proveedor SMTP configurado. Si eliges Gmail SMTP, requiere verificación en dos pasos y una contraseña de aplicación, introducida por el propietario directamente en Supabase. Usa `smtp.gmail.com`, puerto `465`, tu Gmail como dirección del remitente y usuario, y **Nexo.ai · Jarvis** como nombre del remitente. No uses tu contraseña normal; sus cuotas y límites no son adecuados para un volumen grande de registros.
+Un Gmail personal no equivale a tener un proveedor SMTP configurado. Si eliges Gmail SMTP, requiere verificación en dos pasos y una contraseña de aplicación, introducida por el propietario directamente en Supabase. Usa `smtp.gmail.com`, puerto `465`, tu Gmail como dirección del remitente y usuario, y **Zorax · Jarvis** como nombre del remitente. No uses tu contraseña normal; sus cuotas y límites no son adecuados para un volumen grande de registros.
 
 Para probar SMTP con una cuenta existente, `signInWithOtp` con `shouldCreateUser: false` envía el enlace de acceso sin crear otra cuenta ni cambiar su contraseña. Comprueba la recepción real y la entrada a `/dashboard/jarvis`; una respuesta HTTP 200 al envío, por sí sola, no demuestra la entrega.
 

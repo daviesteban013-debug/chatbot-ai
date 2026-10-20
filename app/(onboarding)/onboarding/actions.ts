@@ -16,8 +16,8 @@ export type SavePortalResult = { ok: true } | { ok: false; error: string };
  * WhatsApp agent are personalized at once:
  *  1. `tenants.name` — the store.
  *  2. `agents` — name, tone, limits, rules and the base system prompt (WhatsApp seller).
- *  3. `jarvis_configs` — NEXO's name, business, tone and color (bubble, CRM, desktop).
- *  4. The person's profile — how NEXO calls them and whether it speaks out loud.
+ *  3. `jarvis_configs` — Zorax's name, business, tone and color (bubble, CRM, desktop).
+ *  4. The person's profile — how Zorax calls them and whether it speaks out loud.
  *  5. `onboarding_completed = true` plus the `onboarding_done` cookie the proxy reads.
  * Only the owner of the business can run it; the admin client is used because `tenants`
  * and `jarvis_configs` are not writable from the browser roles.
@@ -57,12 +57,12 @@ export async function savePortal(input: unknown): Promise<SavePortalResult> {
     : (await admin.from("agents").insert({ tenant_id: tenantId, ...agentFields })).error;
   if (agentError) return { ok: false, error: "No pudimos configurar tu agente." };
 
-  // NEXO's identity for the bubble and the CRM keeps whatever else the owner tuned before.
+  // Zorax's identity for the bubble and the CRM keeps whatever else the owner tuned before.
   const { data: configRow } = await admin.from("jarvis_configs").select("config").eq("tenant_id", tenantId).maybeSingle();
   const config = sanitizeJarvisConfig({ ...(configRow?.config && typeof configRow.config === "object" ? configRow.config : {}),
     name: data.agentName, business: data.businessName, tone: data.tone, accent: data.accent });
   const { error: configError } = await admin.from("jarvis_configs").upsert({ tenant_id: tenantId, config: config as unknown as Json, updated_at: new Date().toISOString() });
-  if (configError) return { ok: false, error: "No pudimos guardar la personalización de NEXO." };
+  if (configError) return { ok: false, error: "No pudimos guardar la personalización de Zorax." };
 
   // The person's own profile lives in their auth metadata, like the Personalización panel.
   const supabase = await createClient();

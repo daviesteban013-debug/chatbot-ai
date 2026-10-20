@@ -11,9 +11,9 @@ const LiquidAvatar = dynamic(() => import("@/components/jarvis/liquid-avatar").t
   loading: () => <div className={styles.loadingOrb} aria-hidden="true"><i /><i /></div>,
 });
 const prompts = [
-  { label: "Mis ventas", icon: AudioLines, question: "NEXO, ¿cómo van las ventas de hoy?", detail: "Tu tienda y tu CRM, en una conversación." },
-  { label: "Mis clientes", icon: Users, question: "NEXO, ¿qué compró antes este cliente?", detail: "Menos buscar. Más conocer a tus compradores." },
-  { label: "Mis pedidos", icon: Package, question: "NEXO, ¿qué pedidos están pendientes de pago?", detail: "Lo que necesitas saber, sin perderte entre pantallas." },
+  { label: "Mis ventas", icon: AudioLines, question: "Zorax, ¿cómo van las ventas de hoy?", detail: "Tu tienda y tu CRM, en una conversación." },
+  { label: "Mis clientes", icon: Users, question: "Zorax, ¿qué compró antes este cliente?", detail: "Menos buscar. Más conocer a tus compradores." },
+  { label: "Mis pedidos", icon: Package, question: "Zorax, ¿qué pedidos están pendientes de pago?", detail: "Lo que necesitas saber, sin perderte entre pantallas." },
 ];
 
 export function NexoHero() {
@@ -38,7 +38,7 @@ export function NexoHero() {
         <span className={styles.coordinate} aria-hidden="true">N / 01 · TU CENTRO DE MANDO</span>
         <div className={styles.avatar}><LiquidAvatar powered state="IDLE" accent="#facc15" onActivate={() => {}} /></div>
         <span className={styles.sparkOne} aria-hidden="true">+</span><span className={styles.sparkTwo} aria-hidden="true">+</span>
-        <div className={styles.hello}><span className={styles.presence} /><span>Hola, soy <strong>NEXO.</strong></span><AudioLines size={18} /></div>
+        <div className={styles.hello}><span className={styles.presence} /><span>Hola, soy <strong>Zorax.</strong></span><AudioLines size={18} /></div>
         <p className={styles.orbCaption}>Una nueva forma de estar al frente.</p>
       </div>
     </div>
@@ -46,7 +46,7 @@ export function NexoHero() {
       <div className={styles.previewTitle}><MessageCircle size={17} /><span>Empieza por una pregunta</span><small>Ejemplos de consulta</small></div>
       <div className={styles.previewBody}>
         <div className={styles.promptText} aria-live="polite"><p key={selected}>“{prompt.question}”</p><span>{prompt.detail}</span></div>
-        <div className={styles.promptButtons} role="group" aria-label="Ejemplos para NEXO">{prompts.map((item, index) => <button key={item.label} type="button" aria-pressed={selected === index} onClick={() => setSelected(index)}><item.icon size={14} />{item.label}</button>)}</div>
+        <div className={styles.promptButtons} role="group" aria-label="Ejemplos para Zorax">{prompts.map((item, index) => <button key={item.label} type="button" aria-pressed={selected === index} onClick={() => setSelected(index)}><item.icon size={14} />{item.label}</button>)}</div>
       </div>
     </div>
   </section>;

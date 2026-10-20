@@ -15,7 +15,7 @@ export function ProactiveAlerts({ alerts, onOpen, onDismiss, onClear }: {
   alerts: ProactiveAlert[]; onOpen(href: string, label: string): void; onDismiss(key: string): void; onClear(): void;
 }) {
   if (!alerts.length) return null;
-  return <section className={styles.card} aria-label="Avisos de NEXO">
+  return <section className={styles.card} aria-label="Avisos de Zorax">
     <p className={styles.head}><span>AVISOS</span><strong>{alerts.length}</strong><button type="button" onClick={onClear}>Marcar como vistos</button></p>
     <ul className={styles.list}>
       {alerts.slice(0, 5).map(alert => <li key={alert.key} className={styles.item}>
@@ -45,9 +45,9 @@ export function RoutineSummary({ card, onOpen, onClose }: { card: RoutineCard; o
 
 /** Shown once: alerts are off until the person turns them on. */
 export function ProactiveInvite({ onEnable, onLater }: { onEnable(): void; onLater(): void }) {
-  return <section className={styles.card} data-tone="invite" aria-label="Activar avisos de NEXO">
-    <p className={styles.head}><BellRing size={12} /><span>AVISOS DE NEXO</span></p>
-    <p className={styles.note}>Te aviso cuando un cliente espere un asesor, entre un pedido por aprobar, te paguen, NEXO cierre una venta o se agote un producto.</p>
+  return <section className={styles.card} data-tone="invite" aria-label="Activar avisos de Zorax">
+    <p className={styles.head}><BellRing size={12} /><span>AVISOS DE Zorax</span></p>
+    <p className={styles.note}>Te aviso cuando un cliente espere un asesor, entre un pedido por aprobar, te paguen, Zorax cierre una venta o se agote un producto.</p>
     <div className={styles.buttons}><button type="button" className={styles.primary} onClick={onEnable}>Activar avisos</button><button type="button" className={styles.secondary} onClick={onLater}>Ahora no</button></div>
   </section>;
 }
@@ -56,8 +56,8 @@ export function ProactiveInvite({ onEnable, onLater }: { onEnable(): void; onLat
 export function AutomationSuggestion({ suggestion, busy, onEnable, onLater }: { suggestion: Suggestion; busy: boolean; onEnable(): void; onLater(): void }) {
   const text = SUGGESTION_TEXTS[suggestion.key];
   return <section className={styles.card} data-tone="invite" aria-label="Sugerencia de autonomía">
-    <p className={styles.head}><Zap size={12} /><span>NEXO PODRÍA HACERLO SOLO</span></p>
-    <p className={styles.note}><strong>{text.title}</strong> {text.body(suggestion.confirmed)} Cada acción queda en «Lo que hizo NEXO» y se puede deshacer.</p>
+    <p className={styles.head}><Zap size={12} /><span>Zorax PODRÍA HACERLO SOLO</span></p>
+    <p className={styles.note}><strong>{text.title}</strong> {text.body(suggestion.confirmed)} Cada acción queda en «Lo que hizo Zorax» y se puede deshacer.</p>
     <div className={styles.buttons}>
       <button type="button" className={styles.primary} disabled={busy} onClick={onEnable}>Activar</button>
       <button type="button" className={styles.secondary} disabled={busy} onClick={onLater}>Ahora no</button>
@@ -69,7 +69,7 @@ function Switch({ checked, onChange, label, disabled = false }: { checked: boole
   return <button type="button" role="switch" aria-checked={checked} aria-label={label} disabled={disabled} className={styles.switch} onClick={() => onChange(!checked)} />;
 }
 
-/** What NEXO announces on this computer, how, and when it stays quiet. */
+/** What Zorax announces on this computer, how, and when it stays quiet. */
 export function ProactiveSettingsPanel({ settings, update, systemAvailable }: {
   settings: ProactiveSettings; update(patch: Partial<ProactiveSettings>): void; systemAvailable: boolean;
 }) {
@@ -86,9 +86,9 @@ export function ProactiveSettingsPanel({ settings, update, systemAvailable }: {
     <div className={styles.section}>
       <p>CÓMO TE AVISO</p>
       <div className={styles.box}>
-        <label className={styles.row} data-disabled={!systemAvailable}><span>Notificación del sistema<small>{systemAvailable ? "Aparece aunque trabajes en otra ventana." : "Disponible al actualizar NEXO para escritorio."}</small></span>
+        <label className={styles.row} data-disabled={!systemAvailable}><span>Notificación del sistema<small>{systemAvailable ? "Aparece aunque trabajes en otra ventana." : "Disponible al actualizar Zorax para escritorio."}</small></span>
           <Switch label="Notificación del sistema" disabled={!systemAvailable} checked={systemAvailable && settings.system} onChange={value => update({ system: value })} /></label>
-        <label className={styles.row}><span>Decirlo en voz alta<small>Solo si NEXO está encendido y con voz.</small></span><Switch label="Decir avisos en voz alta" checked={settings.voice} onChange={value => update({ voice: value })} /></label>
+        <label className={styles.row}><span>Decirlo en voz alta<small>Solo si Zorax está encendido y con voz.</small></span><Switch label="Decir avisos en voz alta" checked={settings.voice} onChange={value => update({ voice: value })} /></label>
         <div className={styles.row}><span>No molestar<small>Sin sonido ni notificaciones; los avisos quedan aquí.</small></span>
           <Switch label="No molestar" checked={settings.quiet.enabled} onChange={value => update({ quiet: { ...settings.quiet, enabled: value } })} />
           {settings.quiet.enabled && <div className={styles.times}>De <input aria-label="No molestar desde" type="time" className={styles.time} value={settings.quiet.from} onChange={event => event.target.value && update({ quiet: { ...settings.quiet, from: event.target.value } })} />
@@ -102,7 +102,7 @@ export function ProactiveSettingsPanel({ settings, update, systemAvailable }: {
           <Switch label={label} checked={routine.enabled} onChange={value => update({ routines: { ...settings.routines, [id]: { ...routine, enabled: value } } })} />
           {routine.enabled && <div className={styles.times}>{monday ? "Los lunes a las" : "Todos los días a las"} <input aria-label={`Hora de ${label}`} type="time" className={styles.time} value={routine.time} onChange={event => event.target.value && update({ routines: { ...settings.routines, [id]: { ...routine, time: event.target.value } } })} /></div>}</div>; })}
       </div>
-      <p className={styles.hint}>Horas de Colombia. Si NEXO estaba cerrado, la rutina llega al abrirlo, hasta 4 horas después.</p>
+      <p className={styles.hint}>Horas de Colombia. Si Zorax estaba cerrado, la rutina llega al abrirlo, hasta 4 horas después.</p>
     </div>
   </div>;
 }

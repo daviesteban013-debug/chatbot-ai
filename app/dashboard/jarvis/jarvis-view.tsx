@@ -41,7 +41,7 @@ export function JarvisView({
 
   return (
     <div>
-      {/* Volver a la pantalla de NEXO con voz */}
+      {/* Volver a la pantalla de Zorax con voz */}
       <div className="fixed bottom-6 right-6 z-50">
         <button
           type="button"
@@ -49,7 +49,7 @@ export function JarvisView({
           className="flex items-center gap-2 rounded-md border border-white/15 bg-zinc-900 px-3.5 py-2 text-[13px] font-medium text-zinc-100 transition hover:bg-zinc-800"
         >
           <NexoMark className="size-5" />
-          <span>Volver a NEXO</span>
+          <span>Volver a Zorax</span>
         </button>
       </div>
 

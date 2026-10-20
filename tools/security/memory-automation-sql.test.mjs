@@ -42,7 +42,7 @@ const suggestions = (user = owner) => db.query("select nexo_automation_suggestio
 const keys = async (user) => (await suggestions(user)).map(s => s.key).sort();
 const fact = { kind: "memory", title: "Proveedor de tenis: Calzado Norte", body: "Entrega los martes." };
 
-test("the owner decides whether NEXO learns from chat; everything starts off", async () => {
+test("the owner decides whether Zorax learns from chat; everything starts off", async () => {
   await assert.rejects(configure({ learn_from_chat: true }, agent), /AUTONOMY_OWNER_REQUIRED/);
   await assert.rejects(configure({ learn_from_chat: "yes" }), /AUTONOMY_INPUT/);
   await assert.rejects(learn(fact), /MEMORY_DISABLED/);
@@ -140,7 +140,7 @@ test("suggestions appear only for the owner, after five confirmations by hand", 
   finally { await db.exec("reset role;"); }
 });
 
-test("undoing NEXO's own action silences the suggestion", async () => {
+test("undoing Zorax's own action silences the suggestion", async () => {
   const prepare = qty => db.query("select nexo_prepare_catalog_change($1,$2,$3,$4) as v", [tenant, owner, ownerSession, { action: "stock", items: [{ sku: "TENIS-URBAN-BLANCO-40", mode: "add", qty }] }]).then(r => r.rows[0].v.proposal);
   for (let qty = 1; qty <= 5; qty++) await db.query("select nexo_decide_catalog_change($1,$2,'confirm')", [(await prepare(qty)).id, owner]);
   await configure({ catalog_stock: true });
@@ -148,17 +148,17 @@ test("undoing NEXO's own action silences the suggestion", async () => {
   assert.equal(auto.auto, true);
   await db.query("select nexo_undo_activity($1,$2,$3)", [tenant, owner, auto.log_id]);
   await configure({ catalog_stock: false });
-  assert.deepEqual(await suggestions(), [], "the owner already told NEXO not to do this alone");
+  assert.deepEqual(await suggestions(), [], "the owner already told Zorax not to do this alone");
 });
 
-test("tasks and memories confirmed by people count; the ones NEXO confirmed alone do not", async () => {
+test("tasks and memories confirmed by people count; the ones Zorax confirmed alone do not", async () => {
   await configure({ work_items: true });
   for (let i = 0; i < 5; i++) {
     const auto = (await db.query("select nexo_propose_work_by_nexo($1,$2,$3,$4,$5) as v", [tenant, agent, session, crypto.randomUUID(), { kind: "memory", title: `Auto ${i}` }])).rows[0].v;
     assert.equal(auto.auto, true);
   }
   await configure({ work_items: false });
-  assert.deepEqual(await suggestions(), [], "NEXO's own confirmations are not the owner's habit");
+  assert.deepEqual(await suggestions(), [], "Zorax's own confirmations are not the owner's habit");
   for (let i = 0; i < 5; i++) await change(await propose(`Dato ${i}`), "confirm");
   assert.deepEqual(await keys(), ["learn_from_chat", "work_items"], "five chat memories confirmed by hand suggest both switches");
   await change(await propose("Rechazado"), "cancel");

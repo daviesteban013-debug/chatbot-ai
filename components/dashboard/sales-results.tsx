@@ -18,7 +18,7 @@ export function SalesResults({ metrics }: { metrics: SalesMetrics }) {
   const empty = !now.orders && !now.conversations;
   const tiles = [
     { label: "Ventas confirmadas", value: formatCOP(now.sales), detail: `${now.orders} pedido${now.orders === 1 ? "" : "s"}`, delta: change(now.sales, before.sales) },
-    { label: "Vendido por NEXO", value: formatCOP(now.agentSales), detail: now.sales ? `${ratio(now.agentSales, now.sales)}% de tus ventas` : "Sin ventas aún", delta: change(now.agentSales, before.agentSales) },
+    { label: "Vendido por Zorax", value: formatCOP(now.agentSales), detail: now.sales ? `${ratio(now.agentSales, now.sales)}% de tus ventas` : "Sin ventas aún", delta: change(now.agentSales, before.agentSales) },
     { label: "Cobrado", value: formatCOP(now.collected), detail: `${now.paidOrders} pedido${now.paidOrders === 1 ? "" : "s"} pagado${now.paidOrders === 1 ? "" : "s"}`, delta: change(now.collected, before.collected) },
     { label: "Recuperado con seguimientos", value: formatCOP(now.recovered), detail: `${now.recoveredOrders} pago${now.recoveredOrders === 1 ? "" : "s"} tras un recordatorio`, delta: change(now.recovered, before.recovered) },
   ];
@@ -27,7 +27,7 @@ export function SalesResults({ metrics }: { metrics: SalesMetrics }) {
     <section aria-labelledby="results-title" className="mb-5">
       <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 id="results-title" className="text-sm font-semibold text-ink">Resultados de NEXO</h2>
+          <h2 id="results-title" className="text-sm font-semibold text-ink">Resultados de Zorax</h2>
           <p className="mt-0.5 text-xs text-muted">Últimos {days} días frente a los {days} anteriores · hora de Colombia</p>
         </div>
         <Segmented label="Periodo" value={String(days)} options={METRIC_PERIODS.map(period => ({ value: String(period), label: `${period} días`, href: `/dashboard?periodo=${period}` }))} />
@@ -39,7 +39,7 @@ export function SalesResults({ metrics }: { metrics: SalesMetrics }) {
 
       {empty ? (
         <p className="mt-3 rounded-lg border border-dashed border-line-strong bg-surface p-6 text-center text-sm text-muted">
-          Aún no hay conversaciones ni ventas en este periodo. Cuando NEXO atienda a tus clientes por WhatsApp, aquí verás lo que vende y cobra.
+          Aún no hay conversaciones ni ventas en este periodo. Cuando Zorax atienda a tus clientes por WhatsApp, aquí verás lo que vende y cobra.
         </p>
       ) : (
         <div className="mt-3 grid gap-3 xl:grid-cols-[1.4fr_.6fr] xl:items-start">

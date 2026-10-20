@@ -1,4 +1,4 @@
-# WhatsApp Cloud API en NEXO
+# WhatsApp Cloud API en Zorax
 
 El panel `/dashboard/whatsapp` permite al dueño verificar y guardar su número por negocio, registrarlo con un PIN de dos pasos y suscribir la aplicación. Los demás miembros solo consultan el estado. No se envían mensajes de prueba automáticamente.
 
@@ -8,7 +8,7 @@ El panel `/dashboard/whatsapp` permite al dueño verificar y guardar su número 
 2. Agrega el número real en WhatsApp Manager y verifica su propiedad por SMS o llamada. Guarda el **Phone Number ID** y el **WhatsApp Business Account ID (WABA)**: no son el número de celular.
 3. Configura en el servidor `WHATSAPP_APP_ID` y `WHATSAPP_APP_SECRET` de esa misma aplicación. Un valor presente no garantiza que sea válido. Genera los secretos locales faltantes con `npm run whatsapp:setup -- init`; conserva `WHATSAPP_CREDENTIALS_KEY` de forma segura, porque cambiarlo sin volver a cifrar hace ilegibles los tokens guardados.
 4. Sincroniza solo Production con `node tools/mcp/env-cli.mjs sync`, respetando su estado habilitado o pausado. Publica un despliegue nuevo para aplicar cambios de variables. `npm run whatsapp:setup -- status` muestra nombres y estados, nunca valores.
-5. En Meta configura el callback `https://chatbot-ai-gold-two.vercel.app/api/whatsapp`, el Verify Token que coincide con `WHATSAPP_VERIFY_TOKEN` del servidor y el campo **messages**. Transfiere los secretos directamente entre las pantallas de configuración; no por chats o capturas.
+5. En Meta configura el callback `https://zoraxpilot.com/api/whatsapp`, el Verify Token que coincide con `WHATSAPP_VERIFY_TOKEN` del servidor y el campo **messages**. Transfiere los secretos directamente entre las pantallas de configuración; no por chats o capturas.
 6. Crea un token de usuario del sistema con acceso a la WABA y permisos `whatsapp_business_management` y `whatsapp_business_messaging`. Pega el token y los dos IDs en el panel. El servidor verifica la aplicación, permisos, pertenencia del número y verificación SMS antes de guardar. Un token temporal puede servir para pruebas, pero caduca.
 7. Para un número aún no registrado en Cloud API, introduce un PIN de seis dígitos y usa **Registrar y suscribir aplicación**. Este PIN no es el código SMS. Si ya está registrado, usa la opción de suscripción sola. Se vuelve a verificar el token antes de actuar en Meta.
 8. El producto usa **autonomous** para resolver y cerrar ventas con la aceptación del cliente. Configura enlace de cobro y transferencia en `/dashboard/agent`. Desde otro WhatsApp, escribe al número; comprueba recepción, resumen, aceptación, pedido y entrega de instrucciones. Para una prueba supervisada puedes conservar **copilot**. La derivación humana es excepcional y debe solicitarla el cliente. Consulta [ventas autónomas](whatsapp-autonomous-sales.md) para conocer las verificaciones y límites.
@@ -33,7 +33,7 @@ El comando no imprime credenciales, solo la cantidad convertida. Los lectores ma
 
 ## Validación
 
-`npm run test:whatsapp`: 15 pruebas sobre cifrado, aislamiento por negocio/número, contratos de Meta simulados, permisos HTTP, CSRF, datos estrictos, revocación de dueño, RLS real y continuidad del handoff. También se ejecutó la regresión del agente, NEXO, créditos, adjuntos y conocimiento: 187 pruebas aprobadas. Estas pruebas no certifican la conexión de una SIM real sin completar el paso 8.
+`npm run test:whatsapp`: 15 pruebas sobre cifrado, aislamiento por negocio/número, contratos de Meta simulados, permisos HTTP, CSRF, datos estrictos, revocación de dueño, RLS real y continuidad del handoff. También se ejecutó la regresión del agente, Zorax, créditos, adjuntos y conocimiento: 187 pruebas aprobadas. Estas pruebas no certifican la conexión de una SIM real sin completar el paso 8.
 
 Los asesores de Supabase no señalaron problemas nuevos en los objetos de WhatsApp. Persisten avisos anteriores en otros objetos, documentados en [la base RAG](nexo-rag-foundation.md), y la [protección de contraseñas filtradas](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection) de Auth sigue deshabilitada. Esto no certifica toda la seguridad del proyecto.
 

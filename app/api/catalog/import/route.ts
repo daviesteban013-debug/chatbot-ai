@@ -14,7 +14,7 @@ const json = (data: unknown, status = 200) => Response.json(data, { status, head
  * Nothing is written to the catalog here; the owner confirms afterwards.
  */
 export async function POST(request: Request) {
-  if (!sameSite(request)) return json({ error: "Importa el catálogo desde NEXO." }, 403);
+  if (!sameSite(request)) return json({ error: "Importa el catálogo desde Zorax." }, 403);
   const editor = await catalogEditor();
   if (!editor.ok) return json({ error: editor.error }, editor.status);
   const declared = Number(request.headers.get("content-length"));
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     return json({ products, warnings: result.warnings });
   } catch (error) {
     if (error instanceof CreditError) return json({ error: error.message }, 402);
-    const message = error instanceof Error && /^(El archivo|La extensión|Usa una|Guarda el|Formatos disponibles|No encontré|El CSV|El lector|NEXO no pudo)/.test(error.message)
+    const message = error instanceof Error && /^(El archivo|La extensión|Usa una|Guarda el|Formatos disponibles|No encontré|El CSV|El lector|Zorax no pudo)/.test(error.message)
       ? error.message : "No pude leer el catálogo. Inténtalo de nuevo o prueba con otro formato.";
     return json({ error: message }, 422);
   }

@@ -1,6 +1,6 @@
-# NEXO como operador del CRM
+# Zorax como operador del CRM
 
-NEXO coordina herramientas del CRM y muestra sus pasos en «NEXO en acción», tanto en la web como en la burbuja. Cada resultado procede de una consulta o de una propuesta comprobada en el servidor.
+Zorax coordina herramientas del CRM y muestra sus pasos en «Zorax en acción», tanto en la web como en la burbuja. Cada resultado procede de una consulta o de una propuesta comprobada en el servidor.
 
 ## Qué pedirle
 
@@ -9,7 +9,7 @@ NEXO coordina herramientas del CRM y muestra sus pasos en «NEXO en acción», t
 - «Busca las conversaciones pendientes de atención humana y abre este caso». Puede consultar handoffs y mostrar la ficha; tomar o resolver el caso sigue siendo una decisión humana.
 - «Abre pedidos», «abre WhatsApp» o «muéstrame ese pedido». Los comandos sencillos abren paneles sin llamar al modelo. Para abrir un registro desde un turno de IA, el servidor comprueba su ID dentro del negocio.
 
-Una consulta muestra un acceso «Ver…». Solo una acción explícita `open_crm_panel`, completada en el turno actual, abre automáticamente una pantalla. Restaurar el historial, leer un resultado o cancelar una respuesta nunca reproduce navegación automática. La web abre el CRM en una vista amplia que conserva NEXO; «Volver a NEXO» devuelve la conversación. En la app instalada se utiliza su ventana CRM.
+Una consulta muestra un acceso «Ver…». Solo una acción explícita `open_crm_panel`, completada en el turno actual, abre automáticamente una pantalla. Restaurar el historial, leer un resultado o cancelar una respuesta nunca reproduce navegación automática. La web abre el CRM en una vista amplia que conserva Zorax; «Volver a Zorax» devuelve la conversación. En la app instalada se utiliza su ventana CRM.
 
 ## Pedidos y atención humana
 
@@ -25,9 +25,9 @@ Los destinos admitidos son paneles conocidos y detalles UUID de pedidos, convers
 
 El turno conserva los límites compartidos de llamadas al modelo y herramientas y un plazo de 55 segundos. Los listados y extractos indican sus límites. Una cancelación o desconexión marca como no confirmado el trabajo sin resultado, conserva propuestas ya preparadas e impide aperturas tardías.
 
-El porcentaje de créditos es la capacidad restante del plan de NEXO. Iniciar cada llamada exige reservar su contexto y una respuesta; un saldo positivo puede no alcanzar para un turno con mucho contexto. Esa reserva no es un cobro: solo se descuentan los tokens reales informados por el proveedor. El saldo de OpenAI Platform y los créditos del plan de NEXO son independientes. Abrir paneles con comandos directos no llama al modelo. Al recargar una conversación se muestran sus cincuenta mensajes más recientes en orden cronológico.
+El porcentaje de créditos es la capacidad restante del plan de Zorax. Iniciar cada llamada exige reservar su contexto y una respuesta; un saldo positivo puede no alcanzar para un turno con mucho contexto. Esa reserva no es un cobro: solo se descuentan los tokens reales informados por el proveedor. El saldo de OpenAI Platform y los créditos del plan de Zorax son independientes. Abrir paneles con comandos directos no llama al modelo. Al recargar una conversación se muestran sus cincuenta mensajes más recientes en orden cronológico.
 
-Los instaladores desktop 0.2.1 admiten WhatsApp y las fichas de pedidos, conversaciones y handoffs en la ventana CRM existente. Instala la actualización sobre la versión anterior para recibir esta política nativa; las mejoras web de actividad llegan al cargar NEXO. La versión 0.2.0 conserva la alternativa de abrir la lista cuando rechaza un detalle nuevo. La beta no se actualiza automáticamente; en Mac, reemplaza NEXO en Aplicaciones sin borrar su perfil local.
+Los instaladores desktop 0.2.1 admiten WhatsApp y las fichas de pedidos, conversaciones y handoffs en la ventana CRM existente. Instala la actualización sobre la versión anterior para recibir esta política nativa; las mejoras web de actividad llegan al cargar Zorax. La versión 0.2.0 conserva la alternativa de abrir la lista cuando rechaza un detalle nuevo. La beta no se actualiza automáticamente; en Mac, reemplaza Zorax en Aplicaciones sin borrar su perfil local.
 
 ## Verificación
 

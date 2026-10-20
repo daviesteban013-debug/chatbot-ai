@@ -5,13 +5,13 @@ import { Panel, PanelHeader } from "@/components/dashboard/panel";
 import { useAutomationSuggestions } from "@/hooks/useAutomationSuggestions";
 import { SUGGESTION_TEXTS } from "@/lib/suggestions";
 
-/** Owner's home: switches NEXO suggests because the team keeps confirming that work by hand. */
+/** Owner's home: switches Zorax suggests because the team keeps confirming that work by hand. */
 export function HomeSuggestions({ enabled }: { enabled: boolean }) {
   const state = useAutomationSuggestions(enabled);
   if (!enabled || (!state.suggestions.length && !state.notice)) return null;
   return (
     <Panel aria-labelledby="suggestions-title">
-      <PanelHeader id="suggestions-title" title="NEXO podría hacerlo solo" description="Basado en lo que tu equipo confirmó a mano en los últimos 30 días. Cada acción automática se puede deshacer durante 7 días." />
+      <PanelHeader id="suggestions-title" title="Zorax podría hacerlo solo" description="Basado en lo que tu equipo confirmó a mano en los últimos 30 días. Cada acción automática se puede deshacer durante 7 días." />
       {state.notice && <p role="status" className="border-b border-line bg-emerald-50 px-4 py-2.5 text-xs text-emerald-800 sm:px-5">{state.notice} <Link href="/dashboard/agent#autonomia" className="underline underline-offset-2">Ver autonomía</Link></p>}
       <ul className="divide-y divide-line">
         {state.suggestions.map(suggestion => {

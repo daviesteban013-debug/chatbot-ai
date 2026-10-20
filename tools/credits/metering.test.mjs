@@ -61,7 +61,7 @@ after(() => {
 });
 const messages = [{role:"user",content:"Hola"}];
 const account = {tenantId:"tenant-1",channel:"web"};
-test("a reserved NEXO turn bypasses monthly token exhaustion but records every model call separately",async()=>{
+test("a reserved Zorax turn bypasses monthly token exhaustion but records every model call separately",async()=>{
   state.quota=0;globalThis.fetch=async()=>streamResponse();
   const turn={...account,messageReservationId:'turn-1'};
   await collect(metered.meteredChatCompletionStream(turn,messages));
@@ -69,7 +69,7 @@ test("a reserved NEXO turn bypasses monthly token exhaustion but records every m
   assert.equal(state.settlements,2);assert.equal(state.used,0);assert.equal(state.reserved,0);
   assert.ok([...state.requests.values()].every(row=>row.nexo && row.state==='settled' && row.usage===250));
 });
-test("NEXO definitive failure releases technical reservation; unknown usage stays pending",async()=>{
+test("Zorax definitive failure releases technical reservation; unknown usage stays pending",async()=>{
   const turn={...account,messageReservationId:'turn-1'};
   globalThis.fetch=async()=>new Response('private-provider-body',{status:401});
   await assert.rejects(collect(metered.meteredChatCompletionStream(turn,messages)),/401/);

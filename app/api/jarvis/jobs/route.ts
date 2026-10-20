@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
 /** Starts a job from the interface (quick actions, watched folder, "review collections now"). */
 export async function POST(request: NextRequest) {
   if (request.headers.get("origin") !== request.nextUrl.origin || request.headers.get("sec-fetch-site") === "cross-site")
-    return json({ error: "Inicia los trabajos desde NEXO." }, 403);
+    return json({ error: "Inicia los trabajos desde Zorax." }, 403);
   if (!request.headers.get("content-type")?.startsWith("application/json")) return json({ error: "Solicitud no válida." }, 400);
   const text = await request.text();
   if (text.length > 4096) return json({ error: "Solicitud demasiado grande." }, 413);
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     if (!owned && parsed.data.session_id === "jobs") {
       const { error: createError } = await admin.from("jarvis_sessions").insert({ session_id: sessionId, user_id: session.user.id, tenant_id: session.tenant.tenantId, title: "Trabajos en segundo plano" });
       if (createError && createError.code !== "23505") return json({ error: "No pude preparar tus trabajos. Inténtalo de nuevo." }, 503);
-    } else if (!owned) return json({ error: "Esta conversación no es tuya. Abre NEXO de nuevo." }, 403);
+    } else if (!owned) return json({ error: "Esta conversación no es tuya. Abre Zorax de nuevo." }, 403);
     const { data, error } = await admin.rpc("nexo_start_job", {
       p_tenant: session.tenant.tenantId, p_user: session.user.id, p_session: sessionId, p_kind: parsed.data.kind,
       p_input: { file_ids: parsed.data.file_ids, ...(parsed.data.note ? { note: parsed.data.note } : {}), options: options.data },

@@ -13,9 +13,9 @@ const profileUrl = await load("../../lib/jarvis-personalization.ts");
 const { sanitizeJarvisConfig } = await import(await load("../../lib/jarvis.ts"));
 const { sanitizePersonalization, explicitMemory, speechSettings, selectVoice, spokenText, personalizationPrompt, MAX_MEMORIES } = await import(profileUrl);
 
-test("the default and legacy assistant become NEXO while custom business names survive", () => {
-  assert.equal(sanitizeJarvisConfig({}).name, "NEXO");
-  assert.equal(sanitizeJarvisConfig({ name: "Jarvis" }).name, "NEXO");
+test("the default and legacy assistant become Zorax while custom business names survive", () => {
+  assert.equal(sanitizeJarvisConfig({}).name, "Zorax");
+  assert.equal(sanitizeJarvisConfig({ name: "Jarvis" }).name, "Zorax");
   assert.equal(sanitizeJarvisConfig({ name: "Laura" }).name, "Laura");
 });
 
@@ -31,7 +31,7 @@ test("old profiles get safe defaults; malformed values and unbounded memories ar
 
 test("memory requires an explicit command rather than guessing personal information", () => {
   assert.equal(explicitMemory("Jarvis, recuerda que prefiero ejemplos"), "prefiero ejemplos");
-  assert.equal(explicitMemory("NEXO, recuerda que prefiero ejemplos"), "prefiero ejemplos");
+  assert.equal(explicitMemory("Zorax, recuerda que prefiero ejemplos"), "prefiero ejemplos");
   assert.equal(explicitMemory("RECUERDA QUE soy vegetariano"), "soy vegetariano");
   assert.equal(explicitMemory("me gustan los ejemplos"), null);
   assert.equal(explicitMemory("¿Qué significa recuerda que?"), null);

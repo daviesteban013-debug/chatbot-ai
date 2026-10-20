@@ -6,7 +6,7 @@ import { getCurrentTenant, getCurrentUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { signOut } from "./actions";
 
-export const metadata = { title: "NEXO" };
+export const metadata = { title: "Zorax" };
 
 export default async function DashboardLayout({
   children,

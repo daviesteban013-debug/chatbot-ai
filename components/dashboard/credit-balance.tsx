@@ -44,9 +44,9 @@ export function CreditBalancePanel({ compact = false, theme = compact ? "dark" :
   const planName = ({ trial: "Prueba", esencial: "Esencial", crecimiento: "Crecimiento", equipo: "Equipo" } as Record<string, string>)[balance.plan] ?? balance.plan;
   const whatsapp = balance.whatsappBalance;
   const whatsappPercent = whatsapp && whatsapp.quotaTokens > 0 ? Math.max(0, Math.min(100, whatsapp.availableTokens / whatsapp.quotaTokens * 100)) : 0;
-  return <section aria-label="Mensajes de NEXO" className={compact ? "my-3 w-full text-xs text-zinc-300" : `rounded-lg border p-4 text-sm sm:p-5 ${dark ? "border-white/10 bg-zinc-900/60 text-zinc-300" : "border-line bg-surface text-ink-soft"}`}>
+  return <section aria-label="Mensajes de Zorax" className={compact ? "my-3 w-full text-xs text-zinc-300" : `rounded-lg border p-4 text-sm sm:p-5 ${dark ? "border-white/10 bg-zinc-900/60 text-zinc-300" : "border-line bg-surface text-ink-soft"}`}>
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <div><p className="font-medium">NEXO · {planName}</p><p className="mt-1 text-xs opacity-65">{balance.businessName || "Tu cuenta"} · {balance.quotaMessages} mensajes / {balance.windowHours} horas</p></div>
+      <div><p className="font-medium">Zorax · {planName}</p><p className="mt-1 text-xs opacity-65">{balance.businessName || "Tu cuenta"} · {balance.quotaMessages} mensajes / {balance.windowHours} horas</p></div>
       <strong className={`tabular-nums ${compact ? "text-lg" : "text-2xl"} ${dark ? "text-yellow-300" : "text-ink"}`}>{label}</strong>
     </div>
     <div role="progressbar" aria-label="Porcentaje de mensajes disponibles" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent} aria-valuetext={`${label} disponible`} className={`mt-3 h-2 overflow-hidden rounded-full ${dark ? "bg-white/10" : "bg-subtle"}`}><div style={{ width: `${percent}%` }} className={`h-full rounded-full transition-[width] duration-700 motion-reduce:transition-none ${fill}`} /></div>

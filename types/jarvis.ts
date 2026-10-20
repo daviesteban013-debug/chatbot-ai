@@ -30,7 +30,7 @@ export interface AgentStreamPayload {
   orderProposals?: OrderProposal[];
   operation?: OperatorAction;
   operatorActions?: OperatorAction[];
-  /** Background jobs NEXO started during this turn. */
+  /** Background jobs Zorax started during this turn. */
   jobs?: JobView[];
   tool?: string;
   error?: string;

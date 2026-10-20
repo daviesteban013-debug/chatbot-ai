@@ -12,10 +12,10 @@ interface Dependencies {
 export function createTranscriptionHandler(deps: Dependencies) {
   return async (request: Request) => {
     const origin = request.headers.get("origin");
-    if (origin && origin !== new URL(request.url).origin) return fail(403, "La escucha debe iniciarse desde NEXO.");
+    if (origin && origin !== new URL(request.url).origin) return fail(403, "La escucha debe iniciarse desde Zorax.");
     let user;
     try { user = await deps.user(); } catch { return fail(503, "No se pudo comprobar tu sesión."); }
-    if (!user || user.is_anonymous) return fail(401, "Inicia sesión para hablar con NEXO.");
+    if (!user || user.is_anonymous) return fail(401, "Inicia sesión para hablar con Zorax.");
     const key = deps.key();
     if (!key) return fail(503, "La transcripción de voz aún no está conectada.");
     const declared = Number(request.headers.get("content-length"));
@@ -55,7 +55,7 @@ export function createTranscriptionHandler(deps: Dependencies) {
     body.set("model", "gpt-4o-mini-transcribe");
     if (/^[a-z]{2}$/.test(language)) body.set("language", language);
     // A short hint helps the recognizer with the brand and CRM vocabulary.
-    body.set("prompt", "Conversación en español con NEXO, un agente de CRM. Comandos habituales: NEXO, abre pedidos. Abre catálogo. Abre conversaciones. Abre aprobaciones. Abre planes y pagos. NEXO, enciéndete. NEXO, apágate.");
+    body.set("prompt", "Conversación en español con Zorax, un agente de CRM. Comandos habituales: Zorax, abre pedidos. Abre catálogo. Abre conversaciones. Abre aprobaciones. Abre planes y pagos. Zorax, enciéndete. Zorax, apágate.");
     let outcome: VoiceOutcome = "unknown";
     try {
       const response = await deps.fetch("https://api.openai.com/v1/audio/transcriptions", {

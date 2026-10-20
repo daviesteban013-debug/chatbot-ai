@@ -1,5 +1,5 @@
 export interface DesktopPreferences { color: string; expanded: boolean }
-/** NEXO 0.2.5+: the watched folder (Descargas/NEXO) and what to do with a new file there. */
+/** Zorax 0.2.5+: the watched folder (Descargas/Zorax) and what to do with a new file there. */
 export interface WatchPreference { enabled: boolean; action: "ask" | "catalog_import" | "catalog_update" }
 export type WatchFolder = "root" | "catalogo" | "stock";
 export interface WatchedFileEvent { token: string; name: string; folder: WatchFolder; size: number }
@@ -26,11 +26,11 @@ export interface NexoDesktop {
   installUpdate?(): Promise<DesktopUpdateState>;
   onUpdateState?(callback: (state: DesktopUpdateState) => void): () => void;
   onPreferences(callback: (preferences: DesktopPreferences) => void): () => void;
-  /** NEXO 0.2.4+: a system notification that opens the given CRM panel when clicked. */
+  /** Zorax 0.2.4+: a system notification that opens the given CRM panel when clicked. */
   notify?(notice: { title: string; body: string; href?: string }): Promise<boolean>;
-  /** NEXO 0.2.5+: what the person copied (text up to 8 000 characters or a PNG up to 3 MB). */
+  /** Zorax 0.2.5+: what the person copied (text up to 8 000 characters or a PNG up to 3 MB). */
   readClipboard?(): Promise<ClipboardContent>;
-  /** NEXO 0.2.5+: watched folder settings; files saved there arrive through onFileReady. */
+  /** Zorax 0.2.5+: watched folder settings; files saved there arrive through onFileReady. */
   getWatch?(): Promise<WatchPreference>;
   setWatch?(preference: WatchPreference): Promise<WatchPreference>;
   openWatchFolder?(): Promise<void>;

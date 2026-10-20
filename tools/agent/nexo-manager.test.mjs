@@ -21,7 +21,7 @@ test("the briefing states facts with actions, and the spoken version stays short
     tasksDue: 1,
   }), { name: "David", now: morning });
   const text = Object.fromEntries(briefing.items.map(item => [item.id, item.text]));
-  assert.match(text.yesterday, /^Ayer vendiste \$\s?1\.200\.000 en 8 pedidos \(20% más que el día anterior\)\. NEXO cerró todos\.$/);
+  assert.match(text.yesterday, /^Ayer vendiste \$\s?1\.200\.000 en 8 pedidos \(20% más que el día anterior\)\. Zorax cerró todos\.$/);
   assert.equal(text.handoffs, "María y 1 cliente más esperan un asesor desde hace 2 h.");
   assert.match(text.unpaid, /^3 pedidos esperan pago por \$\s?450\.000\.$/);
   assert.equal(text.stock, "A Tenis Urban · 40 le quedan 2 unidades.");
@@ -39,8 +39,8 @@ test("a quiet day says so instead of inventing activity", () => {
   assert.ok(briefing.headline.startsWith("Buenas tardes."));
 });
 
-test("saying «resumen del día» is answered locally; other sentences still go to NEXO", () => {
-  for (const text of ["NEXO, resumen del día", "¿Cómo vamos hoy?", "Nexo ¿cómo va mi negocio?", "dame el resumen"]) assert.equal(jarvisCommand(text), "briefing");
+test("saying «resumen del día» is answered locally; other sentences still go to Zorax", () => {
+  for (const text of ["Zorax, resumen del día", "¿Cómo vamos hoy?", "Nexo ¿cómo va mi negocio?", "dame el resumen"]) assert.equal(jarvisCommand(text), "briefing");
   for (const text of ["resume la conversación de Ana", "¿cómo vamos con el pedido de Ana?"]) assert.equal(jarvisCommand(text), null);
 });
 

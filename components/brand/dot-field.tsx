@@ -10,12 +10,12 @@ const RIPPLE_SPEED = 380; // px per second
 const RIPPLE_WIDTH = 48;
 const RIPPLE_LIFE = 2.6; // seconds
 const MAX_RIPPLES = 12;
-/** Seconds between waves and their strength while NEXO talks, listens or thinks. */
+/** Seconds between waves and their strength while Zorax talks, listens or thinks. */
 const PULSES: Record<Exclude<FieldPulse, null>, [number, number]> = { speaking: [0.6, 1], listening: [1.5, 0.55], processing: [1.1, 0.4] };
 
 /**
  * An interactive field of dots: they light up in the brand color and move aside near the
- * cursor, a click or tap sends a wave, and NEXO's voice sends waves from its orb.
+ * cursor, a click or tap sends a wave, and Zorax's voice sends waves from its orb.
  * Canvas 2D only; it pauses in hidden tabs and stays still with reduced motion.
  */
 export function DotField({ accent = "#facc15", gap = 26, className, pulse = null, originRef, burstKey }: {

@@ -15,7 +15,7 @@ export function FinalCta() {
           {"// Tu próximo comprador no quiere esperar"}
         </p>
         <h2 id="final-title" className="relative mx-auto mt-5 max-w-3xl text-balance text-4xl font-semibold leading-[1.05] tracking-[-0.05em] sm:text-6xl text-zinc-950">
-          Tu siguiente paso<br />empieza con NEXO.
+          Tu siguiente paso<br />empieza con Zorax.
         </h2>
         <p className="relative mx-auto mt-6 max-w-lg text-sm font-medium leading-7 text-zinc-800">
           Conecta tu catálogo, atiende a tus compradores por WhatsApp y convierte cada conversación en un pedido.

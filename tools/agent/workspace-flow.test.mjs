@@ -22,7 +22,7 @@ const {createAgentExecutor}=await import(await load('../../lib/agent/executor.ts
  '@/lib/jarvis':await load('../../lib/jarvis.ts'),'@/lib/jarvis-personalization':await load('../../lib/jarvis-personalization.ts'),
  '@/lib/files/tools':moduleUrl('export const FILE_TOOLS=[];export const fileContext=()=>"";export const executeFileTool=()=>{throw new Error("unexpected")};'),
 }));
-test('NEXO delegates a real task proposal, emits approval_required and never confirms or schedules it through model tools',async()=>{
+test('Zorax delegates a real task proposal, emits approval_required and never confirms or schedules it through model tools',async()=>{
  const events=[];for await(const e of createAgentExecutor({tenantId:tenant,userId:user,role:'owner',sessionId:'task-flow',userMessage:'Recuérdame revisar el CRM mañana a las 9 hora Bogotá'}))events.push(e);
  assert.equal(events.at(-1).status,'completed');assert.deepEqual(calls.map(c=>c.name),['nexo_propose_work_by_nexo']);assert.equal(calls[0].args.p_tenant,tenant);assert.equal(calls[0].args.p_user,user);
  assert.equal(events.at(-1).handoffs[0].agent,'seguimiento');assert.ok(events.at(-1).operatorActions.some(a=>a.tool==='propose_crm_task'&&a.status==='approval_required'));

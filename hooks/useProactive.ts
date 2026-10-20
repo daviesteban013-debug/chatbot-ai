@@ -14,7 +14,7 @@ const write = (key: string, value: unknown) => { try { if (value === null) local
 export type Announcement = { alerts: ProactiveAlert[]; routine: RoutineCard | null; quiet: boolean; settings: ProactiveSettings };
 
 /**
- * NEXO's proactive bubble: watches the business and runs the routines the person chose.
+ * Zorax's proactive bubble: watches the business and runs the routines the person chose.
  * Settings live on this computer (like the bubble color); the data comes from the CRM.
  */
 export function useProactive(enabled: boolean, userId: string | undefined, onAnnounce: (announcement: Announcement) => void, name?: string) {

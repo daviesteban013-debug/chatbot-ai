@@ -28,7 +28,7 @@ export async function GET() {
 /** "Activar" turns one switch on; "Ahora no" hides the suggestion for 30 days. Owner, same origin. */
 export async function POST(request: NextRequest) {
   if (request.headers.get("origin") !== request.nextUrl.origin || request.headers.get("sec-fetch-site") === "cross-site")
-    return json({ error: "Abre NEXO para decidir esto." }, 403);
+    return json({ error: "Abre Zorax para decidir esto." }, 403);
   if (!request.headers.get("content-type")?.startsWith("application/json")) return json({ error: "Solicitud no válida." }, 400);
   const text = await request.text();
   if (text.length > 512) return json({ error: "Solicitud demasiado grande." }, 400);
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) return json({ error: "Selecciona una sugerencia válida." }, 400);
   const session = await owner();
   if (!session) return json({ error: "Inicia sesión con tu negocio." }, 401);
-  if (session.tenant.role !== "owner") return json({ error: "Solo el dueño del negocio decide la autonomía de NEXO." }, 403);
+  if (session.tenant.role !== "owner") return json({ error: "Solo el dueño del negocio decide la autonomía de Zorax." }, 403);
   const args = { p_tenant: session.tenant.tenantId, p_user: session.user.id };
   try {
     const admin = createAdminClient();

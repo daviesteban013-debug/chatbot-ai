@@ -9,13 +9,13 @@ import { voiceAvailability } from "@/lib/voice/elevenlabs";
 import { WelcomePortal } from "./portal";
 
 export const metadata: Metadata = {
-  title: "Conoce a tu agente — NEXO",
-  description: "NEXO se presenta y se configura contigo en dos minutos.",
+  title: "Conoce a tu agente — Zorax",
+  description: "Zorax se presenta y se configura contigo en dos minutos.",
 };
 
 /**
  * The welcome portal: the first screen of a new account (the proxy sends every account whose
- * agent has not completed onboarding here) and, with ?replay=1, a way to meet NEXO again.
+ * agent has not completed onboarding here) and, with ?replay=1, a way to meet Zorax again.
  */
 export default async function OnboardingPage({ searchParams }: { searchParams: Promise<{ replay?: string }> }) {
   const [user, current, params] = await Promise.all([getCurrentUser(), getCurrentTenant(), searchParams]);
@@ -33,7 +33,7 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
   const config = sanitizeJarvisConfig(configRow?.config);
   const profile = sanitizePersonalization(user.user_metadata?.jarvis_personalization);
   const rules = agent?.business_rules && typeof agent.business_rules === "object" && !Array.isArray(agent.business_rules) ? agent.business_rules as Record<string, unknown> : {};
-  // Meeting NEXO again starts from what the owner already chose; a new account starts clean.
+  // Meeting Zorax again starts from what the owner already chose; a new account starts clean.
   const initial: Partial<PortalAnswers> = replay ? {
     agentName: agent?.name ?? config.name, displayName: profile.displayName, businessName: current.tenant?.name ?? "",
     businessType: typeof rules.tipo_negocio === "string" ? rules.tipo_negocio : "", city: typeof rules.ciudad === "string" ? rules.ciudad : "",

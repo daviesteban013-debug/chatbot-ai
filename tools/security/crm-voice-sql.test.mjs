@@ -56,7 +56,7 @@ test('members retain own-business reads and foreign businesses remain invisible;
  await db.query("update orders set status='confirmed' where id=$1",[order]);
  assert.equal((await db.query('select status from orders where id=$1',[order])).rows[0].status,'confirmed');
 });
-test('only the current owner can change tenant-wide NEXO configuration; forged JWT role does not override membership',async()=>{
+test('only the current owner can change tenant-wide Zorax configuration; forged JWT role does not override membership',async()=>{
  for(const user of [viewer,operator]){
   await db.exec('reset role');await browser(user);
   await db.query("select set_config('request.jwt.claims',$1,true)",[JSON.stringify({sub:user,role:'authenticated',user_metadata:{role:'owner'}})]);
@@ -64,7 +64,7 @@ test('only the current owner can change tenant-wide NEXO configuration; forged J
   await denied(()=>db.query("insert into jarvis_configs(tenant_id,config) values($1,'{}')",[other]),/row-level security/);
  }
  await db.exec('reset role');await browser(owner);
- assert.equal((await db.query("update jarvis_configs set config='{"+'"name":"NEXO"'+"}' where tenant_id=$1 returning tenant_id",[tenant])).rows.length,1);
+ assert.equal((await db.query("update jarvis_configs set config='{"+'"name":"Zorax"'+"}' where tenant_id=$1 returning tenant_id",[tenant])).rows.length,1);
  await denied(()=>db.query('update jarvis_configs set tenant_id=$1 where tenant_id=$2',[other,tenant]),/row-level security/);
 });
 test('stock RPCs are server-only, use a fixed search path and reject negative or zero quantities',async()=>{

@@ -13,8 +13,8 @@ export function OperatorTask({ actions, busy, onOpen, compact = false }: {
   if (!actions.length) return null;
   const awaiting = actions.some(action => action.status === "approval_required");
   const failed = actions.some(action => action.status === "failed");
-  return <section className={styles.task} data-compact={compact} aria-label="Actividad de NEXO">
-    <header><span><ShieldCheck size={15}/>NEXO EN ACCIÓN</span><small>{busy ? "Trabajando" : failed ? "Revisa los pendientes" : awaiting ? "Propuesta preparada" : "Completado"}</small></header>
+  return <section className={styles.task} data-compact={compact} aria-label="Actividad de Zorax">
+    <header><span><ShieldCheck size={15}/>Zorax EN ACCIÓN</span><small>{busy ? "Trabajando" : failed ? "Revisa los pendientes" : awaiting ? "Propuesta preparada" : "Completado"}</small></header>
     <ol>{actions.map(action => <li key={action.id} data-status={action.status}>
       <span className={styles.icon} aria-hidden="true">{action.status === "running" ? <LoaderCircle size={16}/> : action.status === "failed" ? <X size={16}/> : action.status === "approval_required" ? <Circle size={16}/> : <Check size={16}/>}</span>
       <div><strong>{action.label}</strong><small>{action.status === "running" ? "En curso…" : action.summary || (action.status === "failed" ? "No se completó este paso." : "Paso verificado.")}</small>

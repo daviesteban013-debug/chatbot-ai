@@ -31,7 +31,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DB_TIMEOUT_MS = 8000;
 /** With less than this left, no new job is claimed and recipes hand theirs back. */
 export const MIN_ROUND_MS = 15_000;
-const PUBLIC_ERROR = /^(El archivo|La extensión|Usa una|Guarda el|Formatos disponibles|No encontré|El CSV|El lector|NEXO no pudo|No reconocí|La hoja|No pude leer|Tu rol)/;
+const PUBLIC_ERROR = /^(El archivo|La extensión|Usa una|Guarda el|Formatos disponibles|No encontré|El CSV|El lector|Zorax no pudo|No reconocí|La hoja|No pude leer|Tu rol)/;
 const record = (value: unknown): value is Record<string, unknown> => Boolean(value && typeof value === "object" && !Array.isArray(value));
 
 /** What the owner reads when a job fails: never provider or database details. */

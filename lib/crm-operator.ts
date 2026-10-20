@@ -16,7 +16,7 @@ export interface OperatorAction {
 
 const PANELS: Record<string, string> = {
   "/dashboard": "Resumen",
-  "/dashboard/jarvis": "NEXO",
+  "/dashboard/jarvis": "Zorax",
   "/dashboard/conversations": "Conversaciones",
   "/dashboard/whatsapp": "WhatsApp",
   "/dashboard/orders": "Pedidos",

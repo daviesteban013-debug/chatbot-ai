@@ -20,7 +20,7 @@ export function jobProgressText(job: JobView) {
   return [step, count].filter(Boolean).join(" · ") || (job.status === "queued" ? "En cola, empieza en menos de un minuto" : "Trabajando");
 }
 
-/** Everything NEXO did or is doing in the background for this business. */
+/** Everything Zorax did or is doing in the background for this business. */
 export function JobsView({ canWrite }: { canWrite: boolean }) {
   const router = useRouter();
   const jobs = useJobs(true, { mine: false });
@@ -28,7 +28,7 @@ export function JobsView({ canWrite }: { canWrite: boolean }) {
   const list = jobs.jobs.filter(job => tab === "active" ? isActiveJob(job) : !isActiveJob(job));
   return (
     <div className="mx-auto max-w-[1100px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-      <PageHeader title="Trabajos de NEXO" description="Tareas largas que NEXO termina en segundo plano y te avisa al acabar: importar catálogos, actualizar stock y precios desde un archivo, revisar los cobros."
+      <PageHeader title="Trabajos de Zorax" description="Tareas largas que Zorax termina en segundo plano y te avisa al acabar: importar catálogos, actualizar stock y precios desde un archivo, revisar los cobros."
         actions={<div className="flex gap-2">
           <Button variant="secondary" size="sm" onClick={() => void jobs.refresh()} disabled={jobs.busy !== null} aria-label="Actualizar"><RefreshCw className="size-4" /></Button>
           {canWrite && <Button size="sm" disabled={jobs.busy !== null || jobs.jobs.some(job => isActiveJob(job) && job.kind === "collections_review")} onClick={() => void jobs.start({ kind: "collections_review" })}>
@@ -40,7 +40,7 @@ export function JobsView({ canWrite }: { canWrite: boolean }) {
           actions={<Segmented label="Estado" value={tab} onChange={value => setTab(value as "active" | "finished")} options={[{ value: "active", label: "Activos", count: jobs.jobs.filter(isActiveJob).length }, { value: "finished", label: "Terminados" }]} />} />
         {!jobs.loaded ? <p className="px-5 py-10 text-center text-[13px] text-muted">Cargando trabajos…</p>
           : !list.length ? <EmptyState icon={ListChecks} title={tab === "active" ? "Nada en curso" : "Todavía no hay trabajos terminados"}
-            description={canWrite ? "Pídele a NEXO en la burbuja: «importa este catálogo», «actualiza el stock con este archivo» o «revisa los cobros». También puedes arrastrar un archivo a la burbuja." : "Los dueños y agentes pueden iniciar trabajos desde la burbuja de NEXO."} />
+            description={canWrite ? "Pídele a Zorax en la burbuja: «importa este catálogo», «actualiza el stock con este archivo» o «revisa los cobros». También puedes arrastrar un archivo a la burbuja." : "Los dueños y agentes pueden iniciar trabajos desde la burbuja de Zorax."} />
           : <ul className="divide-y divide-line">
             {list.map(job => (
               <li key={job.id} className="flex flex-wrap items-start justify-between gap-3 px-4 py-3 sm:px-5">

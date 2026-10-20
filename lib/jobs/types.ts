@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { Json } from "@/lib/database.types";
 
-/** Long tasks NEXO runs outside the chat turn. Each kind has one recipe in lib/jobs/recipes. */
+/** Long tasks Zorax runs outside the chat turn. Each kind has one recipe in lib/jobs/recipes. */
 export const jobKinds = ["catalog_import", "catalog_update", "collections_review"] as const;
 export type JobKind = (typeof jobKinds)[number];
 export const jobStatuses = ["queued", "running", "done", "failed", "canceled"] as const;

@@ -12,12 +12,12 @@ export function SalesPaymentsForm({ initial, canEdit }: { initial: SalesPayments
   return <section className="rounded-lg border border-line bg-surface">
     <div className="border-b border-line px-4 py-3 sm:px-5">
       <h2 className="text-[13px] font-semibold text-ink">Cómo pagan tus clientes</h2>
-      <p className="mt-0.5 text-xs text-muted">NEXO ofrece estos medios y envía las instrucciones al confirmar el pedido. Los cobros son de tu negocio.</p>
+      <p className="mt-0.5 text-xs text-muted">Zorax ofrece estos medios y envía las instrucciones al confirmar el pedido. Los cobros son de tu negocio.</p>
     </div>
     <form className="space-y-4 px-4 py-4 sm:px-5" onSubmit={event => {
       event.preventDefault(); setNotice("");
       startTransition(async () => {
-        try { const result = await saveSalesPayments({ linkUrl, transferInstructions }); setNotice(result.ok ? "Guardado. NEXO usará estos datos en los siguientes resúmenes de pedido." : result.error ?? "No se pudo guardar."); }
+        try { const result = await saveSalesPayments({ linkUrl, transferInstructions }); setNotice(result.ok ? "Guardado. Zorax usará estos datos en los siguientes resúmenes de pedido." : result.error ?? "No se pudo guardar."); }
         catch { setNotice("No se pudo conectar. Inténtalo de nuevo."); }
       });
     }}>

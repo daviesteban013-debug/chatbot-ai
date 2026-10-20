@@ -36,7 +36,7 @@ export function buildBriefing(data: BriefingData, options: { name?: string; now?
   if (yesterday.orders > 0) {
     const delta = dayBefore.sales > 0 ? Math.round(((yesterday.sales - dayBefore.sales) / dayBefore.sales) * 100) : null;
     const trend = delta === null || delta === 0 ? "" : delta > 0 ? ` (${delta}% más que el día anterior)` : ` (${Math.abs(delta)}% menos que el día anterior)`;
-    const nexo = yesterday.agentOrders > 0 ? ` NEXO cerró ${yesterday.agentOrders === yesterday.orders ? "todos" : yesterday.agentOrders}.` : "";
+    const nexo = yesterday.agentOrders > 0 ? ` Zorax cerró ${yesterday.agentOrders === yesterday.orders ? "todos" : yesterday.agentOrders}.` : "";
     items.push({ id: "yesterday", tone: delta !== null && delta < 0 ? "info" : "good", text: `Ayer vendiste ${money(yesterday.sales)} en ${plural(yesterday.orders, "pedido", "pedidos")}${trend}.${nexo}`, action: { label: "Ver resultados", href: "/dashboard" } });
   } else {
     items.push({ id: "yesterday", tone: "info", text: "Ayer no hubo ventas confirmadas." });

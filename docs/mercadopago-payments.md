@@ -1,6 +1,6 @@
-# Cobro de planes NEXO con Mercado Pago (Colombia)
+# Cobro de planes Zorax con Mercado Pago (Colombia)
 
-Los planes de NEXO se cobran en pesos colombianos (COP) con Mercado Pago. Stripe se eliminó.
+Los planes de Zorax se cobran en pesos colombianos (COP) con Mercado Pago. Stripe se eliminó.
 
 | Plan | Mensual | Anual (−20 %) |
 | --- | --- | --- |
@@ -24,7 +24,7 @@ Los precios viven en `lib/plans.ts` (`price` en COP por mes, `planTotal`).
 `credit_balance()` (SQL) es la única decisión: el negocio tiene su plan si
 `tenants.plan_active_until > now()` y `tenants.billing_mode = billing_settings.mode`.
 Con una suscripción automática `authorized` hay 3 días de gracia mientras Mercado Pago
-reintenta el cobro. Todo lo demás (mensajes de NEXO, créditos de WhatsApp) usa esa función.
+reintenta el cobro. Todo lo demás (mensajes de Zorax, créditos de WhatsApp) usa esa función.
 
 Los pagos solo se escriben con RPC privadas (`service_role`):
 

@@ -1,8 +1,8 @@
-# Activar GPT-6 Luna en NEXO
+# Activar GPT-6 Luna en Zorax
 
 En `.env.local`, guarda una clave de la API de OpenAI en `OPENAI_API_KEY`. Es una variable privada del servidor: no uses `NEXT_PUBLIC_` ni pegues la clave en el chat. Reinicia `npm run dev` después de guardarla.
 
-No necesitas cambiar modelo, endpoint ni las variables de Groq. Una clave OpenAI no vacía selecciona `gpt-6-luna` y `https://api.openai.com/v1` en el servidor, tanto en NEXO web como en el bucle de WhatsApp. Ignora modelos antiguos configurados en el negocio o en `LLM_MODEL`. Sin esa clave, conserva el proveedor compatible configurado con `LLM_*`. La voz de ElevenLabs sigue siendo independiente.
+No necesitas cambiar modelo, endpoint ni las variables de Groq. Una clave OpenAI no vacía selecciona `gpt-6-luna` y `https://api.openai.com/v1` en el servidor, tanto en Zorax web como en el bucle de WhatsApp. Ignora modelos antiguos configurados en el negocio o en `LLM_MODEL`. Sin esa clave, conserva el proveedor compatible configurado con `LLM_*`. La voz de ElevenLabs sigue siendo independiente.
 
 Comprueba la selección local con `npm run llm:status`. Muestra proveedor, modelo, nombre de variable y presencia de clave; `ready: true` indica configuración local, no valida permisos, saldo ni disponibilidad del modelo. Una conversación real requiere la cuenta API habilitada y crédito.
 

@@ -51,7 +51,7 @@ export const WEB_CRM_TOOLS: LLMTool[] = [
   {
     type: "function", function: {
       name: "get_sales_results",
-      description: "Resultados de ventas del negocio en días de calendario de Colombia: today (hoy hasta ahora), yesterday, o los últimos 7, 30 o 90 días, comparados con el periodo anterior de igual duración. Devuelve ventas confirmadas (pedidos confirmados por el cliente, pagados o no), vendido por NEXO, cobrado, recuperado con seguimientos, conversaciones, conversión, casos de atención humana y productos más vendidos. Importes en COP. Úsala para preguntas de ventas, cobros o resultados; no sumes pedidos a mano.",
+      description: "Resultados de ventas del negocio en días de calendario de Colombia: today (hoy hasta ahora), yesterday, o los últimos 7, 30 o 90 días, comparados con el periodo anterior de igual duración. Devuelve ventas confirmadas (pedidos confirmados por el cliente, pagados o no), vendido por Zorax, cobrado, recuperado con seguimientos, conversaciones, conversión, casos de atención humana y productos más vendidos. Importes en COP. Úsala para preguntas de ventas, cobros o resultados; no sumes pedidos a mano.",
       parameters: { type: "object", properties: { period: { type: "string", enum: ["today", "yesterday", "7", "30", "90"] } }, required: ["period"], additionalProperties: false },
     },
   },

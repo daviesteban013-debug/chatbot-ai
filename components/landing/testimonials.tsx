@@ -2,8 +2,8 @@ import { Quote } from "lucide-react";
 
 const stories = [
   { name: "Laura M.", initials: "LM", business: "Tienda de ropa online · Bogotá", number: "18 pedidos", result: "organizados en una mañana", quote: "Mientras empaco los despachos, el asistente responde por tallas y stock y deja los pedidos listos para pagar. Ya no tengo que parar para contestar lo mismo." },
-  { name: "Andrés R.", initials: "AR", business: "Tienda de tenis · Medellín", number: "9 ventas", result: "cerradas fuera de horario", quote: "Los clientes escriben de noche desde Instagram. NEXO les muestra la foto, revisa la talla y les envía el link de pago." },
-  { name: "Camila P.", initials: "CP", business: "Distribuidora de cosmética · Cali", number: "3 horas", result: "liberadas de cotizaciones", quote: "Nexo aplica el precio mayorista y calcula el envío. Si un pedido necesita una negociación especial, la conversación pasa a mi equipo." },
+  { name: "Andrés R.", initials: "AR", business: "Tienda de tenis · Medellín", number: "9 ventas", result: "cerradas fuera de horario", quote: "Los clientes escriben de noche desde Instagram. Zorax les muestra la foto, revisa la talla y les envía el link de pago." },
+  { name: "Camila P.", initials: "CP", business: "Distribuidora de cosmética · Cali", number: "3 horas", result: "liberadas de cotizaciones", quote: "Zorax aplica el precio mayorista y calcula el envío. Si un pedido necesita una negociación especial, la conversación pasa a mi equipo." },
 ];
 
 export function Testimonials() {

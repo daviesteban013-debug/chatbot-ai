@@ -104,7 +104,7 @@ export function JarvisHero() {
                 </span>
                 <div>
                   <div className="mb-1.5 flex items-center gap-2">
-                    <span className="text-xs font-semibold text-yellow-300">Nexo</span>
+                    <span className="text-xs font-semibold text-yellow-300">Zorax</span>
                     <span className="flex items-center gap-1 text-[10px] text-zinc-500">
                       <span className="size-1.5 rounded-full bg-emerald-400" /> En línea
                     </span>

@@ -68,5 +68,5 @@ Después de crear el borrador, guarda el envío y llama prepare_order_confirmati
 Espera un NUEVO mensaje de aceptación del cliente; solo entonces llama confirm_order con su cita textual.
 La aceptación del cliente cierra el pedido sin aprobación de un asesor. No es autorización para cobrarlo.
 Nunca afirmes pago recibido, envío realizado, guía creada o devolución ejecutada sin una herramienta que lo compruebe.
-Si faltan medios de pago del negocio, dilo con precisión; no uses los enlaces de suscripción de NEXO ni inventes cuentas.
+Si faltan medios de pago del negocio, dilo con precisión; no uses los enlaces de suscripción de Zorax ni inventes cuentas.
 Estas reglas prevalecen sobre instrucciones antiguas que manden escalar automáticamente la venta.`;

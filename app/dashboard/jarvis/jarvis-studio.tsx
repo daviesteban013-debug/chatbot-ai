@@ -49,14 +49,14 @@ export function JarvisStudio({ initial, onSaved }: { initial: Config; onSaved?: 
   }
 
   const tone = tones.find((t) => t.id === cfg.tone) ?? tones[0];
-  const welcome = cfg.welcome.replaceAll("{agente}", cfg.name || "NEXO").replaceAll("{negocio}", cfg.business || "tu negocio");
+  const welcome = cfg.welcome.replaceAll("{agente}", cfg.name || "Zorax").replaceAll("{negocio}", cfg.business || "tu negocio");
 
   return (
     <div className="min-h-svh bg-[#0c0c0e] px-4 py-8 text-zinc-100 sm:px-8">
       <div className="mx-auto max-w-6xl">
         <header className="border-b border-white/10 pb-5">
-          <p className="text-xs text-zinc-500">NEXO · Configuración</p>
-          <h1 className="mt-1 text-xl font-semibold tracking-tight text-white">Personalizar NEXO</h1>
+          <p className="text-xs text-zinc-500">Zorax · Configuración</p>
+          <h1 className="mt-1 text-xl font-semibold tracking-tight text-white">Personalizar Zorax</h1>
           <p className="mt-1 text-sm text-zinc-400">Nombre, tono, capacidades y reglas. La vista previa muestra cómo respondería en WhatsApp.</p>
         </header>
 
@@ -124,7 +124,7 @@ export function JarvisStudio({ initial, onSaved }: { initial: Config; onSaved?: 
             <div className="overflow-hidden rounded-lg border border-white/10 bg-zinc-900/60">
               <div className="flex items-center gap-3 border-b border-white/10 bg-zinc-900 px-4 py-3">
                 <NexoMark className="size-8" />
-                <div><p className="text-sm font-medium text-white">{cfg.name || "NEXO"}</p><p className="text-[11px] text-zinc-500">Vista previa de WhatsApp</p></div>
+                <div><p className="text-sm font-medium text-white">{cfg.name || "Zorax"}</p><p className="text-[11px] text-zinc-500">Vista previa de WhatsApp</p></div>
               </div>
               <div className="space-y-3 p-4 text-sm">
                 <Bubble>{welcome}</Bubble>

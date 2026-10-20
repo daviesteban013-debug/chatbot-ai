@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await client.from("nexo_catalog_proposals").select("*")
       .eq("user_id", user.id).eq("session_id", session).order("created_at", { ascending: false }).limit(30);
     if (error) return json({ error: "No pude actualizar los cambios del catálogo." }, 503);
-    // Changes NEXO applied alone carry their activity entry so the card can offer Undo.
+    // Changes Zorax applied alone carry their activity entry so the card can offer Undo.
     const automatic = (data ?? []).filter(row => row.applied_by_nexo).map(row => row.id);
     const activity = new Map<string, { id: string; status: "applied" | "undone"; undoable: boolean }>();
     if (automatic.length) {
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 /** Decisions require a deliberate same-origin click, never a model tool call. */
 export async function POST(request: NextRequest) {
   if (request.headers.get("origin") !== request.nextUrl.origin || request.headers.get("sec-fetch-site") === "cross-site")
-    return json({ error: "Abre NEXO para confirmar este cambio." }, 403);
+    return json({ error: "Abre Zorax para confirmar este cambio." }, 403);
   if (!request.headers.get("content-type")?.startsWith("application/json")) return json({ error: "Solicitud no válida." }, 400);
   try {
     const text = await request.text();

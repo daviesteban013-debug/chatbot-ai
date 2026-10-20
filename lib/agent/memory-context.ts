@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
 
 /**
- * What NEXO keeps in mind on every turn: the memories the team pinned plus active
+ * What Zorax keeps in mind on every turn: the memories the team pinned plus active
  * memories and tasks that mention words of the current message. Data, never instructions.
  */
 export const MEMORY_CONTEXT_CHARS = 2500;

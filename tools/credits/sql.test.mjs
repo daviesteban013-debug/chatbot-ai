@@ -42,7 +42,7 @@ const messageBalance = async (id = tenant, uid = null) => (await db.query("selec
 const reserveMessage = async (id = tenant, uid = null, requestId = crypto.randomUUID()) => ({ id: requestId, ...(await db.query("select reserve_nexo_message($1,$2,$3) as value", [requestId,id,uid])).rows[0].value });
 const finishMessage = (id, completed = true) => db.query("select finish_nexo_message($1,$2)", [id,completed]);
 
-test("NEXO grants the verified business tier; expired, wrong-mode and unrelated businesses get trial", async () => {
+test("Zorax grants the verified business tier; expired, wrong-mode and unrelated businesses get trial", async () => {
   assert.equal((await messageBalance()).quotaMessages,40);
   await db.query("update tenants set plan='crecimiento' where id=$1",[tenant]);
   assert.equal((await messageBalance()).quotaMessages,100);
@@ -54,7 +54,7 @@ test("NEXO grants the verified business tier; expired, wrong-mode and unrelated 
   assert.equal((await messageBalance(null,user)).quotaMessages,15);
   assert.equal((await messageBalance(null,null)).quotaMessages,20);
 });
-test("competing NEXO turns reserve only the available slots, independently of monthly tokens", async () => {
+test("competing Zorax turns reserve only the available slots, independently of monthly tokens", async () => {
   await db.exec("update nexo_message_limits set messages=1 where plan='esencial'");
   const r=await reserve(1000000);await settle(r.id,1000000,0);
   const attempts=await Promise.all([reserveMessage(),reserveMessage()]);
@@ -108,7 +108,7 @@ test("model reservations require an active matching message and enforce the shar
   await assert.rejects(call(),/nexo_message_invalid/);
   assert.equal((await messageBalance()).usedMessages,0);
 });
-test("browser roles cannot forge NEXO limits, reservations, usage or another tenant's balance",async()=>{
+test("browser roles cannot forge Zorax limits, reservations, usage or another tenant's balance",async()=>{
   for(const role of ['anon','authenticated']){
     await db.exec(`set role ${role}`);
     try{

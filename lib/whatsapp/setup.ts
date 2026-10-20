@@ -26,7 +26,7 @@ export async function readWhatsAppSetup(client: SupabaseClient<Database>, tenant
   if (error) throw new Error("WHATSAPP_STATUS_UNAVAILABLE");
   return {
     account:data, canManage:owner,
-    webhookUrl:new URL("/api/whatsapp",process.env.APP_URL || "https://chatbot-ai-gold-two.vercel.app").href,
+    webhookUrl:new URL("/api/whatsapp",process.env.APP_URL || "https://zoraxpilot.com").href,
     graphVersion:GRAPH_API_VERSION,
     requirements:owner ? setupRequirements() : [],
   };

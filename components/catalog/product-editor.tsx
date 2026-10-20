@@ -119,7 +119,7 @@ export function ProductEditor({ product, categories, onClose }: { product: Catal
       </div>
 
       <div className="mt-5 space-y-4">
-        <Field label="Descripción" hint="NEXO la usa para recomendar el producto. Materiales, medidas, uso…">
+        <Field label="Descripción" hint="Zorax la usa para recomendar el producto. Materiales, medidas, uso…">
           <Textarea value={form.description} onChange={e => set({ description: e.target.value })} maxLength={2000} rows={3} />
         </Field>
         <div className="grid gap-4 sm:grid-cols-3">
@@ -159,7 +159,7 @@ export function ProductEditor({ product, categories, onClose }: { product: Catal
 
         <label className="flex items-center gap-3 text-[13px] text-ink-soft">
           <input type="checkbox" checked={form.active} onChange={e => set({ active: e.target.checked })} className="size-4 rounded border-line-strong accent-ink" />
-          Disponible para la venta (NEXO lo ofrece por WhatsApp)
+          Disponible para la venta (Zorax lo ofrece por WhatsApp)
         </label>
       </div>
     </Sheet>

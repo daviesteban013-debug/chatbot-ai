@@ -17,18 +17,18 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
     <DesktopLoginControls />
     <div className={styles.field} aria-hidden="true"><DotField /></div>
     <nav className={styles.nav} aria-label="Navegación de acceso">
-      <Link href="/" className={styles.brand}><NexoMark className={styles.mark} />NEXO</Link>
+      <Link href="/" className={styles.brand}><NexoMark className={styles.mark} />Zorax</Link>
       <Link href="/" className={styles.back}><ArrowLeft size={14} /> Volver al inicio</Link>
     </nav>
     <main className={styles.main}>
-      <section className={styles.story} aria-label="Lo que hace NEXO por tu tienda">
+      <section className={styles.story} aria-label="Lo que hace Zorax por tu tienda">
         <span className={styles.eyebrow}>TU TIENDA. TU AGENTE.</span>
-        <h2>Tu tienda vende<br />con <span>NEXO.</span></h2>
+        <h2>Tu tienda vende<br />con <span>Zorax.</span></h2>
         <ul className={styles.points}>{POINTS.map(point => <li key={point}><Check size={15} aria-hidden="true" />{point}</li>)}</ul>
-        <div className={styles.hello} aria-hidden="true"><div className={styles.orb}><i /><i /></div><p>Hola, soy <strong>NEXO</strong>. Tu negocio sigue donde lo dejaste.</p></div>
+        <div className={styles.hello} aria-hidden="true"><div className={styles.orb}><i /><i /></div><p>Hola, soy <strong>Zorax</strong>. Tu negocio sigue donde lo dejaste.</p></div>
       </section>
       <section className={styles.card} aria-label="Acceso a tu cuenta">{children}</section>
     </main>
-    <footer className={styles.footer}>NEXO · Ventas por WhatsApp para tiendas online</footer>
+    <footer className={styles.footer}>Zorax · Ventas por WhatsApp para tiendas online</footer>
   </div>;
 }

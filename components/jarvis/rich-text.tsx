@@ -34,7 +34,7 @@ function renderBlock(block: Block, index: number, onOpen?: (href: string) => voi
   }
 }
 
-/** NEXO's answers with real structure. Internal links open through onOpen (the CRM), never by navigation. */
+/** Zorax's answers with real structure. Internal links open through onOpen (the CRM), never by navigation. */
 export function RichText({ source, className, onOpen }: { source: string; className?: string; onOpen?(href: string): void }) {
   const blocks = useMemo(() => parseRichText(source), [source]);
   return <div className={`${styles.rich} ${className ?? ""}`}>{blocks.map((block, index) => renderBlock(block, index, onOpen))}</div>;

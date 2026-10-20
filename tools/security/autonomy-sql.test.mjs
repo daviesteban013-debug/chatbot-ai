@@ -78,7 +78,7 @@ test("prices and new products are never applied automatically, even with every s
   assert.equal((await db.query("select summary from nexo_activity_log where id=$1", [hidden.log_id])).rows[0].summary, "Ocultó Tenis Urban");
 });
 
-test("tasks requested to NEXO are confirmed when enabled, and undo cancels them", async () => {
+test("tasks requested to Zorax are confirmed when enabled, and undo cancels them", async () => {
   const input = { kind: "task", title: "Llamar a María", body: "", due_at: new Date(Date.now() + 86400000).toISOString(), timezone: "America/Bogota" };
   const propose = key => db.query("select nexo_propose_work_by_nexo($1,$2,$3,$4,$5) as v", [tenant, agent, session, key, input]).then(r => r.rows[0].v);
   const pending = await propose(crypto.randomUUID());
@@ -91,7 +91,7 @@ test("tasks requested to NEXO are confirmed when enabled, and undo cancels them"
   assert.equal((await db.query("select status from nexo_work_items where id=$1", [active.id])).rows[0].status, "canceled");
 });
 
-test("the activity feed shows this business's NEXO work only, for owners and agents", async () => {
+test("the activity feed shows this business's Zorax work only, for owners and agents", async () => {
   await configure({ catalog_stock: true });
   await change(addStock);
   const feed = (await db.query("select nexo_activity_feed($1,$2,10) as v", [tenant, owner])).rows[0].v;

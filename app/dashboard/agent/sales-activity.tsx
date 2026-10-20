@@ -45,7 +45,7 @@ const toolLabels: Record<string, string> = {
   escalate_to_human: "Registró una solicitud de atención humana",
 };
 const reasonLabels: Record<string, string> = {
-  customer_replied: "El cliente volvió a escribir; NEXO retoma la conversación en lugar de enviar este recordatorio.",
+  customer_replied: "El cliente volvió a escribir; Zorax retoma la conversación en lugar de enviar este recordatorio.",
   customer_opted_out: "El cliente pidió dejar de recibir seguimientos.",
   service_window_closed: "Pasaron 24 horas desde el último mensaje del cliente. Se necesita una plantilla aprobada para retomar el contacto.",
   conversation_unavailable: "La conversación ya no está disponible para este seguimiento.",
@@ -88,7 +88,7 @@ function reasonText(followup: Followup): string {
   if (followup.status === "canceled") return "Este recordatorio ya no se enviará. El pago y el pedido conservan su estado real.";
   if (followup.status === "sent") return "WhatsApp aceptó el recordatorio. Esto no confirma que el cliente haya pagado.";
   if (followup.status === "sending") return "El envío ya comenzó y no puede cancelarse desde aquí.";
-  return "NEXO comprobará el pedido y la conversación antes de enviar el recordatorio.";
+  return "Zorax comprobará el pedido y la conversación antes de enviar el recordatorio.";
 }
 
 function eventTime(iso: string): string {
@@ -146,7 +146,7 @@ export async function SalesActivity({ tenantId, role, conversationId }: {
           {event.followup && ["queued", "claimed"].includes(event.followup.status) && role !== "viewer" && <CancelFollowupButton id={event.followup.id} />}
         </li>;
       })}
-    </ol> : !loadFailed ? <p className="px-4 py-6 text-sm leading-6 text-muted sm:px-5">Todavía no hay acciones registradas. Aquí aparecerán las respuestas y los recordatorios cuando NEXO atienda a tus clientes.</p> : null}
+    </ol> : !loadFailed ? <p className="px-4 py-6 text-sm leading-6 text-muted sm:px-5">Todavía no hay acciones registradas. Aquí aparecerán las respuestas y los recordatorios cuando Zorax atienda a tus clientes.</p> : null}
     <p className="flex items-start gap-2 border-t border-line px-4 py-3 text-xs leading-5 text-muted sm:px-5"><ShieldCheck className="mt-0.5 size-3.5 shrink-0" /> Los pagos siguen pendientes hasta verificarse con el proveedor o el banco. La conexión de verificación de cobros aún debe configurarse.</p>
   </section>;
 }

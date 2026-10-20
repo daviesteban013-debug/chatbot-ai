@@ -185,7 +185,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               <EmptyState
                 icon={ShoppingBag}
                 title="Todavía no hay pedidos"
-                description="Cuando NEXO cierre ventas por WhatsApp, aparecerán aquí."
+                description="Cuando Zorax cierre ventas por WhatsApp, aparecerán aquí."
               />
             </div>
           )}

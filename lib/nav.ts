@@ -16,7 +16,7 @@ import {
 export interface NavItem {
   label: string;
   href: string;
-  /** Without an icon, the item uses NEXO's own mark. */
+  /** Without an icon, the item uses Zorax's own mark. */
   icon?: LucideIcon;
 }
 
@@ -31,7 +31,7 @@ export interface NavGroup {
  */
 export const navGroups: NavGroup[] = [
   { label: null, items: [
-    { label: "NEXO", href: "/dashboard/jarvis" },
+    { label: "Zorax", href: "/dashboard/jarvis" },
     { label: "Resumen", href: "/dashboard", icon: LayoutDashboard },
   ] },
   { label: "Ventas", items: [

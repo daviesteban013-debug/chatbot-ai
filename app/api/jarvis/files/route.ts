@@ -30,7 +30,7 @@ async function bytes(request: Request) {
   return content;
 }
 export async function POST(request: Request) {
-  if (!sameOrigin(request)) return fail(403, "Carga el archivo desde NEXO.");
+  if (!sameOrigin(request)) return fail(403, "Carga el archivo desde Zorax.");
   try {
     const user = await account(); if (!user) return fail(401, "Inicia sesión para adjuntar archivos.");
     let name: string;
@@ -69,7 +69,7 @@ export async function GET(request: Request) {
   } catch { return fail(503, "No se pudieron cargar los adjuntos."); }
 }
 export async function DELETE(request: Request) {
-  if (!sameOrigin(request)) return fail(403, "Elimina el archivo desde NEXO.");
+  if (!sameOrigin(request)) return fail(403, "Elimina el archivo desde Zorax.");
   try {
     const user = await account(); if (!user) return fail(401, "Inicia sesión para eliminar archivos.");
     const id = new URL(request.url).searchParams.get("id"); if (!validFileId(id)) return fail(400, "Archivo no válido.");

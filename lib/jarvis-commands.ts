@@ -8,7 +8,7 @@ export const commandPanels = {
   agent: { path: "/dashboard/agent", label: "Configuración del agente" },
   whatsapp: { path: "/dashboard/whatsapp", label: "Conexión de WhatsApp" },
   billing: { path: "/dashboard/billing", label: "Planes y pagos" },
-  nexo: { path: "/dashboard/jarvis", label: "NEXO" },
+  nexo: { path: "/dashboard/jarvis", label: "Zorax" },
   workspace: { path: "/dashboard/workspace", label: "Memoria y tareas" },
   jobs: { path: "/dashboard/jobs", label: "Trabajos" },
 } as const;
@@ -22,7 +22,7 @@ const plain = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]
 /** Only whole commands match: quoted instructions and business messages stay chat. The agent's own name wakes it too. */
 export function jarvisCommand(text: string, agentName?: string | null): JarvisCommand | null {
   const alias = agentName ? plain(agentName).replace(/[^a-z0-9 ]/g, "").trim() : "";
-  const names = alias && alias !== "nexo" && alias !== "jarvis" ? `(?:nexo|jarvis|${alias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})` : "(?:nexo|jarvis)";
+  const names = alias && alias !== "nexo" && alias !== "zorax" && alias !== "jarvis" ? `(?:nexo|zorax|jarvis|${alias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})` : "(?:nexo|zorax|jarvis)";
   const command = plain(text).replace(/[.,¡!¿?;:]/g, " ").trim().replace(/\s+/g, " ")
     .replace(new RegExp(`^${names}\\s+`), "").replace(/\s+por favor$/, "");
   if (new RegExp(`^(enciendete|enciende|encender|encender ${names}|activate|activar|activar ${names}|despierta|inicia)$`).test(command)) return "wake";
@@ -36,9 +36,9 @@ export function jarvisCommand(text: string, agentName?: string | null): JarvisCo
     conversaciones: "conversations", chats: "conversations", handoffs: "handoffs", derivaciones: "handoffs",
     aprobaciones: "approvals", agente: "agent", configuracion: "agent", "configuracion del agente": "agent",
     whatsapp: "whatsapp", wsp: "whatsapp", "conexion de whatsapp": "whatsapp",
-    pagos: "billing", planes: "billing", facturacion: "billing", "planes y pagos": "billing", nexo: "nexo",
+    pagos: "billing", planes: "billing", facturacion: "billing", "planes y pagos": "billing", nexo: "nexo", zorax: "nexo",
     memoria: "workspace", tareas: "workspace", recordatorios: "workspace", "memoria y tareas": "workspace",
-    trabajos: "jobs", "trabajos en segundo plano": "jobs", "segundo plano": "jobs", "trabajos de nexo": "jobs",
+    trabajos: "jobs", "trabajos en segundo plano": "jobs", "segundo plano": "jobs", "trabajos de nexo": "jobs", "trabajos de zorax": "jobs",
   };
   if (panel && aliases[panel]) return aliases[panel];
   return null;

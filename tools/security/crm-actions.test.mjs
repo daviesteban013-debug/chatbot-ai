@@ -41,7 +41,7 @@ test('operational members keep controlled reply rejection and handoff-taking thr
   const handoff=state.calls.find(c=>c.update);assert.equal(handoff.admin,true);assert.ok(handoff.filters.some(([k,v])=>k==='tenant_id'&&v===tenant));assert.ok(handoff.filters.some(([k,v])=>k==='status'&&v==='open'));
  }
 });
-test('business-wide NEXO customization is owner-only while other roles make no writes',async()=>{
+test('business-wide Zorax customization is owner-only while other roles make no writes',async()=>{
  for(const role of ['viewer','agent']){state.tenant.role=role;assert.equal((await jarvis.saveJarvisConfig({})).ok,false);assert.equal(state.calls.length,0);}
  state.tenant.role='owner';assert.equal((await jarvis.saveJarvisConfig({})).ok,true);assert.equal(state.calls.length,1);
 });

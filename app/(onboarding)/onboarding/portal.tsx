@@ -64,10 +64,10 @@ function createSound() {
 }
 
 /**
- * The welcome portal. NEXO wakes up on a full screen, speaks and types one question per scene,
+ * The welcome portal. Zorax wakes up on a full screen, speaks and types one question per scene,
  * and the whole screen takes the answers at once: its name in the brand, the chosen color
  * everywhere, the voice out loud. Side panels show real telemetry and the live transcript;
- * they fade when NEXO is configured, and the agent jumps through the screen into the CRM.
+ * they fade when Zorax is configured, and the agent jumps through the screen into the CRM.
  */
 export function WelcomePortal({ initial, replay, telemetry, voiceAvailability, voiceProfile, fixture }: {
   initial: Partial<PortalAnswers>; replay: boolean; telemetry: Telemetry; voiceAvailability: VoiceAvailability; voiceProfile?: JarvisPersonalization["voice"];
@@ -239,7 +239,7 @@ export function WelcomePortal({ initial, replay, telemetry, voiceAvailability, v
   const leave = () => {
     if (phase !== "done") return;
     voice.stop(); play("warp");
-    rememberArrival(sessionStorage, { agent: answers.agentName.trim() || "NEXO", you: answers.displayName, accent: answers.accent });
+    rememberArrival(sessionStorage, { agent: answers.agentName.trim() || "Zorax", you: answers.displayName, accent: answers.accent });
     if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
     setBurst(value => value + 1);
     setPhase("leaving");
@@ -249,7 +249,7 @@ export function WelcomePortal({ initial, replay, telemetry, voiceAvailability, v
   const finished = phase === "done" || phase === "leaving";
   const pulse: FieldPulse = phase === "leaving" || voice.speaking ? "speaking" : phase === "typing" || phase === "after" || phase === "saving" ? "processing" : null;
   const orbState: OrbState = phase === "boot" ? (boot === "ready" ? "idle" : "off") : voice.speaking || phase === "typing" || phase === "after" ? "speaking" : phase === "saving" ? "thinking" : "idle";
-  const agent = answers.agentName.trim() || "NEXO";
+  const agent = answers.agentName.trim() || "Zorax";
   const typedText = typing.text.slice(0, typing.count);
   const submitForm = (event: FormEvent) => { event.preventDefault(); submit(current.kind === "money" ? Number(draft.replace(/[^\d]/g, "")) : draft); };
 
@@ -302,7 +302,7 @@ export function WelcomePortal({ initial, replay, telemetry, voiceAvailability, v
         <div ref={orbRef} className={styles.orb}><NexoOrb state={orbState} look={{ x: 0, y: 0 }} pulseKey="boot" errorKey={null} /></div>
         <p className={styles.eyebrow}>{replay ? "VOLVER A EMPEZAR" : "PORTAL DE BIENVENIDA"}</p>
         <h1 className={styles.title}>{replay ? "Conozcámonos otra vez." : "Tu tienda está a punto de tener agente."}</h1>
-        <p className={styles.lead}>Dos minutos. NEXO se presenta, te pregunta cómo quieres que sea y queda listo para vender contigo.</p>
+        <p className={styles.lead}>Dos minutos. Zorax se presenta, te pregunta cómo quieres que sea y queda listo para vender contigo.</p>
         <button type="button" className={styles.primary} onClick={begin} disabled={boot !== "ready"}>Iniciar<ArrowRight size={15} /></button>
         <small className={styles.note}>Con sonido si tu navegador lo permite; puedes silenciarlo arriba a la derecha.</small>
       </div> : <>

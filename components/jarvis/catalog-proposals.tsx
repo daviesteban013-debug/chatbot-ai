@@ -17,7 +17,7 @@ function Change({ line }: { line: CatalogProposalLine }) {
     <strong>{(show as (v: number | boolean) => string)(line.before)} → {(show as (v: number | boolean) => string)(line.after)}</strong></li>;
 }
 
-/** Cards for catalog changes NEXO prepared. Only a click here applies them. */
+/** Cards for catalog changes Zorax prepared. Only a click here applies them. */
 export function CatalogProposals({ state, onDecision, compact = false }: { state: ReturnType<typeof useCatalogProposals>; onDecision(): void; compact?: boolean }) {
   if (!state.proposals.length) return null;
   return <section className={styles.list} data-compact={compact} aria-label="Cambios del catálogo">
@@ -29,14 +29,14 @@ export function CatalogProposals({ state, onDecision, compact = false }: { state
       const pending = proposal.status === "pending" && !expired;
       const undone = proposal.activity?.status === "undone";
       const status = state.busy === proposal.id ? (proposal.applied_by_nexo ? "Deshaciendo…" : "Aplicando…") : expired ? "Propuesta vencida"
-        : undone ? "Deshecho" : proposal.applied_by_nexo && proposal.status === "applied" ? "Aplicado por NEXO"
+        : undone ? "Deshecho" : proposal.applied_by_nexo && proposal.status === "applied" ? "Aplicado por Zorax"
         : ({ pending: "Esperando tu confirmación", applied: "Cambio aplicado", canceled: "Cambio cancelado", expired: "Propuesta vencida" })[proposal.status];
       return <article key={proposal.id} className={styles.card}>
         <p className={styles.status} role="status" data-done={proposal.status === "applied" && !undone}>{status}</p>
         <h3>{proposal.snapshot.title}</h3>
         <ul>{proposal.snapshot.lines.map((line, index) => <Change key={index} line={line} />)}</ul>
-        <p className={styles.note}>{undone ? "Se restauraron los valores anteriores." : proposal.applied_by_nexo && proposal.status === "applied" ? "Lo aplicó NEXO porque activaste esta autonomía. Puedes deshacerlo durante 7 días si nadie lo cambió después."
-          : proposal.status === "applied" ? "Listo en tu catálogo. NEXO ya lo usa en WhatsApp." : "Nada cambia hasta que confirmes. Si alguien modifica estos productos antes, no se aplicará."}</p>
+        <p className={styles.note}>{undone ? "Se restauraron los valores anteriores." : proposal.applied_by_nexo && proposal.status === "applied" ? "Lo aplicó Zorax porque activaste esta autonomía. Puedes deshacerlo durante 7 días si nadie lo cambió después."
+          : proposal.status === "applied" ? "Listo en tu catálogo. Zorax ya lo usa en WhatsApp." : "Nada cambia hasta que confirmes. Si alguien modifica estos productos antes, no se aplicará."}</p>
         {pending && <><small className={styles.expiry}>Vence en {Math.max(1, Math.ceil((Date.parse(proposal.expires_at) - state.now) / 60000))} min</small><div className={styles.actions}>
           <button type="button" className={styles.confirm} disabled={!!state.busy || !state.verified} onClick={() => { onDecision(); void state.decide(proposal.id, "confirm"); }}>Confirmar cambio</button>
           <button type="button" disabled={!!state.busy || !state.verified} onClick={() => { onDecision(); void state.decide(proposal.id, "cancel"); }}>Cancelar</button>

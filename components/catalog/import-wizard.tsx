@@ -104,7 +104,7 @@ export function ImportWizard({ onClose }: { onClose: () => void }) {
 
       {step === "source" && (
         <div className="space-y-5">
-          <p className="text-[13px] leading-6 text-ink-soft">Sube un Excel, CSV, PDF o fotos de tus productos. NEXO los lee y te propone la lista de productos para que la revises. <strong className="font-medium text-ink">Nada se guarda hasta que confirmes.</strong></p>
+          <p className="text-[13px] leading-6 text-ink-soft">Sube un Excel, CSV, PDF o fotos de tus productos. Zorax los lee y te propone la lista de productos para que la revises. <strong className="font-medium text-ink">Nada se guarda hasta que confirmes.</strong></p>
           <div className="inline-flex max-w-full overflow-x-auto rounded-md border border-line bg-surface p-0.5" role="tablist">
             {([["file", FileUp, "Archivo"], ["photos", Camera, "Fotos"], ["text", ClipboardPaste, "Pegar texto"]] as const).map(([id, Icon, label]) => (
               <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)}
@@ -151,7 +151,7 @@ export function ImportWizard({ onClose }: { onClose: () => void }) {
       {(step === "reading" || step === "saving") && (
         <div className="flex flex-col items-center gap-3 py-20 text-center">
           <Loader2 className="size-6 animate-spin text-muted" />
-          <p className="text-[13px] font-medium text-ink">{step === "reading" ? "NEXO está leyendo tu catálogo…" : "Guardando productos…"}</p>
+          <p className="text-[13px] font-medium text-ink">{step === "reading" ? "Zorax está leyendo tu catálogo…" : "Guardando productos…"}</p>
           <p className="text-xs text-muted">{step === "reading" ? "Puede tardar hasta un minuto en archivos grandes." : "Subiendo fotos e importando."}</p>
         </div>
       )}
@@ -210,7 +210,7 @@ export function ImportWizard({ onClose }: { onClose: () => void }) {
               {summary.results.filter(r => r.status === "skipped").slice(0, 20).map(r => <li key={r.index}>• {selected[r.index]?.name ?? `Producto ${r.index + 1}`}: {REASONS[r.reason ?? ""] ?? "no se pudo importar"}</li>)}
             </ul>
           )}
-          <p className="text-xs text-muted">NEXO ya puede ofrecer estos productos por WhatsApp. Revisa el stock antes de activarlo con clientes.</p>
+          <p className="text-xs text-muted">Zorax ya puede ofrecer estos productos por WhatsApp. Revisa el stock antes de activarlo con clientes.</p>
         </div>
       )}
     </Sheet>

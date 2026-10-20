@@ -1,8 +1,8 @@
-# Cupos de NEXO y consumo de WhatsApp
+# Cupos de Zorax y consumo de WhatsApp
 
-## NEXO: mensajes con recuperación por horas
+## Zorax: mensajes con recuperación por horas
 
-Desde `20261010131118_nexo_rolling_messages.sql`, NEXO web y escritorio usan una
+Desde `20261010131118_nexo_rolling_messages.sql`, Zorax web y escritorio usan una
 ventana móvil de **3 horas**: prueba 15 mensajes, Esencial 40, Crecimiento 100 y
 Equipo 200. Cada mensaje recupera su espacio 3 horas después de iniciarse; no se
 reinicia todo el cupo a una hora fija. Se comparte entre miembros y sesiones de
@@ -10,7 +10,7 @@ un mismo negocio. Cuentas sin negocio tienen su propio cupo de prueba; la demo
 pública comparte 20 mensajes entre todos los visitantes.
 
 Un turno completado consume **un mensaje**, aunque consulte varios especialistas
-o herramientas. No se cobra por tokens al usuario de NEXO. Guardar una preferencia
+o herramientas. No se cobra por tokens al usuario de Zorax. Guardar una preferencia
 sin modelo no consume mensajes. Fallos y cancelaciones devuelven el espacio;
 reservas abandonadas caducan tras 2 minutos. La respuesta fallida puede haber
 consumido recursos del proveedor: su registro técnico se conserva.
@@ -30,7 +30,7 @@ Los límites viven en `nexo_message_limits`; `NEXO_MESSAGE_LIMITS` documenta los
 valores comerciales. Cambiar ambos y los textos de `lib/plans.ts` conjuntamente.
 No se modifican precios ni suscripciones existentes. Las barras muestran el
 porcentaje y mensajes disponibles, el negocio y la próxima recuperación en hora
-de Colombia. Un cupo vacío pausa NEXO, pero no impide usar el CRM manualmente.
+de Colombia. Un cupo vacío pausa Zorax, pero no impide usar el CRM manualmente.
 
 `nexo_model_requests` registra cada llamada y su consumo real por separado, con
 liquidación idempotente. Una llamada necesita una reserva de mensaje activa y
@@ -40,7 +40,7 @@ Una respuesta aceptada sin consumo confirmado permanece pendiente para revisión
 sin inventar valores ni liberar costes desconocidos. El historial reenviado se
 limita a 8 pares completos / 12 KB, excluyendo intentos fallidos.
 
-Los turnos nuevos de NEXO no consumen ni quedan bloqueados por el saldo mensual de
+Los turnos nuevos de Zorax no consumen ni quedan bloqueados por el saldo mensual de
 WhatsApp. El historial de consumo anterior permanece intacto; no se convierte en
 mensajes ni se reescriben consumos ya registrados. ElevenLabs, transcripción y
 Meta tienen controles separados y este cambio no amplía sus planes.

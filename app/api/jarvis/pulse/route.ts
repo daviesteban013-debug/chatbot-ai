@@ -6,7 +6,7 @@ import { pulseSchema } from "@/lib/proactive";
 export const dynamic = "force-dynamic";
 const json = (data: unknown, status = 200) => NextResponse.json(data, { status, headers: { "Cache-Control": "private, no-store" } });
 
-/** What is happening in the business now, for NEXO's proactive alerts. No model, no credits. */
+/** What is happening in the business now, for Zorax's proactive alerts. No model, no credits. */
 export async function GET() {
   const [user, tenant] = await Promise.all([getCurrentUser(), getCurrentTenant()]);
   if (!user || user.is_anonymous || !tenant) return json({ error: "Inicia sesión con tu negocio." }, 401);

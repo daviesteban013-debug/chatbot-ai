@@ -40,7 +40,7 @@ async function order(chat, { total = 100000, status = "pending_payment", payment
 }
 const metrics = (days = 7, user = viewer) => db.query("select nexo_sales_metrics($1,$2,$3) as v", [tenant, user, days]).then(r => r.rows[0].v);
 
-test("results count what NEXO sold, collected and recovered, compared with the previous period", async () => {
+test("results count what Zorax sold, collected and recovered, compared with the previous period", async () => {
   const a = await conversation(), b = await conversation(), c = await conversation(), d = await conversation();
   await order(a, { total: 200000, payment: "paid" });
   const recoveredOrder = await order(b, { total: 100000, payment: "paid", item: "Gorra" });

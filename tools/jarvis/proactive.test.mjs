@@ -36,7 +36,7 @@ test("only the chosen kinds are shown, and three or more of a kind become one al
   const sales = [1, 2, 3].map(n => ({ key: `sale:${n}`, kind: "sale", text: "x", action: "Ver pedido", href: "/dashboard/orders/x", at: "", amount: 100000 }));
   const selected = selectAlerts([...sales, { key: "stock:1", kind: "stock", text: "Se agotó Gorra", action: "", href: "/dashboard/catalog", at: "" }], on);
   assert.equal(selected.length, 2);
-  assert.equal(selected[0].text, "NEXO vendió 3 pedidos por $ 300.000");
+  assert.equal(selected[0].text, "Zorax vendió 3 pedidos por $ 300.000");
   assert.equal(selectAlerts(sales, { ...on, kinds: { ...on.kinds, sale: false } }).length, 0);
 });
 
@@ -77,7 +77,7 @@ test("evening and weekly summaries state facts without inventing activity", () =
   const evening = buildEvening({ date: "2026-10-14", today: window(4, 600000, { paidOrders: 2, collected: 300000 }), yesterday: window(), dayBefore: window(),
     unpaid: { count: 2, total: 300000, oldest: null }, pendingApproval: 0, handoffs: { count: 1, oldest: null, customer: "Ana" }, lowStock: { count: 0, outOfStock: 0, items: [] }, tasksDue: 0 });
   assert.deepEqual(evening.items.map(item => item.id), ["today", "collected", "unpaid", "handoffs"]);
-  assert.match(evening.headline, /^Hoy vendiste \$\s?600\.000 en 4 pedidos\. NEXO cerró todos\./);
+  assert.match(evening.headline, /^Hoy vendiste \$\s?600\.000 en 4 pedidos\. Zorax cerró todos\./);
   const weekly = buildWeekly({ days: 7, since: "", current: window(10, 2000000, { collected: 1500000 }), previous: window(8, 1600000), daily: [], topProducts: [{ name: "Tenis Urban", qty: 6, sales: 1134000 }] });
   assert.match(weekly.items[0].text, /^Esta semana vendiste \$\s?2\.000\.000 en 10 pedidos \(25% más que la anterior\)\.$/);
   assert.equal(weekly.items.at(-1).text, "Lo más vendido: Tenis Urban (6 u).");

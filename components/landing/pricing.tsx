@@ -11,13 +11,13 @@ export function Pricing() {
   const [selected, setSelected] = useState<Plan | null>(null);
   return (
     <section id="precios" className="landing-section" aria-labelledby="pricing-title">
-      <div className="flex flex-wrap items-end justify-between gap-7"><div><p className="landing-eyebrow">Un asistente. Un siguiente nivel.</p><h2 id="pricing-title" className="landing-title">Elige cómo quieres crecer.</h2><p className="landing-copy">Empieza explorando Nexo gratis. Conoce la propuesta para tu negocio antes de contratar.</p></div>
+      <div className="flex flex-wrap items-end justify-between gap-7"><div><p className="landing-eyebrow">Un asistente. Un siguiente nivel.</p><h2 id="pricing-title" className="landing-title">Elige cómo quieres crecer.</h2><p className="landing-copy">Empieza explorando Zorax gratis. Conoce la propuesta para tu negocio antes de contratar.</p></div>
         <div className="flex rounded-xl border border-white/10 bg-zinc-900 p-1" role="group" aria-label="Periodo de facturación">
           <button type="button" aria-pressed={!annual} onClick={() => setAnnual(false)} className={`rounded-lg px-4 py-2.5 text-xs font-medium ${!annual ? "bg-zinc-700 text-white" : "text-zinc-400"}`}>Mensual</button>
           <button type="button" aria-pressed={annual} onClick={() => setAnnual(true)} className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-xs font-medium ${annual ? "bg-zinc-700 text-white" : "text-zinc-400"}`}>Anual <span className="text-[10px] text-yellow-300">−20%</span></button>
         </div>
       </div>
-      <p className="mt-6 text-xs leading-relaxed text-zinc-500">NEXO recupera un mensaje 3 horas después de usarlo; las llamadas internas no gastan mensajes adicionales. El cupo se comparte entre los miembros de cada negocio. WhatsApp tiene créditos mensuales separados, incluso con pago anual. Consulta ambas barras desde tu panel. Precios en pesos colombianos; paga con suscripción automática o por periodo con tarjeta, PSE o Efecty a través de Mercado Pago. Cargos de Meta no incluidos.</p>
+      <p className="mt-6 text-xs leading-relaxed text-zinc-500">Zorax recupera un mensaje 3 horas después de usarlo; las llamadas internas no gastan mensajes adicionales. El cupo se comparte entre los miembros de cada negocio. WhatsApp tiene créditos mensuales separados, incluso con pago anual. Consulta ambas barras desde tu panel. Precios en pesos colombianos; paga con suscripción automática o por periodo con tarjeta, PSE o Efecty a través de Mercado Pago. Cargos de Meta no incluidos.</p>
       <div className="mt-8 grid gap-5 lg:grid-cols-3">{plans.map((plan) => {
         const monthly = annual ? plan.price * 0.8 : plan.price;
         return <article key={plan.name} className={`cyber-card relative flex flex-col overflow-hidden rounded-3xl border p-6 backdrop-blur-xl sm:p-8 ${plan.featured ? "border-yellow-300/60 bg-[linear-gradient(160deg,#facc1518,#18181b_60%)] shadow-[0_0_70px_rgba(250,204,21,0.16)] ring-1 ring-yellow-400/30" : "border-white/10 bg-zinc-900/40"}`}>

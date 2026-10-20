@@ -4,7 +4,7 @@ import { catalogProposalSchema, type CatalogProposal } from "@/lib/catalog-propo
 import type { ChatMessage } from "@/types/jarvis";
 import { ACTIVITY_EVENT } from "@/hooks/useNexoActivity";
 
-/** Catalog changes prepared by NEXO in this conversation; state always comes from the database. */
+/** Catalog changes prepared by Zorax in this conversation; state always comes from the database. */
 export function useCatalogProposals(sessionId: string, messages: ChatMessage[], enabled: boolean) {
   const [proposals, setProposals] = useState<CatalogProposal[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
@@ -60,7 +60,7 @@ export function useCatalogProposals(sessionId: string, messages: ChatMessage[], 
       }
     } finally { lock.current = false; setBusy(null); }
   };
-  /** Undo a change NEXO applied on its own; the database refuses if someone changed it since. */
+  /** Undo a change Zorax applied on its own; the database refuses if someone changed it since. */
   const undo = async (id: string, logId: string) => {
     if (lock.current) return;
     lock.current = true; setBusy(id); setError(null);

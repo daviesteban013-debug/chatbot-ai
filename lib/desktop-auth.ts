@@ -29,16 +29,16 @@ li b{flex-shrink:0;display:grid;place-items:center;width:22px;height:22px;border
 export function desktopAuthResponse(code: string | null): Response {
   if (!code || !/^[\w-]{16,256}$/.test(code)) return Response.json({ error: "Código de acceso no válido." }, { status: 400 });
   const link = `nexo-desktop://auth?code=${encodeURIComponent(code)}`;
-  const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><meta http-equiv="refresh" content="1;url=${link}"><title>Volver a NEXO</title><style>${STYLE}</style></head><body>
+  const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><meta http-equiv="refresh" content="1;url=${link}"><title>Volver a Zorax</title><style>${STYLE}</style></head><body>
 <main class="card">
-  <div class="brand">${MARK}NEXO</div>
+  <div class="brand">${MARK}Zorax</div>
   <span class="eyebrow">ACCESO DESDE TU COMPUTADORA</span>
   <h1>Tu cuenta está lista.</h1>
-  <p>Solo falta volver a la app de NEXO para terminar de entrar. Debería abrirse sola; si no, usa el botón.</p>
-  <a class="button" href="${link}">Abrir NEXO en mi computadora</a>
+  <p>Solo falta volver a la app de Zorax para terminar de entrar. Debería abrirse sola; si no, usa el botón.</p>
+  <a class="button" href="${link}">Abrir Zorax en mi computadora</a>
   <ol>
-    <li><b>1</b><span>Si el navegador pregunta si quieres abrir NEXO, acepta.</span></li>
-    <li><b>2</b><span>NEXO termina de iniciar sesión y abre tu CRM.</span></li>
+    <li><b>1</b><span>Si el navegador pregunta si quieres abrir Zorax, acepta.</span></li>
+    <li><b>2</b><span>Zorax termina de iniciar sesión y abre tu CRM.</span></li>
     <li><b>3</b><span>Puedes cerrar esta pestaña.</span></li>
   </ol>
   <p class="note">Este acceso caduca en cinco minutos. Si venció, vuelve a la app y entra de nuevo. ¿Aún no tienes la app? <a href="/">Descárgala para Windows o Mac</a>.</p>

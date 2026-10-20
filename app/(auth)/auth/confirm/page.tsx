@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { ConfirmForm } from "./confirm-form";
 
-export const metadata: Metadata = { title: "Confirma tu correo — NEXO", robots: { index: false, follow: false }, referrer: "no-referrer" };
+export const metadata: Metadata = { title: "Confirma tu correo — Zorax", robots: { index: false, follow: false }, referrer: "no-referrer" };
 
 export default async function ConfirmPage({ searchParams }: { searchParams: Promise<{ token_hash?: string; type?: string }> }) {
   const params = await searchParams;

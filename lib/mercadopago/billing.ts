@@ -50,7 +50,7 @@ export async function createCheckout(input: { tenantId: string; userId: string; 
   if (!claim.id || !UUID.test(claim.id)) throw new BillingError(503, "No se pudo reservar el pago.");
 
   const origin = billingOrigin();
-  const title = `NEXO · Plan ${input.plan.name} (${input.annual ? "anual" : "mensual"})`;
+  const title = `Zorax · Plan ${input.plan.name} (${input.annual ? "anual" : "mensual"})`;
   let ref: string, url: string | null;
   if (input.kind === "subscription") {
     const preapproval = await mercadoPago<Preapproval>("/preapproval", {
@@ -73,7 +73,7 @@ export async function createCheckout(input: { tenantId: string; userId: string; 
           pending: `${origin}/dashboard/billing?checkout=return`,
           failure: `${origin}/dashboard/billing?checkout=canceled`,
         },
-        auto_return: "approved", statement_descriptor: "NEXO",
+        auto_return: "approved", statement_descriptor: "Zorax",
         expires: true, expiration_date_to: claim.expiresAt, date_of_expiration: claim.expiresAt,
       },
     });
@@ -85,7 +85,7 @@ export async function createCheckout(input: { tenantId: string; userId: string; 
   return { ok: true, url };
 }
 
-/** Resolves the NEXO checkout from the external reference, or from the subscription id. */
+/** Resolves the Zorax checkout from the external reference, or from the subscription id. */
 async function checkoutFor(reference: string | null | undefined, preapprovalId?: string) {
   const admin = createAdminClient();
   let query = admin.from("billing_checkouts").select("id,tenant_id,kind");

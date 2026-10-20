@@ -66,7 +66,7 @@ export function ResetForm({ email, tokenHash }: { email: string | null; tokenHas
   return <div>
     <span className={styles.eyebrow}>RECUPERAR ACCESO</span>
     <h1 className={styles.heading}>Crea tu contraseña nueva.</h1>
-    <p className={styles.description}>Para <span className={styles.email}>{email}</span>. Después entrarás directo a NEXO.</p>
+    <p className={styles.description}>Para <span className={styles.email}>{email}</span>. Después entrarás directo a Zorax.</p>
     <form onSubmit={save} noValidate className={styles.form}>
       <AuthField id="password" name="password" label="Contraseña nueva" type="password" autoComplete="new-password" placeholder="Mínimo 8 caracteres" value={values.password} onChange={event => setValues(previous => ({ ...previous, password: event.target.value }))} error={fieldErrors.password} disabled={loading} autoFocus />
       <AuthField id="confirmPassword" name="confirmPassword" label="Confirmar contraseña" type="password" autoComplete="new-password" placeholder="Repite tu contraseña" value={values.confirmPassword} onChange={event => setValues(previous => ({ ...previous, confirmPassword: event.target.value }))} error={fieldErrors.confirmPassword} disabled={loading} />

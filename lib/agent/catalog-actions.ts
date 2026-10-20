@@ -12,20 +12,20 @@ const ERRORS: Record<string, string> = {
   CATALOG_LIMIT: "Hay demasiadas propuestas pendientes en esta conversación. Confirma o cancela algunas primero.",
 };
 
-/** Low-risk catalog changes the owner allowed NEXO to apply on its own. */
+/** Low-risk catalog changes the owner allowed Zorax to apply on its own. */
 export type CatalogAutonomy = { catalog_stock: boolean; catalog_availability: boolean };
 
 const CONFIRM_ONLY = "NO aplica nada: exige pulsar Confirmar en la tarjeta. Nunca digas que el cambio ya está hecho.";
 function applyRule(autonomy?: CatalogAutonomy) {
   const auto = [autonomy?.catalog_stock && "stock", autonomy?.catalog_availability && "disponibilidad"].filter(Boolean);
   if (!auto.length) return CONFIRM_ONLY;
-  return `El dueño autorizó a NEXO a aplicar solo los cambios de ${auto.join(" y ")}: si el resultado trae applied_automatically=true ya quedó aplicado y se puede deshacer. Precios, productos nuevos y lo demás exigen pulsar Confirmar en la tarjeta; sin applied_automatically=true nunca digas que el cambio ya está hecho.`;
+  return `El dueño autorizó a Zorax a aplicar solo los cambios de ${auto.join(" y ")}: si el resultado trae applied_automatically=true ya quedó aplicado y se puede deshacer. Precios, productos nuevos y lo demás exigen pulsar Confirmar en la tarjeta; sin applied_automatically=true nunca digas que el cambio ya está hecho.`;
 }
 
 /**
- * NEXO prepares catalog changes (stock, prices, availability, new products) as proposals.
+ * Zorax prepares catalog changes (stock, prices, availability, new products) as proposals.
  * Nothing changes until the user presses Confirm on the card, except low-risk changes the
- * owner allowed NEXO to apply alone (decided in the database, logged and undoable).
+ * owner allowed Zorax to apply alone (decided in the database, logged and undoable).
  */
 export function createCatalogPreparation(ctx: WebToolContext & { userId?: string | null; sessionId: string; files: AttachedFile[]; autonomy?: CatalogAutonomy }) {
   const proposals: CatalogProposal[] = [];
@@ -77,7 +77,7 @@ export function createCatalogPreparation(ctx: WebToolContext & { userId?: string
       const row: CatalogProposal = auto ? { ...proposal.data, activity: { id: logId!, status: "applied", undoable: true } } : proposal.data;
       if (!proposals.some(item => item.id === row.id)) proposals.push(row);
       if (auto) return { ok: true, data: { proposal: row, applied_automatically: true, catalog_changed: true, requires_click_confirmation: false, undo_available: true,
-        note: "Aplicado por NEXO con la autonomía que activó el dueño. Se puede deshacer desde la tarjeta o en «Lo que hizo NEXO»." } };
+        note: "Aplicado por Zorax con la autonomía que activó el dueño. Se puede deshacer desde la tarjeta o en «Lo que hizo Zorax»." } };
       return { ok: true, data: { proposal: row, requires_click_confirmation: true, catalog_changed: false } };
     } catch {
       ctx.signal?.throwIfAborted();

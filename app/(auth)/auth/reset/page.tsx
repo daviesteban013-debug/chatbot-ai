@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { ResetForm } from "./reset-form";
 
-export const metadata: Metadata = { title: "Nueva contraseña · NEXO", robots: { index: false, follow: false }, referrer: "no-referrer" };
+export const metadata: Metadata = { title: "Nueva contraseña · Zorax", robots: { index: false, follow: false }, referrer: "no-referrer" };
 
 /** Reached from the recovery email: with a session (same browser) or a token to verify (any device). */
 export default async function ResetPage({ searchParams }: { searchParams: Promise<{ token_hash?: string; type?: string }> }) {

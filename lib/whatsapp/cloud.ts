@@ -63,8 +63,8 @@ export async function activateCloudPhone(wabaId: string, phoneId: string, token:
 export const cloudErrorMessage = (error: unknown): string => {
   const messages: Record<string,string> = {
     TOKEN_INVALID:"Meta rechazó el token o ya caducó. Genera uno válido en tu aplicación.",
-    TOKEN_WRONG_APP:"El token no es válido o pertenece a otra aplicación de Meta. Usa la app configurada para NEXO.",
-    APP_NOT_CONFIGURED:"Falta configurar la aplicación de Meta en el servidor de NEXO.",
+    TOKEN_WRONG_APP:"El token no es válido o pertenece a otra aplicación de Meta. Usa la app configurada para Zorax.",
+    APP_NOT_CONFIGURED:"Falta configurar la aplicación de Meta en el servidor de Zorax.",
     META_UNAVAILABLE:"Meta no respondió. Inténtalo de nuevo en un momento.",
     META_RATE_LIMITED:"Meta está limitando las consultas. Espera antes de reintentar.",
     META_PERMISSION_OR_ASSET:"Revisa los IDs y los permisos whatsapp_business_management y whatsapp_business_messaging del token.",

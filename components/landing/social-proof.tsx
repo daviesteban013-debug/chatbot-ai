@@ -18,7 +18,7 @@ function Counter({ value, suffix }: { value: number; suffix: string }) {
 
 export function SocialProof() {
   return (
-    <section aria-label="Nexo en números: escenario ilustrativo" className="border-y border-white/8 bg-white/[0.015]">
+    <section aria-label="Zorax en números: escenario ilustrativo" className="border-y border-white/8 bg-white/[0.015]">
       <div className="mx-auto grid max-w-6xl gap-8 px-5 py-10 md:grid-cols-[1.3fr_2fr] md:items-center md:px-8">
         <div><p className="text-sm font-medium text-zinc-200">Menos chats pendientes.<br />Más ventas cerradas.</p><p className="mt-3 max-w-xs text-[11px] leading-relaxed text-zinc-500">Escenario ilustrativo, no métricas de clientes ni resultados garantizados.</p></div>
         <div className="grid grid-cols-3 gap-4">

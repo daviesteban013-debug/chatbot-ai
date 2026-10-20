@@ -2,7 +2,7 @@ import { z } from "zod";
 import { jarvisAccents, jarvisTones } from "./jarvis";
 
 /**
- * The welcome portal: the first thing a new account sees. NEXO introduces itself and asks,
+ * The welcome portal: the first thing a new account sees. Zorax introduces itself and asks,
  * scene by scene, how it should be called, who it is talking to, what the store sells and
  * how it should behave and look. Pure data and rules here; the screen lives in the app.
  */
@@ -14,10 +14,10 @@ export type PortalAnswers = {
 };
 export type PortalScene = {
   key: PortalKey; kind: PortalKind; title: string;
-  /** What NEXO says; {agent}, {you} and {store} are filled with earlier answers. */
+  /** What Zorax says; {agent}, {you} and {store} are filled with earlier answers. */
   say: string; hint?: string; placeholder?: string; chips?: string[]; amounts?: number[]; skipLabel?: string;
   slider?: { min: number; max: number; step: number };
-  /** What NEXO replies right after the answer (same placeholders plus {answer}). */
+  /** What Zorax replies right after the answer (same placeholders plus {answer}). */
   after: string;
 };
 
@@ -30,7 +30,7 @@ export const TONE_PREVIEWS: Record<string, string> = {
   directo: "Quedan 2 en talla 40. ¿Te aparto uno?",
 };
 export const ACCENT_NAMES: Record<string, string> = { "#facc15": "Ámbar", "#34d399": "Menta", "#38bdf8": "Cielo", "#22d3ee": "Cian", "#f472b6": "Rosa", "#a78bfa": "Violeta", "#fb7185": "Coral" };
-export const AGENT_NAME_IDEAS = ["NEXO", "Lía", "Max", "Sol", "Vale", "Nova"];
+export const AGENT_NAME_IDEAS = ["Zorax", "Lía", "Max", "Sol", "Vale", "Nova"];
 
 export const PORTAL_SCENES: PortalScene[] = [
   { key: "agentName", kind: "text", title: "Mi nombre", say: "Hola. Soy tu agente de ventas: voy a vivir en tu tienda, atender a tus clientes por WhatsApp y cuidar tu CRM. Antes de empezar, ¿cómo quieres llamarme?",
@@ -55,14 +55,14 @@ export const portalDefaults: PortalAnswers = {
   tone: "cercano", accent: "#facc15", voice: true, maxDiscountPct: 10, autoConfirmMaxTotal: 0, rules: "",
 };
 
-/** Fills {agent}, {you}, {store} and {answer} in what NEXO says. */
+/** Fills {agent}, {you}, {store} and {answer} in what Zorax says. */
 export function fillLine(line: string, answers: Partial<PortalAnswers>, answer?: string): string {
-  return line.replace(/\{agent\}/g, answers.agentName?.trim() || "NEXO").replace(/\{you\}/g, answers.displayName?.trim() || "")
+  return line.replace(/\{agent\}/g, answers.agentName?.trim() || "Zorax").replace(/\{you\}/g, answers.displayName?.trim() || "")
     .replace(/\{store\}/g, answers.businessName?.trim() || "tu tienda").replace(/\{answer\}/g, answer ?? "").replace(/\s{2,}/g, " ").trim();
 }
 
 const money = (value: number) => `$${value.toLocaleString("es-CO")}`;
-/** The answer as NEXO repeats it in the transmission log. */
+/** The answer as Zorax repeats it in the transmission log. */
 export function describeAnswer(key: PortalKey, value: string | number | boolean): string {
   switch (key) {
     case "tone": return TONE_LABELS[String(value)] ?? String(value);
@@ -74,7 +74,7 @@ export function describeAnswer(key: PortalKey, value: string | number | boolean)
     default: return String(value);
   }
 }
-/** What NEXO answers right after each scene. */
+/** What Zorax answers right after each scene. */
 export function afterLine(scene: PortalScene, answers: Partial<PortalAnswers>, value: string | number | boolean): string {
   const answer = describeAnswer(scene.key, value);
   if (scene.key === "voice") return value ? "Perfecto. Me vas a oír cuando me actives." : "Entendido. Trabajaré en silencio.";
@@ -101,7 +101,7 @@ export const portalSubmission = z.object({
 }).strict();
 export type PortalSubmission = z.infer<typeof portalSubmission>;
 
-/** Validates one answer before NEXO accepts it; null means it is fine. */
+/** Validates one answer before Zorax accepts it; null means it is fine. */
 export function validateAnswer(scene: PortalScene, value: string | number | boolean): string | null {
   const shape = portalSubmission.shape[scene.key];
   const result = shape.safeParse(typeof value === "string" ? value.trim() : value);
@@ -116,7 +116,7 @@ export function validateAnswer(scene: PortalScene, value: string | number | bool
   }
 }
 
-/** Typing speed for NEXO's lines: quick, with a short pause per sentence. */
+/** Typing speed for Zorax's lines: quick, with a short pause per sentence. */
 export function typingSchedule(line: string, charMs = 18, sentencePauseMs = 220): number[] {
   const delays: number[] = [];
   let at = 0;
@@ -124,7 +124,7 @@ export function typingSchedule(line: string, charMs = 18, sentencePauseMs = 220)
   return delays;
 }
 
-/** The summary NEXO shows before entering the CRM. */
+/** The summary Zorax shows before entering the CRM. */
 export function portalSummary(answers: PortalSubmission): { label: string; value: string }[] {
   return [
     { label: "Agente", value: answers.agentName }, { label: "Te llamo", value: answers.displayName }, { label: "Tienda", value: `${answers.businessName} · ${answers.businessType}` },

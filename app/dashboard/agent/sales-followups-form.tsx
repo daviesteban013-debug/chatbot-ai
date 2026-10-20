@@ -24,7 +24,7 @@ export function SalesFollowupsForm({ initial, canEdit, loadFailed = false }: {
     <section id="seguimiento-pagos" className="scroll-mt-6 rounded-lg border border-line bg-surface">
       <div className="border-b border-line px-4 py-3 sm:px-5">
         <h2 className="text-[13px] font-semibold text-ink">Seguimiento de pagos pendientes</h2>
-        <p className="mt-0.5 text-xs text-muted">NEXO recuerda por WhatsApp el pago de un pedido confirmado. Apagado por defecto.</p>
+        <p className="mt-0.5 text-xs text-muted">Zorax recuerda por WhatsApp el pago de un pedido confirmado. Apagado por defecto.</p>
       </div>
       {loadFailed ? <p role="alert" className="mx-4 mt-4 rounded-md border border-rose-200 bg-rose-50 p-3 text-xs leading-5 text-rose-800 sm:mx-5">No se pudo cargar la configuración. Actualiza esta página para reintentarlo; no se han cambiado tus seguimientos.</p> : null}
       <form className="space-y-4 px-4 py-4 sm:px-5" onSubmit={event => {

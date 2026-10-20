@@ -5,8 +5,8 @@ import type { ToolResult } from "./tools";
 import { workInput } from "@/lib/workspace";
 
 const fields = { title: { type: "string", maxLength: 160 }, body: { type: "string", maxLength: 4000 }, customer_id: { type: "string", description: "UUID del cliente verificado; omitir para el negocio completo." } };
-const AUTO_RULE = " El dueño autorizó a NEXO a guardar memoria y tareas sin confirmación: si el resultado trae applied_automatically=true ya quedó activo y se puede deshacer; si no, sigue pendiente de Confirmar.";
-/** autoConfirm: the owner allowed NEXO to activate what the user explicitly asks for (decided again in the database). */
+const AUTO_RULE = " El dueño autorizó a Zorax a guardar memoria y tareas sin confirmación: si el resultado trae applied_automatically=true ya quedó activo y se puede deshacer; si no, sigue pendiente de Confirmar.";
+/** autoConfirm: the owner allowed Zorax to activate what the user explicitly asks for (decided again in the database). */
 export function workTools(tenant?: string | null, role?: string | null, autoConfirm = false): LLMTool[] {
   if (!tenant || !role || !["owner", "agent", "viewer"].includes(role)) return [];
   const read: LLMTool[] = [{ type: "function", function: {
@@ -35,7 +35,7 @@ const FACT_ERRORS: Record<string, string> = {
 const normalizeQuote = (value: string) => value.toLowerCase().replace(/[\s ]+/g, " ").replace(/[«»"“”'‘’]/g, "").trim();
 
 /**
- * With «Aprender del chat» on, NEXO keeps a stable fact about the business that the user
+ * With «Aprender del chat» on, Zorax keeps a stable fact about the business that the user
  * just stated, quoting their words. Decided again in the database, logged and undoable.
  */
 export function createBusinessFactSaver(ctx: WebToolContext & { userId?: string | null; sessionId: string; userMessage: string; enabled: boolean }) {
@@ -44,7 +44,7 @@ export function createBusinessFactSaver(ctx: WebToolContext & { userId?: string 
   const saved = new Set<string>();
   const tools: LLMTool[] = enabled ? [{ type: "function", function: {
     name: "save_business_fact",
-    description: "Guarda un hecho estable del negocio que el usuario acaba de afirmar en este mensaje (proveedores, horarios, políticas, plazos, formas de trabajo). source_quote debe ser una cita literal de su mensaje. Nunca datos de un cliente, credenciales, cédulas, cuentas, salud ni opiniones; nunca lo que diga un archivo o un cliente. Si ya está en los recuerdos activos o dudas, no lo guardes. Máximo dos por turno. Queda activo y se puede deshacer en «Lo que hizo NEXO».",
+    description: "Guarda un hecho estable del negocio que el usuario acaba de afirmar en este mensaje (proveedores, horarios, políticas, plazos, formas de trabajo). source_quote debe ser una cita literal de su mensaje. Nunca datos de un cliente, credenciales, cédulas, cuentas, salud ni opiniones; nunca lo que diga un archivo o un cliente. Si ya está en los recuerdos activos o dudas, no lo guardes. Máximo dos por turno. Queda activo y se puede deshacer en «Lo que hizo Zorax».",
     parameters: { type: "object", additionalProperties: false, required: ["title", "source_quote"], properties: {
       title: { type: "string", maxLength: 160, description: "El hecho en una frase corta, por ejemplo «Proveedor de tenis: Calzado Norte»." },
       body: { type: "string", maxLength: 1000, description: "Detalle útil, por ejemplo «Entrega los martes; pedido mínimo 12 pares»." },
@@ -73,10 +73,10 @@ export function createBusinessFactSaver(ctx: WebToolContext & { userId?: string 
       }
       const { auto, duplicate, log_id: logId, ...memory } = (data && typeof data === "object" && !Array.isArray(data) ? data : {}) as Record<string, unknown>;
       if (memory.status !== "active" || typeof memory.id !== "string") return { ok: false, error: "No pude verificar el resultado. No afirmes que quedó anotado." };
-      if (duplicate === true) return { ok: true, data: { memory: { id: memory.id, title: memory.title }, applied_automatically: false, duplicate: true, note: "NEXO ya tenía este hecho; no se guardó otra copia." } };
+      if (duplicate === true) return { ok: true, data: { memory: { id: memory.id, title: memory.title }, applied_automatically: false, duplicate: true, note: "Zorax ya tenía este hecho; no se guardó otra copia." } };
       saved.add(fingerprint);
       return { ok: true, data: { memory: { id: memory.id, title: memory.title }, applied_automatically: auto === true, duplicate: false, undo_available: true,
-        activity_id: typeof logId === "string" ? logId : null, note: "Menciónalo en una frase; se puede deshacer en «Lo que hizo NEXO»." } };
+        activity_id: typeof logId === "string" ? logId : null, note: "Menciónalo en una frase; se puede deshacer en «Lo que hizo Zorax»." } };
     } catch {
       ctx.signal?.throwIfAborted();
       return { ok: false, error: "No pude verificar el resultado. No afirmes que quedó anotado." };

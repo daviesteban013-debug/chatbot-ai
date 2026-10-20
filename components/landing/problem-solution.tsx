@@ -21,10 +21,10 @@ export function ProblemSolution() {
           <div className="scanner-line opacity-30" />
           <p className="mb-8 flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-yellow-300">
             <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
-            {"// Con Nexo de tu lado"}
+            {"// Con Zorax de tu lado"}
           </p>
           <div className="space-y-7">{[
-            ["Una respuesta, sin hacer esperar.", "Nexo atiende las preguntas de tus compradores con la información de tu catálogo."],
+            ["Una respuesta, sin hacer esperar.", "Zorax atiende las preguntas de tus compradores con la información de tu catálogo."],
             ["Cada intención tiene un siguiente paso.", "Consulta stock, cotiza el envío y deja el pedido listo para pagar en el mismo chat."],
             ["Automatiza lo repetitivo. Conserva el control.", "Tu equipo interviene cuando hace falta. Tú te enfocas en atender y crecer."],
           ].map(([title, copy]) => <div key={title} className="flex gap-4"><span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-yellow-300/10 border border-yellow-300/20"><Check className="size-3.5 text-yellow-300" /></span><div><h3 className="text-sm font-medium text-white">{title}</h3><p className="mt-2 text-sm leading-relaxed text-zinc-400">{copy}</p></div></div>)}</div>

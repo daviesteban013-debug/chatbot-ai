@@ -7,7 +7,7 @@ const portal = await import(await moduleUrl("lib/onboarding-portal.ts"));
 const { PORTAL_SCENES, PORTAL_TOTAL, fillLine, afterLine, describeAnswer, validateAnswer, typingSchedule, portalSubmission, portalSummary, portalDefaults } = portal;
 const complete = { agentName: "Lía", displayName: "David", businessName: "Bellísima", businessType: "Belleza", city: "Medellín", tone: "divertido", accent: "#22d3ee", voice: true, maxDiscountPct: 10, autoConfirmMaxTotal: 200000, rules: "" };
 
-test("the portal asks eleven things once each, starting with NEXO's own name and ending with the rules", () => {
+test("the portal asks eleven things once each, starting with Zorax's own name and ending with the rules", () => {
   assert.equal(PORTAL_TOTAL, 11);
   assert.deepEqual([...new Set(PORTAL_SCENES.map(scene => scene.key))].length, 11);
   assert.equal(PORTAL_SCENES[0].key, "agentName"); assert.equal(PORTAL_SCENES.at(-1).key, "rules");
@@ -15,9 +15,9 @@ test("the portal asks eleven things once each, starting with NEXO's own name and
   assert.ok(PORTAL_SCENES.find(scene => scene.key === "accent").chips.includes("#22d3ee"), "the cyan from the reference HUD is a choice");
 });
 
-test("NEXO's lines use what it already knows and repeat each answer the way a person would say it", () => {
+test("Zorax's lines use what it already knows and repeat each answer the way a person would say it", () => {
   assert.equal(fillLine("Hola {you}, soy {agent} de {store}.", { agentName: " Lía ", displayName: "David", businessName: "Bellísima" }), "Hola David, soy Lía de Bellísima.");
-  assert.equal(fillLine("Hola {you}, soy {agent} de {store}.", {}), "Hola , soy NEXO de tu tienda.".replace("Hola ,", "Hola ,"));
+  assert.equal(fillLine("Hola {you}, soy {agent} de {store}.", {}), "Hola , soy Zorax de tu tienda.".replace("Hola ,", "Hola ,"));
   assert.equal(afterLine(PORTAL_SCENES[0], { agentName: "Lía" }, "Lía"), "Me gusta. Desde ahora soy Lía.");
   assert.equal(afterLine(PORTAL_SCENES.find(s => s.key === "voice"), complete, false), "Entendido. Trabajaré en silencio.");
   assert.equal(afterLine(PORTAL_SCENES.find(s => s.key === "maxDiscountPct"), complete, 0), "Sin descuentos por mi cuenta. Cualquier rebaja pasa por ti.");
@@ -26,7 +26,7 @@ test("NEXO's lines use what it already knows and repeat each answer the way a pe
   assert.equal(describeAnswer("rules", "  "), "Sin reglas por ahora"); assert.equal(describeAnswer("voice", true), "Con voz");
 });
 
-test("answers are checked before NEXO accepts them, and the final submission is strict", () => {
+test("answers are checked before Zorax accepts them, and the final submission is strict", () => {
   const scene = key => PORTAL_SCENES.find(item => item.key === key);
   assert.equal(validateAnswer(scene("agentName"), "Lía"), null);
   assert.match(validateAnswer(scene("agentName"), "Jarvis"), /reservado/);
@@ -68,7 +68,7 @@ const { savePortal } = await import(await moduleUrl("app/(onboarding)/onboarding
   "@/lib/auth": url("export const getCurrentUser=async()=>globalThis.__portalState().user;export const getCurrentTenant=async()=>globalThis.__portalState().tenant;"),
 }));
 
-test("the owner's answers personalize the store, the WhatsApp seller, NEXO's identity and the person's profile at once", async () => {
+test("the owner's answers personalize the store, the WhatsApp seller, Zorax's identity and the person's profile at once", async () => {
   const result = await savePortal(complete);
   assert.deepEqual(result, { ok: true });
   const [tenant, agent, config] = state.writes;
@@ -86,7 +86,7 @@ test("the owner's answers personalize the store, the WhatsApp seller, NEXO's ide
   assert.deepEqual(state.cookies.map(cookie => [cookie.name, cookie.value, cookie.options.httpOnly]), [["onboarding_done", "user-1", true]]);
 });
 
-test("replaying keeps the existing agent and NEXO's other settings; only the owner may run it", async () => {
+test("replaying keeps the existing agent and Zorax's other settings; only the owner may run it", async () => {
   state.agents = [{ id: "agent-1", mode: "copilot", business_rules: { sales_payments: { link_url: "https://pay.test" } } }];
   state.configs = [{ config: { welcome: "Hola, soy {agente}", maxDiscount: 25, abilities: ["catalogo"] } }];
   assert.deepEqual(await savePortal({ ...complete, rules: "Envío gratis desde $150.000" }), { ok: true });

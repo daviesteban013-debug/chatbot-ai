@@ -8,7 +8,7 @@ export async function jobsTeam() {
 }
 
 export const startErrors: Record<string, [number, string]> = {
-  JOB_LIMIT: [429, "NEXO ya tiene dos trabajos en curso en este negocio. Espera a que terminen o cancela uno en Trabajos."],
+  JOB_LIMIT: [429, "Zorax ya tiene dos trabajos en curso en este negocio. Espera a que terminen o cancela uno en Trabajos."],
   JOB_FILES: [400, "Adjunta el archivo correcto: para stock y precios una hoja XLSX o CSV; para importar, de uno a tres archivos."],
   JOB_FORBIDDEN: [403, "Tu rol no permite iniciar trabajos en esta conversación."],
   JOB_INPUT: [400, "La solicitud no es válida."],

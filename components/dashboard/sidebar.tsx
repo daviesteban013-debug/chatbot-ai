@@ -19,7 +19,7 @@ export function DashboardSidebar({ tenantName }: { tenantName?: string }) {
     if (window.nexoDesktop?.surface !== "crm") return;
     event.preventDefault();
     setDesktopError(null);
-    void window.nexoDesktop.setExpanded(true).catch(() => setDesktopError("No se pudo abrir NEXO. Intenta desde el icono de la bandeja."));
+    void window.nexoDesktop.setExpanded(true).catch(() => setDesktopError("No se pudo abrir Zorax. Intenta desde el icono de la bandeja."));
   }
 
   const isActive = (href: string) =>
@@ -33,7 +33,7 @@ export function DashboardSidebar({ tenantName }: { tenantName?: string }) {
         <Link href="/dashboard" className="flex min-w-0 items-center gap-2.5">
           <NexoMark className="size-7 shrink-0" />
           <span className="min-w-0 leading-tight">
-            <span className="block text-sm font-semibold tracking-tight">NEXO</span>
+            <span className="block text-sm font-semibold tracking-tight">Zorax</span>
             {tenantName ? <span className="block max-w-[10rem] truncate text-[11px] text-muted">{tenantName}</span> : null}
           </span>
         </Link>
