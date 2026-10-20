@@ -1,9 +1,12 @@
-const APP_ORIGIN = 'https://chatbot-ai-gold-two.vercel.app';
+const APP_ORIGIN = 'https://zoraxpilot.com';
+// The address the app used before 2026-10-20: still trusted so open sessions and sign-in returns from it keep working.
+const LEGACY_ORIGIN = 'https://chatbot-ai-gold-two.vercel.app';
+const ORIGINS = new Set([APP_ORIGIN, LEGACY_ORIGIN]);
 const AUTH_ORIGIN = 'https://hdrjzcxlhpzpayhrjafk.supabase.co';
 const PANELS = new Set(['/dashboard', '/dashboard/orders', '/dashboard/catalog', '/dashboard/conversations', '/dashboard/handoffs', '/dashboard/approval', '/dashboard/agent', '/dashboard/billing', '/dashboard/jarvis', '/dashboard/whatsapp', '/dashboard/workspace', '/dashboard/jobs']);
 const DETAIL_PANEL = /^\/dashboard\/(?:orders|conversations|handoffs|jobs)\/[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
 function trustedUrl(value) {
-  try { const url = new URL(value); return url.origin === APP_ORIGIN && !url.username && !url.password; } catch { return false; }
+  try { const url = new URL(value); return ORIGINS.has(url.origin) && !url.username && !url.password; } catch { return false; }
 }
 function panelUrl(value) {
   if (typeof value !== 'string' || (!PANELS.has(value) && !(DETAIL_PANEL.test(value) && value === value.trim()))) throw new Error('Panel no permitido');
@@ -89,4 +92,4 @@ async function microphoneConsent(platform, systemPreferences) {
   if (status !== 'not-determined') return false;
   return systemPreferences.askForMediaAccess('microphone');
 }
-module.exports = { APP_ORIGIN, MAX_FILE_BYTES, trustedUrl, panelUrl, color, googleUrl, callbackUrl, microphoneConsent, notice, watchPreference, clipboardText, clipboardImage, watchedFile, fileToken };
+module.exports = { APP_ORIGIN, LEGACY_ORIGIN, MAX_FILE_BYTES, trustedUrl, panelUrl, color, googleUrl, callbackUrl, microphoneConsent, notice, watchPreference, clipboardText, clipboardImage, watchedFile, fileToken };

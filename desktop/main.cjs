@@ -31,7 +31,11 @@ function expand(expanded) {
   preferences.expanded = expanded;
   return save();
 }
-function watchRoot() { return path.join(app.getPath('downloads'), 'NEXO'); }
+function watchRoot() { return path.join(app.getPath('downloads'), 'Zorax'); }
+// 0.2.5 watched Descargas/NEXO; the first start of this version carries that folder over, files included.
+function migrateWatchRoot() {
+  try { const old = path.join(app.getPath('downloads'), 'NEXO'); if (fs.existsSync(old) && !fs.existsSync(watchRoot())) fs.renameSync(old, watchRoot()); } catch { /* The old folder stays; the person can move it by hand. */ }
+}
 function fileArrived(file) {
   const now = Date.now();
   for (const [token, entry] of pendingFiles) if (now - entry.at > FILE_TOKEN_MS) pendingFiles.delete(token);
@@ -76,7 +80,7 @@ function showBubble(expanded = preferences.expanded) {
 function openPanel(route) {
   const url = policy.panelUrl(route ?? '/dashboard');
   if (!crm || crm.isDestroyed()) {
-    crm = new BrowserWindow({ width: 1440, height: 960, minWidth: 800, minHeight: 600, title: 'NEXO · CRM', backgroundColor: '#0b0b0c', autoHideMenuBar: true, show: false,
+    crm = new BrowserWindow({ width: 1440, height: 960, minWidth: 800, minHeight: 600, title: 'Zorax · CRM', backgroundColor: '#0b0b0c', autoHideMenuBar: true, show: false,
       webPreferences: { preload: path.join(__dirname, 'preload.cjs'), additionalArguments: ['--nexo-surface=crm'], partition, nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true } });
     secure(crm);
     crm.on('closed', () => { crm = null; app.quit(); });
@@ -147,7 +151,7 @@ else {
     });
     shared.setDisplayMediaRequestHandler((_request, callback) => callback({}));
     const area = screen.getPrimaryDisplay().workArea;
-    bubble = new BrowserWindow({ x: area.x + Math.max(0, area.width - 132), y: area.y + Math.max(0, area.height - 180), width: 112, height: 148, frame: false, transparent: true, backgroundColor: '#00000000', hasShadow: false, alwaysOnTop: true, resizable: false, title: 'NEXO', show: false,
+    bubble = new BrowserWindow({ x: area.x + Math.max(0, area.width - 132), y: area.y + Math.max(0, area.height - 180), width: 112, height: 148, frame: false, transparent: true, backgroundColor: '#00000000', hasShadow: false, alwaysOnTop: true, resizable: false, title: 'Zorax', show: false,
       webPreferences: { preload: path.join(__dirname, 'preload.cjs'), partition, nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true, backgroundThrottling: false } });
     secure(bubble);
     if (process.platform === 'darwin') bubble.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
@@ -178,7 +182,8 @@ else {
       shown.show();
       return true;
     });
-    // Watched folder (Descargas/NEXO) and clipboard: bubble only, validated, bounded.
+    // Watched folder (Descargas/Zorax) and clipboard: bubble only, validated, bounded.
+    migrateWatchRoot();
     ipcMain.handle('nexo:watch', event => { guard(event); return preferences.watch; });
     ipcMain.handle('nexo:watch-set', (event, value) => { guard(event); preferences.watch = policy.watchPreference(value); save(); syncWatcher(); return preferences.watch; });
     ipcMain.handle('nexo:watch-open', async event => {
@@ -216,7 +221,7 @@ else {
     const updateEnabled = Boolean(app.isPackaged && !selfTest);
     // macOS updates itself like Windows: verified DMG, swap in Applications, relaunch (see mac-install.cjs).
     const macInstaller = updateEnabled && process.platform === 'darwin' ? require('./mac-install.cjs').createMacInstaller({
-      execPath: process.execPath, tempDir: app.getPath('temp'), fetchImpl: (...args) => fetch(...args), relaunch: () => { app.relaunch(); app.quit(); }, openPath: target => shell.openPath(target),
+      execPath: process.execPath, tempDir: app.getPath('temp'), fetchImpl: (...args) => fetch(...args), relaunch: execPath => { app.relaunch(typeof execPath === 'string' && execPath ? { execPath } : undefined); app.quit(); }, openPath: target => shell.openPath(target),
     }) : undefined;
     void macInstaller?.cleanup();
     updates = createUpdates({ version: app.getVersion(), platform: process.platform, enabled: updateEnabled, macInstaller,
@@ -229,7 +234,7 @@ else {
       openExternal: url => shell.openExternal(url),
       changed: state => { for (const win of [bubble, crm]) if (win && !win.isDestroyed() && policy.trustedUrl(win.webContents.getURL())) win.webContents.send('nexo:update-state', state); },
       available: state => {
-        if (Notification.isSupported()) { const notice = new Notification({ title: 'Nueva versión de NEXO', body: `NEXO ${state.latestVersion} está disponible. Abre el CRM para actualizar.` }); notice.on('click', () => openPanel()); notice.show(); }
+        if (Notification.isSupported()) { const notice = new Notification({ title: 'Nueva versión de Zorax', body: `Zorax ${state.latestVersion} está disponible. Abre el CRM para actualizar.` }); notice.on('click', () => openPanel()); notice.show(); }
       },
     });
     for (const [channel, action] of [['state', 'snapshot'], ['check', 'check'], ['download', 'download'], ['install', 'install']]) {
@@ -242,8 +247,8 @@ else {
     if (!selfTest) {
       const trayIcon = nativeImage.createFromPath(path.join(__dirname, 'icon.png'));
       tray = new Tray(process.platform === 'darwin' ? trayIcon.resize({ width: 18, height: 18 }) : trayIcon);
-      tray.setToolTip('NEXO · Tu agente');
-      tray.setContextMenu(Menu.buildFromTemplate([{ label: 'Abrir CRM', click: () => openPanel() }, { label: 'Hablar con NEXO', click: () => showBubble(true) }, { label: 'Buscar actualizaciones', click: async () => { const state = await updates.check(); openPanel(); void dialog.showMessageBox(crm, { type: 'info', title: 'Actualizaciones de NEXO', message: state.latestVersion ? `NEXO ${state.latestVersion}` : `NEXO ${state.currentVersion}`, detail: state.message }); } }, { type: 'separator' }, { label: 'Salir y apagar micrófono', click: () => app.quit() }]));
+      tray.setToolTip('Zorax · Tu agente');
+      tray.setContextMenu(Menu.buildFromTemplate([{ label: 'Abrir CRM', click: () => openPanel() }, { label: 'Hablar con Zorax', click: () => showBubble(true) }, { label: 'Buscar actualizaciones', click: async () => { const state = await updates.check(); openPanel(); void dialog.showMessageBox(crm, { type: 'info', title: 'Actualizaciones de Zorax', message: state.latestVersion ? `Zorax ${state.latestVersion}` : `Zorax ${state.currentVersion}`, detail: state.message }); } }, { type: 'separator' }, { label: 'Salir y apagar micrófono', click: () => app.quit() }]));
       tray.on('click', () => openPanel());
       globalShortcut.register('Alt+Shift+N', () => showBubble(!preferences.expanded));
     }
@@ -251,7 +256,7 @@ else {
       // Hidden, bounded startup validation; never operates the user's UI or microphone.
       bubble.loadURL(policy.APP_ORIGIN + '/login').then(() => {
         console.log(JSON.stringify({ startup: 'ok', version: app.getVersion(), workspacePanel: policy.panelUrl('/dashboard/workspace'), platform: process.platform, arch: process.arch, sandbox: bubble.webContents.getLastWebPreferences().sandbox, nodeIntegration: bubble.webContents.getLastWebPreferences().nodeIntegration, alwaysOnTop: bubble.isAlwaysOnTop(), allWorkspaces: bubble.isVisibleOnAllWorkspaces() })); app.quit();
-      }).catch(() => { console.error('NEXO startup check failed'); app.exit(1); });
+      }).catch(() => { console.error('Zorax startup check failed'); app.exit(1); });
       setTimeout(() => app.exit(1), 30_000).unref();
     } else openPanel('/dashboard');
   });

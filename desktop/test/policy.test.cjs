@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { APP_ORIGIN, trustedUrl, panelUrl, color, googleUrl, callbackUrl } = require('../policy.cjs');
+const { APP_ORIGIN, LEGACY_ORIGIN, trustedUrl, panelUrl, color, googleUrl, callbackUrl } = require('../policy.cjs');
 const { microphoneConsent, notice } = require('../policy.cjs');
 test('proactive alerts accept short plain text and only CRM panels as destinations', () => {
   assert.deepEqual(notice({ title: 'NEXO', body: 'Ana espera un asesor', href: '/dashboard/handoffs' }), { title: 'NEXO', body: 'Ana espera un asesor', href: '/dashboard/handoffs' });
@@ -31,8 +31,8 @@ test('Windows does not invoke macOS permission APIs', async () => {
 test('CRM routes reject external URLs, traversal and arbitrary paths', () => {
   assert.equal(panelUrl('/dashboard/orders'), APP_ORIGIN + '/dashboard/orders');
   for (const value of ['https://evil.test', '//evil.test', '/dashboard/../admin', '/dashboard/orders?next=evil', '/admin', null]) assert.throws(() => panelUrl(value));
-  assert.equal(trustedUrl(APP_ORIGIN + '/login'), true);
-  for (const value of ['http://chatbot-ai-gold-two.vercel.app', APP_ORIGIN + '.evil.test', 'https://user@chatbot-ai-gold-two.vercel.app', 'file:///tmp']) assert.equal(trustedUrl(value), false);
+  assert.equal(APP_ORIGIN, 'https://zoraxpilot.com'); assert.equal(trustedUrl(APP_ORIGIN + '/login'), true); assert.equal(trustedUrl(LEGACY_ORIGIN + '/login'), true, 'the previous address stays trusted');
+  for (const value of ['http://zoraxpilot.com', 'https://www.zoraxpilot.com', APP_ORIGIN + '.evil.test', 'https://user@zoraxpilot.com', 'http://chatbot-ai-gold-two.vercel.app', 'file:///tmp']) assert.equal(trustedUrl(value), false);
 });
 test('operator opens WhatsApp and UUID records only in supported CRM panels', () => {
   assert.equal(panelUrl('/dashboard/whatsapp'), APP_ORIGIN + '/dashboard/whatsapp');
@@ -66,7 +66,7 @@ test('Google requires trusted Supabase, PKCE, provider and exact desktop callbac
 });
 test('desktop login accepts a one-time code only while login is pending', () => {
   const link = 'nexo-desktop://auth?code=12345678-abcd-abcd-abcd-123456789012';
-  assert.match(callbackUrl(link, 200, 100), /^https:\/\/chatbot-ai-gold-two.vercel.app\/auth\/callback\?code=/);
+  assert.match(callbackUrl(link, 200, 100), /^https:\/\/zoraxpilot.com\/auth\/callback\?code=/);
   assert.equal(callbackUrl(link, 100, 100), null);
   for (const bad of [link + '&next=https://evil.test', link + '&code=duplicate', link.replace('auth?', 'other?'), 'nexo-desktop://auth?code=%3Cscript%3E', link + '#evil']) assert.equal(callbackUrl(bad, 200, 100), null);
 });

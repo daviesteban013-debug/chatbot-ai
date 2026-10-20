@@ -87,7 +87,9 @@ test('Mac rejects external URLs, drafts, prereleases, missing assets, a missing 
   const [dmg, sums] = release.assets;
   for (const patch of [{ draft: true }, { prerelease: true }, { tag_name: 'nexo-desktop-v0.2.1' }, { assets: [] }, { assets: [dmg] }, { assets: [{ ...dmg, browser_download_url: 'https://evil.test/app.dmg' }, sums] },
     { assets: [dmg, { ...sums, browser_download_url: 'https://evil.test/SHA256SUMS-0.2.4.txt' }] }, { assets: [dmg, { ...sums, size: 50_000 }] }]) assert.equal(macRelease({ ...release, ...patch }, '0.2.3'), null);
-  assert.deepEqual(macRelease(release, '0.2.3'), { version: '0.2.4', url: dmg.browser_download_url, size: 100, checksumsUrl: sums.browser_download_url });
+  assert.deepEqual(macRelease(release, '0.2.3'), { version: '0.2.4', name: dmg.name, url: dmg.browser_download_url, size: 100, checksumsUrl: sums.browser_download_url });
+  const renamed = { ...dmg, name: 'Zorax-0.2.4-mac-universal.dmg', browser_download_url: dmg.browser_download_url.replace('NEXO-', 'Zorax-') };
+  assert.equal(macRelease({ ...release, assets: [renamed, sums] }, '0.2.3').name, 'Zorax-0.2.4-mac-universal.dmg', 'a renamed image is found too');
   assert.equal(newer('0.10.0', '0.2.3'), true); assert.equal(newer('0.2.3', '0.2.3'), false); assert.equal(newer('0.2.4-beta', '0.2.3'), false);
 });
 test('development and startup-check modes never request releases, download or install', async () => {

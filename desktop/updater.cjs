@@ -10,11 +10,12 @@ function macRelease(release, current) {
   if (!release || release.draft || release.prerelease) return null;
   const version = release.tag_name?.replace(/^nexo-desktop-v/, '');
   if (release.tag_name !== `nexo-desktop-v${version}` || !newer(version, current)) return null;
-  const name = `NEXO-${version}-mac-universal.dmg`, sums = `SHA256SUMS-${version}.txt`;
+  // The image kept the NEXO- file name through the rename so older apps still find it; a Zorax- name is accepted too.
+  const names = [`Zorax-${version}-mac-universal.dmg`, `NEXO-${version}-mac-universal.dmg`], sums = `SHA256SUMS-${version}.txt`;
   const base = `https://github.com/${REPO}/releases/download/nexo-desktop-v${version}/`;
   const asset = (file, maxSize = Infinity) => release.assets?.find(item => item.name === file && item.browser_download_url === base + file && item.size > 0 && item.size <= maxSize);
-  const dmg = asset(name), checksums = asset(sums, 16_384);
-  return dmg && checksums ? { version, url: dmg.browser_download_url, size: dmg.size, checksumsUrl: checksums.browser_download_url } : null;
+  const dmg = names.map(file => asset(file)).find(Boolean), checksums = asset(sums, 16_384);
+  return dmg && checksums ? { version, name: dmg.name, url: dmg.browser_download_url, size: dmg.size, checksumsUrl: checksums.browser_download_url } : null;
 }
 // All native update decisions stay in the main process; renderers supply no URLs or paths.
 function createUpdates({ version, platform, enabled, updater, macInstaller, fetchRelease, openExternal, changed = () => {}, available = () => {}, now = Date.now }) {

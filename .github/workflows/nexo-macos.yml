@@ -22,8 +22,8 @@ jobs:
       - run: npm run package:mac --prefix desktop
       - name: Verify universal app and microphone declaration
         run: |
-          app=desktop/dist/mac-universal/NEXO.app
-          lipo "$app/Contents/MacOS/NEXO" -verify_arch x86_64 arm64
+          app="$(ls -d desktop/dist/mac-universal/*.app)"
+          lipo "$app/Contents/MacOS/$(basename "$app" .app)" -verify_arch x86_64 arm64
           codesign --verify --deep --strict "$app"
           /usr/libexec/PlistBuddy -c 'Print :NSMicrophoneUsageDescription' "$app/Contents/Info.plist"
           /usr/libexec/PlistBuddy -c 'Print :CFBundleURLTypes:0:CFBundleURLSchemes:0' "$app/Contents/Info.plist" | grep -Fx nexo-desktop
@@ -55,11 +55,11 @@ jobs:
           mkdir -p "$mount"
           hdiutil attach -nobrowse -readonly -mountpoint "$mount" package/*.dmg
           trap 'hdiutil detach "$mount"' EXIT
-          app="$mount/NEXO.app"
+          app="$(ls -d "$mount"/*.app)"
           codesign --verify --deep --strict "$app"
-          "$app/Contents/MacOS/NEXO" --startup-check > startup.json
+          "$app/Contents/MacOS/$(basename "$app" .app)" --startup-check > startup.json
           cat startup.json
-          node -e 'const fs=require("node:fs"); const lines=fs.readFileSync("startup.json","utf8").trim().split("\n"); const s=JSON.parse(lines.at(-1)); if(s.startup!=="ok"||!s.version||s.workspacePanel!=="https://chatbot-ai-gold-two.vercel.app/dashboard/workspace"||s.platform!=="darwin"||!s.sandbox||s.nodeIntegration||!s.alwaysOnTop||!s.allWorkspaces) process.exit(1)'
+          node -e 'const fs=require("node:fs"); const lines=fs.readFileSync("startup.json","utf8").trim().split("\n"); const s=JSON.parse(lines.at(-1)); if(s.startup!=="ok"||!s.version||s.workspacePanel!=="https://zoraxpilot.com/dashboard/workspace"||s.platform!=="darwin"||!s.sandbox||s.nodeIntegration||!s.alwaysOnTop||!s.allWorkspaces) process.exit(1)'
   self-update:
     needs: build
     strategy:
@@ -77,7 +77,7 @@ jobs:
         with:
           name: nexo-macos-universal
           path: package
-      - name: Replace an installed copy with the DMG exactly as the app does on update, then start the result
+      - name: Replace an installed copy (still named NEXO.app, like 0.2.6) with the image exactly as the app does on update, then start the result
         run: |
           set -euo pipefail
           version="$(node -p "require('./desktop/package.json').version")"
@@ -85,16 +85,21 @@ jobs:
           apps="$RUNNER_TEMP/Applications"; seed="$RUNNER_TEMP/seed"
           mkdir -p "$apps" "$seed"
           hdiutil attach -nobrowse -readonly -mountpoint "$seed" "$dmg"
-          ditto "$seed/NEXO.app" "$apps/NEXO.app"
+          ditto "$seed"/*.app "$apps/NEXO.app"
           hdiutil detach "$seed"
           echo previous > "$apps/NEXO.app/Contents/Resources/previous-marker"
-          node -e 'const m=require("./desktop/mac-install.cjs"); const b=process.argv[1]+"/NEXO.app"; if(!m.installable(b)||m.installable("/Volumes/NEXO/NEXO.app")||m.installable("/private/var/folders/x/AppTranslocation/y/d/NEXO.app")) process.exit(1)' "$apps"
-          node desktop/mac-install.cjs --self-test "$dmg" "$apps" "$version" | tee install.json
-          test ! -e "$apps/NEXO.app/Contents/Resources/previous-marker"
+          node -e 'const m=require("./desktop/mac-install.cjs"); const b=process.argv[1]+"/NEXO.app"; if(!m.installable(b)||m.installable("/Volumes/Zorax/Zorax.app")||m.installable("/private/var/folders/x/AppTranslocation/y/d/Zorax.app")) process.exit(1)' "$apps"
+          node desktop/mac-install.cjs --self-test "$dmg" "$apps/NEXO.app" "$version" | tee install.json
+          result="$(tail -n 1 install.json)"
+          new="$(node -p 'JSON.parse(process.argv[1]).bundle' "$result")"
+          exe="$(node -p 'JSON.parse(process.argv[1]).execPath' "$result")"
+          test "$(basename "$new")" = "Zorax.app"
+          test ! -e "$apps/NEXO.app"
           test -e "$apps/.NEXO-previous.app/Contents/Resources/previous-marker"
+          test ! -e "$new/Contents/Resources/previous-marker"
           test ! -e "$dmg"
-          codesign --verify --deep --strict "$apps/NEXO.app"
-          "$apps/NEXO.app/Contents/MacOS/NEXO" --startup-check > startup.json
+          codesign --verify --deep --strict "$new"
+          "$exe" --startup-check > startup.json
           cat startup.json
           node -e 'const s=JSON.parse(require("node:fs").readFileSync("startup.json","utf8").trim().split("\n").at(-1)); if(s.startup!=="ok"||s.version!==process.argv[1]) process.exit(1)' "$version"
-          node -e 'require("./desktop/mac-install.cjs").cleanupPrevious(process.argv[1]+"/NEXO.app").then(removed=>{ if(!removed||require("node:fs").existsSync(process.argv[1]+"/.NEXO-previous.app")) process.exit(1) })' "$apps"
+          node -e 'require("./desktop/mac-install.cjs").cleanupPrevious(process.argv[1]).then(removed=>{ if(!removed||require("node:fs").existsSync(process.argv[2])) process.exit(1) })' "$new" "$apps/.NEXO-previous.app"

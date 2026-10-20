@@ -65,7 +65,7 @@ async function launch({ authenticated = true, selfTest = false } = {}) {
       if (String(file).endsWith('preferences.json')) throw new Error('First start');
       const content = state.files.get(String(file)); if (content === undefined) throw new Error('ENOENT'); return Buffer.from(content);
     },
-    writeFileSync(_file, data) { state.written = String(data); }, renameSync() {},
+    writeFileSync(_file, data) { state.written = String(data); }, renameSync() {}, existsSync(target) { return state.dirs.has(String(target)) || state.files.has(String(target)); },
     mkdirSync(dir) { state.dirs.add(String(dir)); },
     watch(dir, _options, callback) { const watcher = { dir: String(dir), callback, closed: false, close() { this.closed = true; }, on() {} }; state.watchers.push(watcher); return watcher; },
     statSync(file) { const entry = state.stats.get(String(file)); if (!entry) throw new Error('ENOENT'); return { isFile: () => entry.file !== false, size: entry.size, mtimeMs: entry.mtime ?? 1 }; },
@@ -215,7 +215,7 @@ test('only the orb sends proactive alerts: validated, rate limited, and a click 
   assert.equal(state.notifications.length, 6);
 });
 
-const watchRoot = path.join('/test/downloads', 'NEXO');
+const watchRoot = path.join('/test/downloads', 'Zorax');
 // Values cross the vm boundary: compare their shape, not their realm.
 const plain = value => JSON.parse(JSON.stringify(value));
 const readyFiles = window => window.sent.filter(message => message.channel === 'nexo:file-ready');
