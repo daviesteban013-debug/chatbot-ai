@@ -1,13 +1,15 @@
 "use server";
 
 import { cookies } from "next/headers";
+import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentTenant, getCurrentUser } from "@/lib/auth";
 import type { Json } from "@/lib/database.types";
 import { sanitizeJarvisConfig } from "@/lib/jarvis";
 import { sanitizePersonalization } from "@/lib/jarvis-personalization";
-import { portalSubmission, TONE_LABELS } from "@/lib/onboarding-portal";
+import { chatCompletion, llmStatus } from "@/lib/llm/client";
+import { PORTAL_SCENES, fillLine, parseSpokenAnswer, portalSubmission, TONE_LABELS, validateAnswer, type PortalKey, type SpokenResult } from "@/lib/onboarding-portal";
 
 export type SavePortalResult = { ok: true } | { ok: false; error: string };
 
@@ -73,6 +75,63 @@ export async function savePortal(input: unknown): Promise<SavePortalResult> {
   const cookieStore = await cookies();
   cookieStore.set("onboarding_done", user.id, { path: "/", httpOnly: true, sameSite: "lax", maxAge: 60 * 60 * 24 * 365 });
   return { ok: true };
+}
+
+// ---------- Spoken answers ----------
+const spokenInput = z.object({
+  key: z.enum(PORTAL_SCENES.map(scene => scene.key) as [PortalKey, ...PortalKey[]]),
+  transcript: z.string().trim().min(1).max(300),
+  answers: z.object({ agentName: z.string().max(24), displayName: z.string().max(40), businessName: z.string().max(48) }).partial().optional(),
+}).strict();
+const TEXT_SCENES = new Set<PortalKey>(["agentName", "displayName", "businessName", "businessType", "city", "rules"]);
+const FIELD_HINTS: Record<string, string> = {
+  agentName: "el nombre que el dueño quiere darle al agente: un nombre propio corto, de 2 a 24 letras",
+  displayName: "cómo quiere el dueño que lo llamen: un nombre o apodo corto (David, Jefe, Doña Ana)",
+  businessName: "el nombre de la tienda o negocio, tal como se escribe",
+  businessType: "qué vende el negocio, en dos a cinco palabras (Ropa y moda, Calzado deportivo, Comida saludable)",
+  city: "la ciudad desde la que opera, sin el país",
+  rules: "las reglas del negocio que dijo el dueño, redactadas en una o pocas frases claras (envíos, cambios, horarios); cadena vacía si dijo que no hay",
+};
+const recentSpoken = new Map<string, number[]>();
+function allowSpoken(userId: string): boolean {
+  const now = Date.now();
+  const list = (recentSpoken.get(userId) ?? []).filter(at => now - at < 600_000);
+  if (list.length >= 60) return false;
+  list.push(now); recentSpoken.set(userId, list);
+  return true;
+}
+
+/**
+ * Turns what the owner said out loud into the value a portal scene expects. Choices, amounts and
+ * yes/no are read locally; names and free text go through the model so "eh, quiero que te
+ * llames Lía" becomes "Lía". The local reading is the fallback when the model is slow or down.
+ */
+export async function interpretPortalAnswer(input: unknown): Promise<SpokenResult> {
+  const parsed = spokenInput.safeParse(input);
+  if (!parsed.success) return { ok: false, reply: "No alcancé a oírte. ¿Me lo repites?" };
+  const user = await getCurrentUser();
+  if (!user || user.is_anonymous) return { ok: false, reply: "Tu sesión expiró. Vuelve a iniciar sesión." };
+  if (!allowSpoken(user.id)) return { ok: false, reply: "Vamos muy rápido. Escríbelo abajo, por favor." };
+  const scene = PORTAL_SCENES.find(item => item.key === parsed.data.key)!;
+  const local = parseSpokenAnswer(scene, parsed.data.transcript);
+  if (!TEXT_SCENES.has(scene.key) || !llmStatus().ready) return local;
+  const question = fillLine(scene.say, parsed.data.answers ?? {});
+  try {
+    const response = await chatCompletion([
+      { role: "system", content: "Configuras a Zorax, un agente de ventas, a partir de respuestas habladas de un dueño de tienda en Colombia. Devuelve únicamente un JSON {\"value\": string|null}. Extrae el dato pedido tal como debe guardarse, sin muletillas ni frases como «me llamo» o «se llama», respetando mayúsculas de nombres propios y sin inventar nada. Si la respuesta no contiene el dato, o el dueño pide que repitas la pregunta, value es null." },
+      { role: "user", content: `Pregunta de Zorax: ${question}\nDato que se guarda: ${FIELD_HINTS[scene.key]}\nRespuesta hablada: «${parsed.data.transcript}»` },
+    ], undefined, { temperature: 0, maxTokens: 120, signal: AbortSignal.timeout(8_000) });
+    const match = /\{[\s\S]*\}/.exec(response.content ?? "");
+    const value = match ? (JSON.parse(match[0]) as { value?: unknown }).value : undefined;
+    if (typeof value === "string") {
+      const clean = value.replace(/\s+/g, " ").trim();
+      if (scene.key === "rules" && !clean) return { ok: true, value: "" };
+      if (clean && !validateAnswer(scene, clean)) return { ok: true, value: clean };
+    }
+    // The model read nothing usable: ask again rather than guessing from the raw words (rules may be empty).
+    if (value === null && scene.key !== "rules") return { ok: false, reply: `No te entendí bien. ${question}` };
+  } catch { /* Slow or unavailable model: the local reading below still answers. */ }
+  return local;
 }
 
 /** The WhatsApp seller's base prompt, from the portal's answers. */

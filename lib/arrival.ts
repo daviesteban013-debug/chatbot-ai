@@ -13,6 +13,8 @@ const arrivalSchema = z.object({
   agent: z.string().trim().min(1).max(24),
   you: z.string().trim().max(40),
   accent: z.string().regex(/^#[0-9a-f]{6}$/i),
+  /** The portal already had microphone permission, so the CRM can start listening at once. */
+  mic: z.boolean().optional(),
   at: z.number().finite(),
 }).strict();
 export type Arrival = z.infer<typeof arrivalSchema>;

@@ -1,20 +1,21 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Check, ExternalLink, Loader2, Maximize2, Minimize2, RefreshCw, Volume2, VolumeX } from "lucide-react";
+import { ArrowRight, Check, ExternalLink, Loader2, Maximize2, Mic, MicOff, Minimize2, RefreshCw, Volume2, VolumeX } from "lucide-react";
 import { DotField, type FieldPulse } from "@/components/brand/dot-field";
 import { NexoMark } from "@/components/brand/nexo-mark";
 import { NexoOrb, type OrbState } from "@/components/jarvis/nexo-orb";
+import { useJarvisMicrophone } from "@/hooks/useJarvisMicrophone";
 import { useJarvisVoice } from "@/hooks/useJarvisVoice";
 import { rememberArrival } from "@/lib/arrival";
 import { personalizationDefaults, type JarvisPersonalization } from "@/lib/jarvis-personalization";
 import type { VoiceAvailability } from "@/lib/jarvis-voice";
 import {
-  ACCENT_NAMES, PORTAL_SCENES, PORTAL_TOTAL, TONE_LABELS, TONE_PREVIEWS, afterLine, describeAnswer, fillLine, portalDefaults, portalSubmission, portalSummary,
-  typingSchedule, validateAnswer, type PortalAnswers, type PortalScene,
+  ACCENT_NAMES, PORTAL_SCENES, PORTAL_TOTAL, TONE_LABELS, TONE_PREVIEWS, afterLine, describeAnswer, fillLine, parseSpokenAnswer, portalDefaults, portalSubmission, portalSummary,
+  typingSchedule, validateAnswer, type PortalAnswers, type PortalScene, type SpokenResult,
 } from "@/lib/onboarding-portal";
 import { formatCOP } from "@/lib/utils";
-import { savePortal } from "./actions";
+import { interpretPortalAnswer, savePortal } from "./actions";
 import styles from "./portal.module.css";
 
 type Phase = "boot" | "typing" | "asking" | "after" | "saving" | "done" | "leaving";
@@ -91,6 +92,13 @@ export function WelcomePortal({ initial, replay, telemetry, voiceAvailability, v
   const [fullscreen, setFullscreen] = useState(false);
   const [canFullscreen, setCanFullscreen] = useState(false);
   const [burst, setBurst] = useState(0);
+  // Voice answers: what Zorax heard, whether it is still working it out, and the owner's switch to typing.
+  const [heard, setHeard] = useState<{ text: string; status: "thinking" | "ok" | "retry" } | null>(null);
+  const [interpreting, setInterpreting] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [voiceAnswers, setVoiceAnswers] = useState(true);
+  const retries = useRef(0);
+  const micUsed = useRef(false);
   // The desktop bubble is too small for the portal: it points to the main window instead.
   const [surface, setSurface] = useState<"web" | "crm" | "bubble">("web");
   const sound = useRef<ReturnType<typeof createSound> | null>(null);
@@ -205,7 +213,7 @@ export function WelcomePortal({ initial, replay, telemetry, voiceAvailability, v
 
   const current: PortalScene = PORTAL_SCENES[Math.min(scene, PORTAL_TOTAL - 1)];
   const startScene = useCallback((index: number, known: PortalAnswers) => {
-    setScene(index); setDraft(""); setError(null); setPhase("typing");
+    setScene(index); setDraft(""); setError(null); setHeard(null); retries.current = 0; setPhase("typing");
     say(fillLine(PORTAL_SCENES[index].say, known), () => { setPhase("asking"); lock.current = false; if (!mutedRef.current) sound.current?.ready(); });
   }, [say]);
   const begin = () => {
@@ -247,12 +255,63 @@ export function WelcomePortal({ initial, replay, telemetry, voiceAvailability, v
     say(afterLine(current, next, clean), () => { if (last) void finishPortal(next); else startScene(scene + 1, next); });
   }, [phase, current, scene, say, startScene, finishPortal]);
 
+  // ---------- The conversation: Zorax asks out loud and the owner answers out loud ----------
+  // The microphone opens as soon as a question has been spoken, pauses while Zorax talks, and
+  // what it hears is read locally (choices, amounts, yes/no) or by the model (names, free text).
+  const currentRef = useRef(current); useEffect(() => { currentRef.current = current; }, [current]);
+  const sceneRef = useRef(scene); useEffect(() => { sceneRef.current = scene; }, [scene]);
+  const submitRef = useRef(submit); useEffect(() => { submitRef.current = submit; }, [submit]);
+  const handleSpoken = useCallback(async (text: string) => {
+    if (phaseRef.current !== "asking" || lock.current) return;
+    const asked = currentRef.current, index = sceneRef.current;
+    setHeard({ text, status: "thinking" }); setInterpreting(true);
+    let result: SpokenResult = parseSpokenAnswer(asked, text);
+    if (["agentName", "displayName", "businessName", "businessType", "city", "rules"].includes(asked.key)) {
+      try {
+        const known = answersRef.current;
+        result = await interpretPortalAnswer({ key: asked.key, transcript: text, answers: { agentName: known.agentName, displayName: known.displayName, businessName: known.businessName } });
+      } catch { /* The local reading stands. */ }
+    }
+    setInterpreting(false);
+    // The scene moved on while we were thinking (a typed answer went in): drop it.
+    if (phaseRef.current !== "asking" || sceneRef.current !== index || lock.current) return;
+    if (!result.ok) {
+      retries.current += 1;
+      setHeard({ text, status: "retry" });
+      say(retries.current >= 2 ? `${result.reply} Si prefieres, escríbelo abajo.` : result.reply);
+      return;
+    }
+    retries.current = 0;
+    const value = result.value;
+    setHeard({ text, status: "ok" }); setPending(true);
+    if (asked.kind === "choice") setAnswers(known => ({ ...known, tone: String(value) }));
+    else if (asked.kind === "swatches") { setAnswers(known => ({ ...known, accent: String(value) })); setBurst(count => count + 1); }
+    else if (asked.kind === "slider") setSlider(Number(value));
+    else if (asked.kind === "money") setDraft(Number(value) === 0 ? "" : String(value));
+    else if (typeof value === "string") setDraft(value);
+    // A beat so the person sees what was understood, then it goes in exactly like a typed answer.
+    setTimeout(() => { setPending(false); if (phaseRef.current === "asking" && sceneRef.current === index) submitRef.current(value); }, 700);
+  }, [say]);
+  const handleSpokenRef = useRef(handleSpoken); useEffect(() => { handleSpokenRef.current = handleSpoken; }, [handleSpoken]);
+  const onTranscript = useCallback((text: string, wakeOnly: boolean) => { if (wakeOnly) return false; void handleSpokenRef.current(text); return true; }, []);
+  const micBlocked = phase !== "asking" || voice.busy || interpreting || pending || !voiceAnswers;
+  const mic = useJarvisMicrophone(profile.voice.locale, onTranscript, micBlocked);
+  const micStarted = useRef(false);
+  const startMic = mic.start;
+  useEffect(() => {
+    if (phase !== "asking" || !voiceAnswers || micStarted.current || !mic.supported || voice.busy) return;
+    micStarted.current = true;
+    startMic(false, true, false);
+  }, [phase, voiceAnswers, mic.supported, voice.busy, startMic]);
+  useEffect(() => { if (mic.listening) micUsed.current = true; }, [mic.listening]);
+
   // The exit: the agent grows through the screen, its color floods everything, its name stays
   // for a beat, and the CRM opens behind with a note so it can greet the owner on arrival.
   const leave = () => {
     if (phase !== "done") return;
     voice.stop(); play("warp");
-    rememberArrival(sessionStorage, { agent: answers.agentName.trim() || "Zorax", you: answers.displayName, accent: answers.accent });
+    mic.stop();
+    rememberArrival(sessionStorage, { agent: answers.agentName.trim() || "Zorax", you: answers.displayName, accent: answers.accent, mic: micUsed.current });
     if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
     setBurst(value => value + 1);
     setPhase("leaving");
@@ -260,8 +319,8 @@ export function WelcomePortal({ initial, replay, telemetry, voiceAvailability, v
   };
 
   const finished = phase === "done" || phase === "leaving";
-  const pulse: FieldPulse = phase === "leaving" || voice.speaking ? "speaking" : phase === "typing" || phase === "after" || phase === "saving" ? "processing" : null;
-  const orbState: OrbState = phase === "boot" ? (boot === "ready" ? "idle" : "off") : voice.speaking || phase === "typing" || phase === "after" ? "speaking" : phase === "saving" ? "thinking" : "idle";
+  const pulse: FieldPulse = phase === "leaving" || voice.speaking ? "speaking" : mic.listening ? "listening" : phase === "typing" || phase === "after" || phase === "saving" || interpreting ? "processing" : null;
+  const orbState: OrbState = phase === "boot" ? (boot === "ready" ? "idle" : "off") : voice.speaking || phase === "typing" || phase === "after" ? "speaking" : phase === "saving" || interpreting ? "thinking" : mic.listening ? "listening" : "idle";
   const agent = answers.agentName.trim() || "Zorax";
   const typedText = typing.text.slice(0, typing.count);
   const submitForm = (event: FormEvent) => { event.preventDefault(); submit(current.kind === "money" ? Number(draft.replace(/[^\d]/g, "")) : draft); };
@@ -325,6 +384,12 @@ export function WelcomePortal({ initial, replay, telemetry, voiceAvailability, v
         <h1 className={styles.line}>{typedText}<span className={styles.caret} data-on={typing.count < typing.text.length} aria-hidden="true" /></h1>
         {phase === "saving" && <p className={styles.saving}><Loader2 size={14} className={styles.spin} />Dejando todo listo…</p>}
         {phase === "asking" && <div className={styles.answer} key={current.key} data-enter>
+          <div className={styles.listen} data-state={mic.listening ? "on" : interpreting || pending ? "thinking" : "off"} role="status">
+            <i aria-hidden="true" />
+            <span>{mic.listening ? "Te escucho" : interpreting ? "Entendiendo…" : pending ? "Anotado" : !voiceAnswers ? "Escribe tu respuesta" : mic.error ? "Sin micrófono; escribe abajo" : !mic.supported ? "Responde escribiendo abajo" : voice.busy ? "Un momento…" : "Responde con tu voz"}</span>
+            {heard && <q>{heard.text}</q>}
+            {mic.supported && <button type="button" onClick={() => setVoiceAnswers(value => !value)} aria-pressed={voiceAnswers} aria-label={voiceAnswers ? "Responder escribiendo" : "Responder con la voz"} title={voiceAnswers ? "Prefiero escribir" : "Responder con la voz"}>{voiceAnswers ? <Mic size={13} /> : <MicOff size={13} />}</button>}
+          </div>
           <Answer scene={current} answers={answers} draft={draft} setDraft={setDraft} slider={slider} setSlider={setSlider}
             onPick={(key, value) => { setAnswers(known => ({ ...known, [key]: value })); if (key === "accent") setBurst(count => count + 1); if (key === "tone") previewTone(String(value)); }}
             onSubmit={submitForm} submit={submit} onVoiceSample={() => { setMuted(false); voice.speak("Así sueno. Me vas a oír cuando me actives.", true); }} />

@@ -61,7 +61,8 @@ const table = name => { const q = { filters: [], select() { return q; }, eq(key,
   insert(values) { const s = globalThis.__portalState(); s.writes.push({ table: name, op: "insert", values }); return q; },
   upsert(values) { const s = globalThis.__portalState(); s.writes.push({ table: name, op: "upsert", values }); return q; },
   then(resolve, reject) { return Promise.resolve({ data: null, error: null }).then(resolve, reject); } }; return q; };
-const { savePortal } = await import(await moduleUrl("app/(onboarding)/onboarding/actions.ts", {
+const { savePortal, interpretPortalAnswer } = await import(await moduleUrl("app/(onboarding)/onboarding/actions.ts", {
+  "@/lib/llm/client": url("export const llmStatus=()=>({ready:Boolean(globalThis.__portalState().llm)});export const chatCompletion=async(messages)=>{const s=globalThis.__portalState();s.llmCalls=(s.llmCalls||0)+1;s.lastMessages=messages;if(s.llm.fail)throw new Error('down');return {content:s.llm.content,toolCalls:[],tokensIn:1,tokensOut:1,latencyMs:1,model:'stub'};};"),
   "next/headers": url("export const cookies=async()=>({set:(name,value,options)=>globalThis.__portalState().cookies.push({name,value,options})});"),
   "@/lib/supabase/admin": url(`export const createAdminClient=()=>({from:${table.toString()}});`),
   "@/lib/supabase/server": url("export const createClient=async()=>({auth:{updateUser:async data=>{globalThis.__portalState().updated=data;return {error:null};}}});"),
@@ -123,4 +124,73 @@ test("the portal leaves a short note for the CRM: read once, only while fresh, n
   assert.equal(arrival.takeArrival(throwing), null);
   assert.equal(arrival.arrivalGreeting({ you: "David" }), "Ya estoy aquí, David. Este es mi puesto: desde aquí hablamos y manejo tu CRM. ¿Por dónde empezamos?");
   assert.match(arrival.arrivalGreeting({ you: "  " }), /^Ya estoy aquí\. /);
+});
+
+// ---------- Spoken answers ----------
+const { spokenNumber, cleanSpokenText, parseSpokenAnswer } = portal;
+const sceneOf = key => PORTAL_SCENES.find(item => item.key === key);
+test("spoken amounts in Colombian Spanish become numbers", () => {
+  assert.equal(spokenNumber("doscientos mil"), 200000);
+  assert.equal(spokenNumber("doscientos cincuenta mil pesos"), 250000);
+  assert.equal(spokenNumber("200 mil"), 200000);
+  assert.equal(spokenNumber("1.500.000"), 1500000);
+  assert.equal(spokenNumber("medio millón"), 500000);
+  assert.equal(spokenNumber("un millón y medio"), 1000000, "the half is ignored, not misread");
+  assert.equal(spokenNumber("quince por ciento"), 15);
+  assert.equal(spokenNumber("el 10%"), 10);
+  assert.equal(spokenNumber("300k"), 300000);
+  assert.equal(spokenNumber("siempre pregúntame"), null);
+});
+test("lead-ins are stripped from spoken names and the rest is tidied", () => {
+  assert.equal(cleanSpokenText("agentName", "eh, quiero que te llames Lía"), "Lía");
+  assert.equal(cleanSpokenText("agentName", "ponte Max"), "Max");
+  assert.equal(cleanSpokenText("displayName", "me llamo David pero dime jefe"), "David Pero Dime Jefe", "the model handles the nuance; locally the words stay");
+  assert.equal(cleanSpokenText("displayName", "dime jefe"), "Jefe");
+  assert.equal(cleanSpokenText("businessName", "la tienda se llama Bellísima Bags"), "Bellísima Bags");
+  assert.equal(cleanSpokenText("businessType", "vendemos ropa y accesorios"), "Ropa y accesorios");
+  assert.equal(cleanSpokenText("city", "estamos en medellín"), "Medellín");
+  assert.equal(cleanSpokenText("city", "Bogotá"), "Bogotá");
+});
+test("choices, yes or no, percentages and amounts are read without the model; unclear answers ask again", () => {
+  assert.deepEqual(parseSpokenAnswer(sceneOf("tone"), "que sea divertido, con humor"), { ok: true, value: "divertido" });
+  assert.deepEqual(parseSpokenAnswer(sceneOf("tone"), "formal"), { ok: true, value: "profesional" });
+  assert.deepEqual(parseSpokenAnswer(sceneOf("tone"), "al grano"), { ok: true, value: "directo" });
+  assert.equal(parseSpokenAnswer(sceneOf("tone"), "no sé").ok, false);
+  assert.deepEqual(parseSpokenAnswer(sceneOf("accent"), "el morado"), { ok: true, value: "#a78bfa" });
+  assert.deepEqual(parseSpokenAnswer(sceneOf("accent"), "azul cielo"), { ok: true, value: "#38bdf8" });
+  assert.deepEqual(parseSpokenAnswer(sceneOf("voice"), "sí, háblame"), { ok: true, value: true });
+  assert.deepEqual(parseSpokenAnswer(sceneOf("voice"), "no, solo texto"), { ok: true, value: false });
+  assert.deepEqual(parseSpokenAnswer(sceneOf("voice"), "mejor no"), { ok: true, value: false });
+  assert.deepEqual(parseSpokenAnswer(sceneOf("maxDiscountPct"), "hasta el quince por ciento"), { ok: true, value: 15 });
+  assert.deepEqual(parseSpokenAnswer(sceneOf("maxDiscountPct"), "sin descuentos"), { ok: true, value: 0 });
+  assert.equal(parseSpokenAnswer(sceneOf("maxDiscountPct"), "cincuenta").ok, false, "above the allowed range");
+  assert.deepEqual(parseSpokenAnswer(sceneOf("autoConfirmMaxTotal"), "hasta trescientos mil"), { ok: true, value: 300000 });
+  assert.deepEqual(parseSpokenAnswer(sceneOf("autoConfirmMaxTotal"), "siempre pregúntame"), { ok: true, value: 0 });
+  assert.equal(parseSpokenAnswer(sceneOf("autoConfirmMaxTotal"), "doscientos").ok, false, "too small to be pesos");
+  assert.deepEqual(parseSpokenAnswer(sceneOf("rules"), "no, ninguna por ahora"), { ok: true, value: "" });
+  assert.deepEqual(parseSpokenAnswer(sceneOf("rules"), "envío gratis desde cien mil y cambios hasta cinco días"), { ok: true, value: "Envío gratis desde cien mil y cambios hasta cinco días" });
+  assert.deepEqual(parseSpokenAnswer(sceneOf("agentName"), "llámate Nova"), { ok: true, value: "Nova" });
+  assert.equal(parseSpokenAnswer(sceneOf("agentName"), "Jarvis").ok, false, "the reserved name is refused out loud too");
+  assert.equal(parseSpokenAnswer(sceneOf("agentName"), "").ok, false);
+});
+test("the interpreter signs in, reads choices locally and sends only free text to the model", async () => {
+  state.llm = { content: '{"value": "Lía"}' };
+  assert.deepEqual(await interpretPortalAnswer({ key: "tone", transcript: "divertido" }), { ok: true, value: "divertido" });
+  assert.equal(state.llmCalls ?? 0, 0, "choices never reach the model");
+  assert.deepEqual(await interpretPortalAnswer({ key: "agentName", transcript: "eh quiero que te llames Lía", answers: { displayName: "David" } }), { ok: true, value: "Lía" });
+  assert.equal(state.llmCalls, 1);
+  assert.ok(state.lastMessages[1].content.includes("quiero que te llames Lía"));
+  state.llm = { content: '{"value": null}' };
+  const again = await interpretPortalAnswer({ key: "displayName", transcript: "no sé, dame ideas" });
+  assert.equal(again.ok, false); assert.ok(again.reply.includes("¿Y a ti cómo te digo?"), "asks the same question again");
+  state.llm = { content: '{"value": "J"}' };
+  assert.deepEqual(await interpretPortalAnswer({ key: "agentName", transcript: "ponte Max" }), { ok: true, value: "Max" }, "an invalid model value falls back to the local reading");
+  state.llm = { fail: true };
+  assert.deepEqual(await interpretPortalAnswer({ key: "city", transcript: "estamos en Cali" }), { ok: true, value: "Cali" }, "a model outage falls back to the local reading");
+  state.llm = null;
+  assert.deepEqual(await interpretPortalAnswer({ key: "businessName", transcript: "se llama Bellísima" }), { ok: true, value: "Bellísima" }, "no model configured: local reading");
+  assert.equal((await interpretPortalAnswer({ key: "tone", transcript: "x".repeat(301) })).ok, false);
+  assert.equal((await interpretPortalAnswer({ key: "secret", transcript: "hola" })).ok, false);
+  state.user = null;
+  assert.ok((await interpretPortalAnswer({ key: "tone", transcript: "directo" })).reply.includes("sesión"));
 });

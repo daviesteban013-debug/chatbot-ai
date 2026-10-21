@@ -47,8 +47,6 @@ import { ArrivalCurtain } from "@/components/jarvis/arrival";
 import { arrivalGreeting, takeArrival, type Arrival } from "@/lib/arrival";
 import type { ChatMessage } from "@/types/jarvis";
 
-const pageAccent = "#facc15";
-
 interface FullscreenProps {
   initialConfig: JarvisConfig;
   profile: JarvisPersonalization;
@@ -69,7 +67,7 @@ export function JarvisFullscreenExperience({
   onSwitchToStudio,
 }: FullscreenProps) {
   return (
-    <JarvisAvatarProvider initialAccent={pageAccent}>
+    <JarvisAvatarProvider initialAccent={initialConfig.accent}>
       <JarvisFullscreenInner
         initialConfig={initialConfig}
         profile={profile}
@@ -93,6 +91,8 @@ function JarvisFullscreenInner({
   onSwitchToStudio,
 }: FullscreenProps) {
   const desktopMode = useDesktopMode();
+  // The color the owner chose in the welcome portal (or Personalización) paints this whole screen.
+  const pageAccent = initialConfig.accent;
   const { state, setAudioLevel, setState } = useJarvisAvatar();
   const [isPoweredOn, setIsPoweredOn] = useState(false);
   // Straight from the welcome portal: a curtain with the agent's name, then it greets the owner by name.
@@ -459,7 +459,7 @@ function JarvisFullscreenInner({
 
   return (
     <div className={styles.experience} style={{ "--jarvis-accent": pageAccent } as CSSProperties}>
-      {arrival && <ArrivalCurtain arrival={arrival} onLift={() => powerOn({ greeting: arrivalGreeting(arrival), microphone: false })} onDone={() => setArrival(null)} />}
+      {arrival && <ArrivalCurtain arrival={arrival} onLift={() => powerOn({ greeting: arrivalGreeting(arrival), microphone: arrival.mic === true })} onDone={() => setArrival(null)} />}
       <DotField className={styles.field} accent={pageAccent} originRef={avatarRef}
         pulse={avatarState === "SPEAKING" ? "speaking" : avatarState === "LISTENING" ? "listening" : avatarState === "PROCESSING" ? "processing" : null} />
       <header className={styles.header}>

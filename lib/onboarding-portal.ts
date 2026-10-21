@@ -116,6 +116,124 @@ export function validateAnswer(scene: PortalScene, value: string | number | bool
   }
 }
 
+// ---------- Spoken answers ----------
+// The owner answers Zorax out loud. These parsers turn a transcript into the value a scene
+// expects without a model call: choices by keyword, amounts in Colombian Spanish, yes/no, and
+// names with the usual lead-ins ("me llamo", "la tienda se llama") stripped. Text scenes are
+// also run through the model on the server when it is available; this is the fallback and the
+// fast path.
+const plain = (text: string) => text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[¿?¡!.,;:"«»()]/g, " ").replace(/\s+/g, " ").trim();
+const NUMBER_WORDS: Record<string, number> = {
+  cero: 0, un: 1, uno: 1, una: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10, once: 11, doce: 12, trece: 13, catorce: 14, quince: 15,
+  dieciseis: 16, diecisiete: 17, dieciocho: 18, diecinueve: 19, veinte: 20, veintiuno: 21, veintidos: 22, veintitres: 23, veinticuatro: 24, veinticinco: 25, veintiseis: 26, veintisiete: 27, veintiocho: 28, veintinueve: 29,
+  treinta: 30, cuarenta: 40, cincuenta: 50, sesenta: 60, setenta: 70, ochenta: 80, noventa: 90, cien: 100, ciento: 100, doscientos: 200, trescientos: 300, cuatrocientos: 400, quinientos: 500, seiscientos: 600, setecientos: 700, ochocientos: 800, novecientos: 900,
+};
+/** The number in a spoken Colombian phrase: "200 mil", "doscientos cincuenta mil", "medio millón", "1.500.000", "15 por ciento". Null when there is none. */
+export function spokenNumber(text: string): number | null {
+  // Thousand separators inside digits stay together; "por ciento" and "%" are units, not numbers.
+  const words = plain(text.replace(/(\d)\.(?=\d)/g, "$1").replace(/%/g, " ")).replace(/\bpor ?ciento\b/g, " ")
+    .replace(/\bmedio millon\b/g, "500 mil").replace(/\bmillon(es)?\b/g, "millon").split(" ");
+  let total = 0, current = 0, seen = false;
+  for (const raw of words) {
+    const word = raw.replace(/^(\d[\d.]*)k$/, "$1 mil");
+    for (const piece of word.split(" ")) {
+      if (/^\d[\d.]*(,\d+)?$/.test(piece)) { current += Number(piece.replace(/\./g, "").replace(",", ".")); seen = true; continue; }
+      if (piece === "mil") { total += (current || 1) * 1000; current = 0; seen = true; continue; }
+      if (piece === "millon") { total += (current || 1) * 1_000_000; current = 0; seen = true; continue; }
+      if (piece in NUMBER_WORDS) { current += NUMBER_WORDS[piece]; seen = true; }
+    }
+  }
+  if (!seen) return null;
+  return Math.round(total + current);
+}
+const TONE_WORDS: Record<string, string[]> = {
+  cercano: ["cercano", "cercana", "calido", "calida", "amable", "amigable", "relajado", "relajada", "natural", "familiar", "tranquilo", "carinoso", "carinosa"],
+  profesional: ["profesional", "formal", "serio", "seria", "elegante", "corporativo", "corporativa", "ejecutivo"],
+  divertido: ["divertido", "divertida", "gracioso", "graciosa", "chistoso", "chistosa", "alegre", "jovial", "humor", "fresco", "fresca", "chevere"],
+  directo: ["directo", "directa", "al grano", "concreto", "concreta", "breve", "corto", "corta", "sin rodeos", "rapido", "rapida", "preciso"],
+};
+const ACCENT_WORDS: Record<string, string[]> = {
+  "#facc15": ["ambar", "amarillo", "amarilla", "dorado", "dorada", "oro"],
+  "#34d399": ["menta", "verde"],
+  "#38bdf8": ["cielo", "celeste", "azul"],
+  "#22d3ee": ["cian", "turquesa", "aguamarina", "aqua"],
+  "#f472b6": ["rosa", "rosado", "rosada", "fucsia"],
+  "#a78bfa": ["violeta", "morado", "morada", "lila", "purpura"],
+  "#fb7185": ["coral", "rojo", "roja", "naranja", "salmon"],
+};
+const LEAD_INS = [
+  /^(?:eh|em|mmm+|pues|bueno|ok|okey|a ver|este|listo|entonces|mira)[\s,]+/,
+  /^(?:quiero que (?:te|se) llames?|me gustaria que te llamaras|que te llames|te (?:llamas|llamaras|vas a llamar)|te llamare|te voy a llamar|llamate|ponte|seras|tu nombre (?:es|sera|va a ser)|te pongo|vas a ser)\s+/,
+  /^(?:me llamo|yo soy|soy|mi nombre es|llamame|dime|me dicen|me puedes decir|puedes decirme|me gusta que me digan)\s+/,
+  /^(?:la tienda se llama|mi tienda se llama|mi negocio se llama|se llama|mi tienda es|mi negocio es|la tienda es|es|somos)\s+/,
+  /^(?:vendo|vendemos|vende|trabajamos con|trabajo con|hacemos|ofrecemos|es una tienda de|una tienda de|tienda de|de)\s+/,
+  /^(?:estoy en|estamos en|desde|operamos en|operamos desde|trabajamos desde|en la ciudad de|en|aqui en|aca en)\s+/,
+];
+const trimName = (text: string) => text.replace(/\s+/g, " ").replace(/^[\s,.:;"«»]+|[\s,.:;"«»]+$/g, "").trim();
+const titleCase = (text: string) => text.replace(/(^|\s)(\p{L})/gu, (_, space, letter) => space + letter.toUpperCase());
+const titleFirst = (text: string) => (text ? text[0].toUpperCase() + text.slice(1) : text);
+/** Strips the spoken lead-in ("me llamo", "la tienda se llama") and tidies the remaining words. */
+export function cleanSpokenText(key: PortalKey, transcript: string): string {
+  let text = trimName(transcript);
+  // Fillers and lead-ins stack ("eh, quiero que te llames Lía"): peel them one at a time.
+  for (let pass = 0; pass < 3; pass++) {
+    const lower = plain(text);
+    const match = LEAD_INS.map(pattern => pattern.exec(lower)).find(Boolean);
+    if (!match) break;
+    // The lead-in sits at the start of the plain form; cut the same number of words from the original.
+    const words = match[0].trim().split(" ").length;
+    text = trimName(text.split(/\s+/).slice(words).join(" "));
+  }
+  if (key === "agentName" || key === "displayName" || key === "city") return titleCase(text.toLowerCase());
+  return titleFirst(text);
+}
+export type SpokenResult = { ok: true; value: string | number | boolean } | { ok: false; reply: string };
+/** What a scene understands from a transcript without the model; text scenes get the cleaned words. */
+export function parseSpokenAnswer(scene: PortalScene, transcript: string): SpokenResult {
+  const words = plain(transcript);
+  const repeat = (hint: string): SpokenResult => ({ ok: false, reply: hint });
+  if (!words) return repeat("No alcancé a oírte. ¿Me lo repites?");
+  const padded = ` ${words} `;
+  switch (scene.key) {
+    case "tone": {
+      const hit = Object.entries(TONE_WORDS).find(([, list]) => list.some(word => padded.includes(` ${word} `)));
+      return hit ? { ok: true, value: hit[0] } : repeat("Puedo ser cercano, profesional, divertido o directo. ¿Cuál prefieres?");
+    }
+    case "accent": {
+      const hit = Object.entries(ACCENT_WORDS).find(([, list]) => list.some(word => padded.includes(` ${word} `)));
+      return hit ? { ok: true, value: hit[0] } : repeat("Tengo ámbar, menta, cielo, cian, rosa, violeta y coral. ¿Cuál te gusta?");
+    }
+    case "voice": {
+      if (/\b(solo texto|sin voz|en silencio|silencio|mudo|muda|por escrito|no hables|no me hables|mejor no)\b/.test(words) || /^(no|nel|nop)\b/.test(words)) return { ok: true, value: false };
+      if (/\b(si|sip|claro|dale|obvio|por supuesto|hablame|con voz|activa|activala|quiero|me gusta|perfecto|listo|de una|vale|ok|okey)\b/.test(words)) return { ok: true, value: true };
+      return repeat("¿Te hablo en voz alta, sí o no?");
+    }
+    case "maxDiscountPct": {
+      if (/\b(sin descuento|sin descuentos|ningun descuento|ninguno|nada|cero|no des|no quiero descuentos)\b/.test(words)) return { ok: true, value: 0 };
+      const number = spokenNumber(words);
+      if (number === null) return repeat("Dime un porcentaje, por ejemplo diez por ciento, o di «sin descuentos».");
+      if (number > 40) return repeat("Hasta cuarenta por ciento como máximo. ¿Qué porcentaje dejo?");
+      return { ok: true, value: Math.round(number) };
+    }
+    case "autoConfirmMaxTotal": {
+      if (/\b(siempre|preguntame|pregunta|nunca|ninguno|ninguna|cero|nada|no confirmes|consultame)\b/.test(words)) return { ok: true, value: 0 };
+      const number = spokenNumber(words);
+      if (number === null || number < 1000) return repeat("Dime un monto en pesos, por ejemplo doscientos mil, o di «siempre pregúntame».");
+      if (number > 50_000_000) return repeat("Hasta cincuenta millones como máximo. ¿Qué monto dejo?");
+      return { ok: true, value: number };
+    }
+    case "rules": {
+      if (words.length < 40 && /^(no|nada|ninguna|ninguno|sin reglas|por ahora no|no por ahora|ahora no|luego|despues|mas tarde)\b/.test(words)) return { ok: true, value: "" };
+      return { ok: true, value: titleFirst(trimName(transcript)).slice(0, 2000) };
+    }
+    default: {
+      const value = cleanSpokenText(scene.key, transcript);
+      const problem = validateAnswer(scene, value);
+      return problem ? repeat(`${problem} ¿Me lo repites?`) : { ok: true, value };
+    }
+  }
+}
+
 /** Typing speed for Zorax's lines: quick, with a short pause per sentence. */
 export function typingSchedule(line: string, charMs = 18, sentencePauseMs = 220): number[] {
   const delays: number[] = [];
