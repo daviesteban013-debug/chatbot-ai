@@ -1,3 +1,5 @@
+import { randomInt } from "node:crypto";
+
 export const GRAPH_API_VERSION = process.env.WHATSAPP_GRAPH_VERSION?.trim() || "v26.0";
 export function graphBaseUrl(): string {
   if (!/^v\d{2}\.0$/.test(GRAPH_API_VERSION)) throw new Error("WHATSAPP_INVALID_GRAPH_VERSION");
@@ -24,6 +26,7 @@ async function graphRequest<T = GraphResult>(path: string, token: string, body?:
     // Raw Graph errors can include submitted credentials. Return codes only.
     if (data.error?.code === 190) throw new CloudSetupError("TOKEN_INVALID");
     if (response.status === 429 || data.error?.code === 4 || data.error?.code === 80007) throw new CloudSetupError("META_RATE_LIMITED");
+    if (data.error?.code === 133005) throw new CloudSetupError("PIN_MISMATCH");
     throw new CloudSetupError("META_PERMISSION_OR_ASSET");
   }
   return data as T;
@@ -68,6 +71,28 @@ export async function activateCloudPhone(wabaId: string, phoneId: string, token:
   if (subscription.success !== true) throw new CloudSetupError("SUBSCRIPTION_FAILED");
 }
 
+/**
+ * Embedded Signup hands the browser a one-time code; only the server, holding the app secret, turns it
+ * into the business token that Zorax stores encrypted. The browser never sees that token.
+ */
+export async function exchangeSignupCode(code: string): Promise<string> {
+  if (!/^[A-Za-z0-9_#.-]{10,1024}$/.test(code)) throw new CloudSetupError("SIGNUP_CODE_INVALID");
+  const appId = process.env.WHATSAPP_APP_ID?.trim();
+  const secret = process.env.WHATSAPP_APP_SECRET?.trim();
+  if (!appId || !secret) throw new CloudSetupError("APP_NOT_CONFIGURED");
+  const params = new URLSearchParams({ client_id: appId, client_secret: secret, code });
+  let response: Response;
+  try { response = await fetch(`${graphBaseUrl()}/oauth/access_token?${params}`, { cache:"no-store", signal:AbortSignal.timeout(12_000) }); }
+  catch { throw new CloudSetupError("META_UNAVAILABLE"); }
+  const data = await response.json().catch(()=>({})) as { access_token?: unknown; error?: {code?:number} };
+  if (response.status === 429 || data.error?.code === 4) throw new CloudSetupError("META_RATE_LIMITED");
+  if (!response.ok || typeof data.access_token !== "string" || !data.access_token) throw new CloudSetupError("SIGNUP_CODE_INVALID");
+  return data.access_token;
+}
+
+/** Six digits for Meta's two-step verification, chosen by Zorax so the owner clicks once and types nothing. */
+export function generateTwoStepPin(): string { return randomInt(0, 1_000_000).toString().padStart(6, "0"); }
+
 export const cloudErrorMessage = (error: unknown): string => {
   const messages: Record<string,string> = {
     TOKEN_INVALID:"Meta rechazó el token o ya caducó. Genera uno válido en tu aplicación.",
@@ -82,6 +107,8 @@ export const cloudErrorMessage = (error: unknown): string => {
     INVALID_PIN:"El PIN de verificación en dos pasos debe tener 6 dígitos; no es el código SMS.",
     REGISTRATION_FAILED:"Meta no confirmó el registro del número. Revisa su estado en WhatsApp Manager.",
     SUBSCRIPTION_FAILED:"El número se registró, pero falta suscribir la aplicación a los webhooks. Revisa Meta antes de reintentar.",
+    PIN_MISMATCH:"Ese número ya tiene un PIN de verificación en dos pasos. Escríbelo en «Registrar» para terminar la conexión.",
+    SIGNUP_CODE_INVALID:"Meta no aceptó el código de conexión o ya caducó. Vuelve a pulsar Conectar WhatsApp.",
   };
   return error instanceof CloudSetupError ? messages[error.code] ?? "No se pudo completar la conexión con Meta." : "No se pudo completar la operación. Inténtalo de nuevo.";
 };

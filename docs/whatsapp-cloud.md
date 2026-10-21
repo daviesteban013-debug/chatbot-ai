@@ -2,6 +2,17 @@
 
 El panel `/dashboard/whatsapp` permite al dueño verificar y guardar su número por negocio, registrarlo con un PIN de dos pasos y suscribir la aplicación. Los demás miembros solo consultan el estado. No se envían mensajes de prueba automáticamente.
 
+## Conexión en un clic (Embedded Signup)
+
+Con `WHATSAPP_APP_ID` y `WHATSAPP_SIGNUP_CONFIG_ID` configurados, el dueño ve el botón **Conectar WhatsApp con Meta**. El flujo es el de cualquier plataforma partner:
+
+1. El navegador carga el SDK de Facebook y abre la ventana de Meta con la configuración de Embedded Signup de la app (`config_id`, `response_type: code`, `sessionInfoVersion: 3`). El dueño entra con Facebook, elige o crea su cuenta de WhatsApp Business, agrega su número y lo verifica por SMS o llamada.
+2. La ventana envía por `postMessage` el `phone_number_id` y el `waba_id`; el SDK devuelve un código de un solo uso. El navegador manda los tres a `POST /api/whatsapp/setup` con `operation: signup`. Nunca recibe un token.
+3. El servidor cambia el código por el token de integración del negocio (`/oauth/access_token` con el secreto de la app), comprueba app, permisos, pertenencia y verificación del número como en la ruta manual, guarda el token cifrado, registra el número con un PIN de seis dígitos generado por Zorax (cifrado en `two_step_pin_enc`) y suscribe la app a los webhooks. El PIN se muestra una vez en pantalla.
+4. Si el número ya tenía PIN de verificación en dos pasos (error 133005), queda vinculado y suscrito, y el dueño termina con su PIN en la sección manual.
+
+Requisitos en Meta: producto **Facebook Login for Business** con una configuración de Embedded Signup para WhatsApp, `zoraxpilot.com` en los dominios permitidos del SDK de JavaScript y, para que funcione con negocios ajenos a la app, verificación de negocio de Zorax más acceso avanzado a `whatsapp_business_management` y `whatsapp_business_messaging` (Tech Provider). Antes de eso solo conecta a quienes tengan rol en la app.
+
 ## Activación con una SIM nueva
 
 1. Crea una aplicación con WhatsApp en [Meta for Developers](https://developers.facebook.com/apps/) y vincula el portafolio empresarial que administra la cuenta de WhatsApp Business. No registres esta SIM en la aplicación móvil durante este flujo de Cloud API.

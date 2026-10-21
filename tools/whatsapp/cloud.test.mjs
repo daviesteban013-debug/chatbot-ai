@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {beforeEach,after,test} from "node:test";
 import {load} from "../agent/load.mjs";
-const {verifyCloudPhone,activateCloudPhone,cloudErrorMessage}=await import(await load("../../lib/whatsapp/cloud.ts"));
+const {verifyCloudPhone,activateCloudPhone,cloudErrorMessage,exchangeSignupCode,generateTwoStepPin,CloudSetupError}=await import(await load("../../lib/whatsapp/cloud.ts"));
 const originalFetch=globalThis.fetch;
 const originalId=process.env.WHATSAPP_APP_ID, originalSecret=process.env.WHATSAPP_APP_SECRET;
 let calls, phone, debug, responseError;
@@ -50,4 +50,28 @@ test("provider failures are redacted and never retried as mutations",async()=>{
   assert.equal(calls.length,1);
   globalThis.fetch=async()=>{throw new Error("private-network-detail");};
   await assert.rejects(verifyCloudPhone("1111122222",phone.id,"fixture-token"),{message:"META_UNAVAILABLE"});
+});
+test("the signup code becomes a business token only on the server; bad codes, outages and a missing app are told apart",async()=>{
+  globalThis.fetch=async(url,options)=>{calls.push({url,options});return url.includes("oauth/access_token") ? Response.json({access_token:"fixture-business-token"}) : Response.json({});};
+  assert.equal(await exchangeSignupCode("AQB-fixture-code-1234567890"),"fixture-business-token");
+  const url=new URL(calls[0].url);assert.equal(url.pathname,"/v26.0/oauth/access_token");
+  assert.equal(url.searchParams.get("client_id"),"987654321");assert.equal(url.searchParams.get("client_secret"),"fixture-app-secret");assert.equal(url.searchParams.get("code"),"AQB-fixture-code-1234567890");
+  assert.equal(calls[0].options.cache,"no-store");assert.ok(calls[0].options.signal instanceof AbortSignal);
+  await assert.rejects(exchangeSignupCode("short"),/SIGNUP_CODE_INVALID/);await assert.rejects(exchangeSignupCode("bad code with spaces"),/SIGNUP_CODE_INVALID/);
+  globalThis.fetch=async()=>Response.json({error:{code:100,message:"private fixture"}},{status:400});
+  await assert.rejects(exchangeSignupCode("AQB-fixture-code-1234567890"),/SIGNUP_CODE_INVALID/);
+  globalThis.fetch=async()=>{throw new Error("offline");};
+  await assert.rejects(exchangeSignupCode("AQB-fixture-code-1234567890"),/META_UNAVAILABLE/);
+  delete process.env.WHATSAPP_APP_ID;await assert.rejects(exchangeSignupCode("AQB-fixture-code-1234567890"),/APP_NOT_CONFIGURED/);
+});
+test("a PIN mismatch on registration is reported as such, and generated PINs are six digits",async()=>{
+  globalThis.fetch=async(url,options)=>{calls.push({url,options});
+    if(url.includes("debug_token")) return Response.json({data:debug});
+    if(url.includes("phone_numbers?")) return Response.json({data:[phone]});
+    if(url.endsWith("/register")) return Response.json({error:{code:133005,message:"Two step verification PIN mismatch"}},{status:400});
+    return Response.json({success:true});};
+  await assert.rejects(activateCloudPhone("1111122222",phone.id,"fixture-token","123456"),/PIN_MISMATCH/);
+  assert.match(cloudErrorMessage(new CloudSetupError("PIN_MISMATCH")),/PIN de verificación/);
+  assert.match(cloudErrorMessage(new CloudSetupError("SIGNUP_CODE_INVALID")),/Conectar WhatsApp/);
+  for (let i=0;i<50;i++) assert.match(generateTwoStepPin(),/^\d{6}$/);
 });

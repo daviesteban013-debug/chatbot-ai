@@ -2,14 +2,16 @@ import { z } from "zod";
 import { getCurrentTenant, getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { activateCloudPhone, cloudErrorMessage, verifyCloudPhone } from "@/lib/whatsapp/cloud";
+import { activateCloudPhone, cloudErrorMessage, CloudSetupError, exchangeSignupCode, generateTwoStepPin, verifyCloudPhone } from "@/lib/whatsapp/cloud";
 import { encryptWhatsAppToken, loadWhatsAppSendOptions } from "@/lib/whatsapp/credentials";
-import { readWhatsAppSetup, setupRequirements } from "@/lib/whatsapp/setup";
+import { readWhatsAppSetup, setupRequirements, signupConfig } from "@/lib/whatsapp/setup";
 
 export const maxDuration = 60;
 const id = z.string().regex(/^\d{5,30}$/);
 const input = z.discriminatedUnion("operation",[
   z.object({operation:z.literal("save"),phoneId:id,wabaId:id,accessToken:z.string().trim().min(20).max(8192).regex(/^\S+$/)}).strict(),
+  // Meta's button: a one-time code plus the IDs the signup window posted back. Never a token.
+  z.object({operation:z.literal("signup"),code:z.string().trim().min(10).max(1024).regex(/^[A-Za-z0-9_#.-]+$/),phoneId:id,wabaId:id}).strict(),
   z.object({operation:z.literal("register"),pin:z.string().regex(/^\d{6}$/)}).strict(),
   z.object({operation:z.literal("subscribe")}).strict(),
 ]);
@@ -39,6 +41,29 @@ export async function POST(request: Request) {
   if (setupRequirements().some(requirement=>!requirement.ready)) return json({error:"Falta preparar la aplicación de Meta o el cifrado en el servidor."},503);
   const admin=createAdminClient();
   try {
+    if (parsed.data.operation === "signup") {
+      if (!signupConfig()) return json({error:"La conexión en un clic no está habilitada en este servidor."},503);
+      const {code,phoneId,wabaId}=parsed.data;
+      const accessToken=await exchangeSignupCode(code);
+      const phone=await verifyCloudPhone(wabaId,phoneId,accessToken);
+      const {error}=await admin.rpc("configure_whatsapp_cloud",{
+        p_tenant:tenant.tenantId,p_user:user.id,p_phone:phoneId,p_waba:wabaId,
+        p_display:phone.display_phone_number,p_ciphertext:encryptWhatsAppToken(accessToken,tenant.tenantId,phoneId),
+      });
+      if (error) return json({error:error.code==="23505" ? "Ese número ya está vinculado a otro negocio." : "No pude guardar la conexión. Comprueba tus permisos e inténtalo de nuevo."},409);
+      // Register with a PIN Zorax generates and keeps encrypted; a number that already has one is linked
+      // and subscribed anyway, and the owner finishes with their PIN.
+      const pin=generateTwoStepPin();
+      try {
+        await activateCloudPhone(wabaId,phoneId,accessToken,pin);
+      } catch (activation) {
+        if (!(activation instanceof CloudSetupError) || activation.code!=="PIN_MISMATCH") throw activation;
+        await activateCloudPhone(wabaId,phoneId,accessToken);
+        return json({ok:true,pinPending:true,message:`${phone.display_phone_number} quedó vinculado a Zorax. Ese número ya tiene un PIN de verificación en dos pasos: escríbelo en «Registrar» para terminar.`});
+      }
+      await admin.from("whatsapp_accounts").update({two_step_pin_enc:encryptWhatsAppToken(pin,tenant.tenantId,phoneId)}).eq("tenant_id",tenant.tenantId).eq("phone_number_id",phoneId);
+      return json({ok:true,pin,message:`Listo: ${phone.display_phone_number} quedó conectado a Zorax. Guarda este PIN de verificación en dos pasos: ${pin}. Envía un mensaje desde otro teléfono para probar la recepción.`});
+    }
     if (parsed.data.operation === "save") {
       const {phoneId,wabaId,accessToken}=parsed.data;
       const phone=await verifyCloudPhone(wabaId,phoneId,accessToken);

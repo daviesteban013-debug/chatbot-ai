@@ -36,6 +36,7 @@ test('members can read only safe metadata, never ciphertext or SELECT *',async()
  for(const uid of [owner,viewer]){
   await asUser(uid);assert.equal((await db.query('select phone_number_id from whatsapp_accounts')).rows.length,1);
   await denied(()=>db.exec('select access_token_enc from whatsapp_accounts'),/permission denied/);
+  await denied(()=>db.exec('select two_step_pin_enc from whatsapp_accounts'),/permission denied/);
   await denied(()=>db.exec('select * from whatsapp_accounts'),/permission denied/);
   await denied(()=>db.exec('update whatsapp_accounts set access_token_enc=null'),/permission denied/);
   await denied(()=>save(),/permission denied/);await db.exec('reset role');

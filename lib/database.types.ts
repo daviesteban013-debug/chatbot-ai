@@ -124,6 +124,7 @@ export type WhatsappAccount = {
   waba_id: string | null;
   display_phone: string | null;
   access_token_enc: string | null;
+  two_step_pin_enc: string | null;
   connection_status: "pending" | "verified" | "needs_attention";
   verified_at: string | null;
   last_webhook_at: string | null;
@@ -458,6 +459,7 @@ export type Database = {
           waba_id?: string | null;
           display_phone?: string | null;
           access_token_enc?: string | null;
+          two_step_pin_enc?: string | null;
           connection_status?: "pending" | "verified" | "needs_attention";
           verified_at?: string | null;
           last_webhook_at?: string | null;
@@ -470,6 +472,7 @@ export type Database = {
           waba_id?: string | null;
           display_phone?: string | null;
           access_token_enc?: string | null;
+          two_step_pin_enc?: string | null;
           connection_status?: "pending" | "verified" | "needs_attention";
           verified_at?: string | null;
           last_webhook_at?: string | null;
