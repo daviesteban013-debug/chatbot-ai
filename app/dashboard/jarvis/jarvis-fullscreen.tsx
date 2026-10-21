@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo, type CSSProperties } from "react";
 import Link from "next/link";
+import { Bricolage_Grotesque } from "next/font/google";
+import { NexoMark } from "@/components/brand/nexo-mark";
+import { formatCOP } from "@/lib/utils";
 import { JarvisLiquidAvatar } from "@/components/jarvis/liquid-avatar";
 import styles from "./jarvis-fullscreen.module.css";
 import { Mic, MicOff, Volume2, VolumeX, Send, Sliders, RotateCcw, LayoutDashboard, Power, Settings2, Menu, X, MessageSquare, Hand, Square, Paperclip, FileText, Trash2 } from "lucide-react";
@@ -46,6 +49,9 @@ import { completedOperatorNavigation, desktopPanelFallback } from "@/lib/operato
 import { ArrivalCurtain } from "@/components/jarvis/arrival";
 import { arrivalGreeting, takeArrival, type Arrival } from "@/lib/arrival";
 import type { ChatMessage } from "@/types/jarvis";
+
+/** Same display face as the landing and the welcome portal; Inter stays for body text. */
+const display = Bricolage_Grotesque({ subsets: ["latin"], variable: "--font-display", weight: ["600", "700", "800"], display: "swap" });
 
 interface FullscreenProps {
   initialConfig: JarvisConfig;
@@ -99,10 +105,17 @@ function JarvisFullscreenInner({
   const [arrival, setArrival] = useState<Arrival | null>(null);
   useEffect(() => {
     if (desktopMode) return;
-    const timer = setTimeout(() => { const note = takeArrival(sessionStorage); if (note) setArrival(note); }, 0);
+    const timer = setTimeout(() => {
+      const note = takeArrival(sessionStorage);
+      if (note) { setArrival(note); return; }
+      // No curtain: the screen wakes up already on. Typing works at once; the voice and the microphone wait for a click.
+      setIsPoweredOn(true);
+    }, 0);
     return () => clearTimeout(timer);
   }, [desktopMode]);
   const poweredRef = useRef(false);
+  // Callbacks read the power state through this ref; the state is the single source of truth.
+  useEffect(() => { poweredRef.current = isPoweredOn; }, [isPoweredOn]);
   const [commandNotice, setCommandNotice] = useState("Estoy aquí. ¿Qué vamos a hacer hoy?");
   const [navigationNotice, setNavigationNotice] = useState<string | null>(null);
   const [isVoiceOutputEnabled, setIsVoiceOutputEnabled] = useState(profile.voice.enabled);
@@ -208,11 +221,11 @@ function JarvisFullscreenInner({
     if (settings.voice && poweredRef.current && voiceOnRef.current && !busyRef.current)
       speak(routine ? routine.headline : alerts.length === 1 ? alerts[0].text : `Tienes ${alerts.length} avisos nuevos. ${alerts[0].text}.`);
   }, [speak]);
-  const proactive = useProactive(desktopMode && Boolean(userId), userId, announce, profile.displayName || undefined);
-  const suggestions = useAutomationSuggestions(desktopMode && Boolean(userId));
+  const proactive = useProactive(Boolean(userId), userId, announce, profile.displayName || undefined);
+  const suggestions = useAutomationSuggestions(Boolean(userId));
   const suggestion = suggestions.suggestions[0] ?? null;
   const proactiveRefresh = proactive.refresh;
-  const jobs = useJobs(desktopMode && Boolean(userId), { sessionId: fileSession || undefined, onFinished: proactiveRefresh });
+  const jobs = useJobs(Boolean(userId), { sessionId: fileSession || undefined, onFinished: proactiveRefresh });
   const [copiedJob, setCopiedJob] = useState(false);
   const attachmentsRef = useRef(attachments);
   const jobsRef = useRef(jobs);
@@ -243,7 +256,6 @@ function JarvisFullscreenInner({
     clapStopRef.current();
     setPanel(null);
     microphoneStopRef.current();
-    poweredRef.current = true;
     setIsPoweredOn(true);
     setState("IDLE");
     const who = initialConfig.name?.trim() || "Zorax";
@@ -266,13 +278,12 @@ function JarvisFullscreenInner({
   const powerOff = useCallback(() => {
     clapStopRef.current();
     setPanel(null);
-    poweredRef.current = false;
     setIsPoweredOn(false);
     microphoneStopRef.current();
     stopSpokenTurn();
     cancelResponse();
     setState("IDLE");
-    setCommandNotice("Zorax en espera. El micrófono está apagado. Tu conversación se conserva.");
+    setCommandNotice("Quedo en espera. El micrófono está apagado y tu conversación se conserva.");
   }, [stopSpokenTurn, cancelResponse, setState]);
 
   const submitInstruction = useCallback((text: string, wakeOnly = false) => {
@@ -303,7 +314,7 @@ function JarvisFullscreenInner({
       return !window.nexoDesktop;
     }
     if (!poweredRef.current) {
-      setCommandNotice("Primero pulsa Encender Zorax o escribe «Zorax, enciéndete».");
+      setCommandNotice("Estoy en espera. Pulsa Encender o escribe «Zorax, enciéndete».");
       return false;
     }
     if (isLoading || attachments.pending) return false;
@@ -458,69 +469,98 @@ function JarvisFullscreenInner({
     onInput={setInput} onSubmit={handleFormSubmit} />;
 
   return (
-    <div className={styles.experience} style={{ "--jarvis-accent": pageAccent } as CSSProperties}>
+    <div className={`${styles.experience} ${display.variable}`} data-powered={isPoweredOn} style={{ "--jarvis-accent": pageAccent } as CSSProperties}>
       {arrival && <ArrivalCurtain arrival={arrival} onLift={() => powerOn({ greeting: arrivalGreeting(arrival), microphone: arrival.mic === true })} onDone={() => setArrival(null)} />}
       <DotField className={styles.field} accent={pageAccent} originRef={avatarRef}
         pulse={avatarState === "SPEAKING" ? "speaking" : avatarState === "LISTENING" ? "listening" : avatarState === "PROCESSING" ? "processing" : null} />
-      <header className={styles.header}>
-        <Link href="/dashboard" onClick={exit} className={styles.crm}><LayoutDashboard size={15} /><span>CRM</span></Link>
-        <span className={styles.wordmark}>Zorax<span className={styles.wordmarkDot}>.</span></span>
-        <button type="button" onClick={() => openPanel("menu")} aria-label="Abrir menú de Zorax" className={styles.iconButton}><Menu size={20} /></button>
+
+      <header className={styles.top}>
+        <div className={styles.brand}><NexoMark className={styles.mark} /><div><strong>{(initialConfig.name || "Zorax").toUpperCase()} <span>{"// AGENTE"}</span></strong><small><i data-on={isPoweredOn} />{!isPoweredOn ? "EN ESPERA" : isRecording ? "ESCUCHANDO" : voiceSpeaking ? "HABLANDO" : isLoading ? "TRABAJANDO" : "EN LÍNEA"}</small></div></div>
+        <div className={styles.topRight}>
+          <button type="button" onClick={() => { if (isPoweredOn) powerOff(); else powerOn(); }} aria-pressed={isPoweredOn} className={styles.ghost} data-power><Power size={14} /><span>{isPoweredOn ? "Apagar" : "Encender"}</span></button>
+          <Link href="/dashboard" onClick={exit} className={styles.ghost}><LayoutDashboard size={14} /><span>CRM</span></Link>
+          <button type="button" onClick={() => openPanel("menu")} aria-label="Abrir menú de Zorax" className={styles.iconButton}><Menu size={18} /></button>
+        </div>
       </header>
 
-      <main className={styles.main}>
-        {userId && <TaskAlerts onOpen={() => { pauseMicrophone(); void openCrmWorkspace({ href: "/dashboard/workspace", label: "Memoria y tareas" }); }}/>}
-        <section className={styles.stage} aria-label="Zorax, tu agente">
+      <aside className={styles.left} aria-label="Tu negocio hoy">
+        <section className={styles.panel}>
+          <p className={styles.panelHead}><i />HOY<span suppressHydrationWarning>{new Intl.DateTimeFormat("es-CO", { weekday: "short", day: "numeric", month: "short" }).format(new Date()).toUpperCase()}</span></p>
+          <dl className={styles.rows}>
+            <div><dt>Ventas</dt><dd>{facts ? formatCOP(facts.today.sales) : "—"}</dd></div>
+            <div><dt>Pedidos</dt><dd>{facts ? facts.today.orders : "—"}</dd></div>
+            <div><dt>Por cobrar</dt><dd data-tone={facts && facts.unpaid.count ? "warn" : undefined}>{facts ? (facts.unpaid.count ? `${facts.unpaid.count} · ${formatCOP(facts.unpaid.total)}` : "Al día") : "—"}</dd></div>
+            <div><dt>Esperan asesor</dt><dd data-tone={facts ? (facts.handoffs.count ? "warn" : "good") : undefined}>{facts ? (facts.handoffs.count || "Nadie") : "—"}</dd></div>
+          </dl>
+        </section>
+        <section className={styles.panel}>
+          <p className={styles.panelHead}><i />CUENTA<span>{(plan ?? "prueba").toUpperCase()}</span></p>
+          {userId ? <CreditBalancePanel compact /> : <p className={styles.empty}>Inicia sesión para ver tu cupo.</p>}
+        </section>
+        <section className={styles.panel}>
+          <p className={styles.panelHead}><i />ATAJOS</p>
+          <div className={styles.chips}>
+            {[["Resumen del día", "resumen"], ["Pedidos por cobrar", "¿Qué pedidos tengo por cobrar?"], ["Abrir pedidos", "abre pedidos"], ["Revisar cobros", "Revisa los cobros pendientes"]].map(([label, text]) =>
+              <button key={label} type="button" onClick={() => { claps.stop(); submitInstruction(text); }}>{label}</button>)}
+          </div>
+        </section>
+      </aside>
+
+      <section className={styles.stage} aria-label="Zorax, tu agente" onDragOver={event => { if (event.dataTransfer.types.includes("Files")) event.preventDefault(); }} onDrop={event => { event.preventDefault(); if (userId && !isLoading && !attachments.pending) void attachments.upload(event.dataTransfer.files); }}>
+        <div className={styles.stageInner}>
+          {userId && <TaskAlerts onOpen={() => { pauseMicrophone(); void openCrmWorkspace({ href: "/dashboard/workspace", label: "Memoria y tareas" }); }}/>}
           <div ref={avatarRef} className={styles.avatar}>
             <JarvisLiquidAvatar powered={isPoweredOn} state={avatarState} accent={pageAccent} onActivate={powerOn} />
           </div>
-          <div className={styles.identity}>
-            <h1>{initialConfig.name || "Zorax"}</h1>
-            <p className={styles.activity} role="status"><span data-active={isPoweredOn || claps.listening || isRecording} />{activity}</p>
-          </div>
-          <div className={styles.activation}>
-            <button type="button" onClick={() => { if (isPoweredOn) powerOff(); else powerOn(); }} aria-pressed={isPoweredOn} className={styles.powerButton}><Power size={16} />{isPoweredOn ? "En espera" : "Encender Zorax"}</button>
-            {!isPoweredOn && claps.supported && <button type="button" onClick={toggleClaps} aria-pressed={claps.listening || claps.pending} className={styles.clapButton}><Hand size={16} />{claps.pending ? "Cancelar permiso" : claps.listening ? "Detener aplausos" : "Activar 2 aplausos"}</button>}
-          </div>
-          <p className={styles.wakeHint}>{claps.listening ? "Dos aplausos rápidos, separados por medio segundo. Solo se analizan aquí." : !isPoweredOn ? "Un toque, dos aplausos o «Zorax, enciéndete»." : microphoneArmed ? "Escucha continua. Habla cuando termine mi respuesta." : speechSupported ? "Escucha pausada. Puedes activarla o escribir aquí abajo." : "Escribe aquí abajo; este navegador no ofrece reconocimiento de voz."}</p>
-        </section>
-
-        <section className={styles.dock} aria-label="Habla o escribe a Zorax" onDragOver={event => { if (event.dataTransfer.types.includes("Files")) event.preventDefault(); }} onDrop={event => { event.preventDefault(); if (userId && !isLoading && !attachments.pending) void attachments.upload(event.dataTransfer.files); }}>
-          {userId && <CreditBalancePanel compact />}
-          {operator}
-          {proposals}
-          <NexoActivity tone="dark" state={nexoActivity} onOpen={href => { const destination = parseOperatorNavigation(href); if (!destination) return; pauseMicrophone(); claps.stop(); stopSpokenTurn(); void openCrmWorkspace(destination); }} />
-          {navigationNotice && <p role="status" className={styles.notice}>{navigationNotice}</p>}
-          {(error || voiceError || microphoneError || claps.error) && <p role="alert" className={styles.error}>{error || voiceError || microphoneError || claps.error}</p>}
-          {attachments.error && <p role="alert" className={styles.error}>{attachments.error}</p>}
-          {attachments.pending && <p role="status" className={styles.notice}>Leyendo el archivo; los escaneos pueden tardar unos segundos…</p>}
-          {!!attachments.selected.length && <div className={styles.fileList} aria-label="Archivos listos para enviar">{attachments.selected.map(file => <div key={file.id} className={styles.fileItem}><FileText size={16} /><div><a href={`/api/jarvis/files/${file.id}`} download>{file.name}</a><small>{file.status === "needs_ocr" ? "Sin texto legible" : `${file.references} referencias leídas`}</small>{file.warnings.map(warning => <small key={warning}>{warning}</small>)}</div>{(file.status === "needs_ocr" || file.warnings.some(warning => /OCR|texto extraíble/.test(warning))) && <button type="button" disabled={isLoading || attachments.pending} onClick={() => void attachments.reprocess(file.id)} aria-label={`Leer ${file.name} con OCR`}>Leer con OCR</button>}<button type="button" disabled={isLoading || attachments.pending} onClick={() => void attachments.remove(file.id)} aria-label={`Eliminar ${file.name}`}><X size={15} /></button></div>)}</div>}
-          {!!attachments.files.length && <details className={styles.conversationFiles}><summary>{attachments.files.length} archivos en esta conversación</summary><div className={styles.fileList}>{attachments.files.map(file => <div key={file.id} className={styles.fileItem}><FileText size={16} /><div><a href={`/api/jarvis/files/${file.id}`} download>{file.name}</a><small>{file.status === "needs_ocr" ? "Sin texto legible" : `${file.references} referencias disponibles`}</small>{file.warnings.map(warning => <small key={warning}>{warning}</small>)}</div>{(file.status === "needs_ocr" || file.warnings.some(warning => /OCR|texto extraíble/.test(warning))) && <button type="button" disabled={isLoading || attachments.pending} onClick={() => void attachments.reprocess(file.id)} aria-label={`Leer ${file.name} con OCR`}>Leer con OCR</button>}<button type="button" disabled={isLoading || attachments.pending} onClick={() => void attachments.remove(file.id)} aria-label={`Eliminar ${file.name}`}><Trash2 size={15} /></button></div>)}</div></details>}
-          {!!attachments.library.length && <details className={styles.conversationFiles}><summary>Mis otros archivos ({attachments.library.length})</summary><div className={styles.fileList}>{attachments.library.map(file => <div key={file.id} className={styles.fileItem}><FileText size={16} /><div><a href={`/api/jarvis/files/${file.id}`} download>{file.name}</a><small>{file.sessionId ? "Guardado en otra conversación" : "Subido, pendiente de enviar"}</small>{file.warnings.map(warning => <small key={warning}>{warning}</small>)}</div>{(file.status === "needs_ocr" || file.warnings.some(warning => /OCR|texto extraíble/.test(warning))) && <button type="button" disabled={isLoading || attachments.pending} onClick={() => void attachments.reprocess(file.id)} aria-label={`Leer ${file.name} con OCR`}>Leer con OCR</button>}{!file.sessionId && <button type="button" disabled={isLoading || attachments.pending} onClick={() => attachments.select(file)} aria-label={`Adjuntar ${file.name}`}><Paperclip size={15} /></button>}<button type="button" disabled={isLoading || attachments.pending} onClick={() => void attachments.remove(file.id)} aria-label={`Eliminar ${file.name}`}><Trash2 size={15} /></button></div>)}</div></details>}
+          <p className={styles.eyebrow} role="status"><span data-active={isPoweredOn || claps.listening || isRecording} />{activity}</p>
+          <h1 className={styles.line}>{latest ? (latest.content || "Estoy preparando tu respuesta…") : commandNotice}</h1>
+          {latest && <button type="button" onClick={() => openPanel("history")} className={styles.readMore}>Ver conversación</button>}
           {readyToPlay && <button type="button" onClick={() => { claps.stop(); pauseMicrophone(); resume(); }} className={styles.playVoice}>Reproducir voz</button>}
-          <div className={styles.reply}>
-            {latest ? <>
-              <p className={styles.replyText}>{latest.content || "Estoy preparando tu respuesta…"}</p>
-              <button type="button" onClick={() => openPanel("history")} className={styles.readMore}>Ver conversación</button>
-            </> : <p className={styles.greeting}>{commandNotice}</p>}
+          <div className={styles.cards}>
+            {operator}
+            {proposals}
+            {navigationNotice && <p role="status" className={styles.notice}>{navigationNotice}</p>}
+            {(error || voiceError || microphoneError || claps.error) && <p role="alert" className={styles.error}>{error || voiceError || microphoneError || claps.error}</p>}
+            {attachments.error && <p role="alert" className={styles.error}>{attachments.error}</p>}
+            {attachments.pending && <p role="status" className={styles.notice}>Leyendo el archivo; los escaneos pueden tardar unos segundos…</p>}
+            {!!attachments.selected.length && <div className={styles.fileList} aria-label="Archivos listos para enviar">{attachments.selected.map(file => <div key={file.id} className={styles.fileItem}><FileText size={16} /><div><a href={`/api/jarvis/files/${file.id}`} download>{file.name}</a><small>{file.status === "needs_ocr" ? "Sin texto legible" : `${file.references} referencias leídas`}</small>{file.warnings.map(warning => <small key={warning}>{warning}</small>)}</div>{(file.status === "needs_ocr" || file.warnings.some(warning => /OCR|texto extraíble/.test(warning))) && <button type="button" disabled={isLoading || attachments.pending} onClick={() => void attachments.reprocess(file.id)} aria-label={`Leer ${file.name} con OCR`}>Leer con OCR</button>}<button type="button" disabled={isLoading || attachments.pending} onClick={() => void attachments.remove(file.id)} aria-label={`Eliminar ${file.name}`}><X size={15} /></button></div>)}</div>}
+            {!!attachments.files.length && <details className={styles.conversationFiles}><summary>{attachments.files.length} archivos en esta conversación</summary><div className={styles.fileList}>{attachments.files.map(file => <div key={file.id} className={styles.fileItem}><FileText size={16} /><div><a href={`/api/jarvis/files/${file.id}`} download>{file.name}</a><small>{file.status === "needs_ocr" ? "Sin texto legible" : `${file.references} referencias disponibles`}</small>{file.warnings.map(warning => <small key={warning}>{warning}</small>)}</div>{(file.status === "needs_ocr" || file.warnings.some(warning => /OCR|texto extraíble/.test(warning))) && <button type="button" disabled={isLoading || attachments.pending} onClick={() => void attachments.reprocess(file.id)} aria-label={`Leer ${file.name} con OCR`}>Leer con OCR</button>}<button type="button" disabled={isLoading || attachments.pending} onClick={() => void attachments.remove(file.id)} aria-label={`Eliminar ${file.name}`}><Trash2 size={15} /></button></div>)}</div></details>}
+            {!!attachments.library.length && <details className={styles.conversationFiles}><summary>Mis otros archivos ({attachments.library.length})</summary><div className={styles.fileList}>{attachments.library.map(file => <div key={file.id} className={styles.fileItem}><FileText size={16} /><div><a href={`/api/jarvis/files/${file.id}`} download>{file.name}</a><small>{file.sessionId ? "Guardado en otra conversación" : "Subido, pendiente de enviar"}</small>{file.warnings.map(warning => <small key={warning}>{warning}</small>)}</div>{(file.status === "needs_ocr" || file.warnings.some(warning => /OCR|texto extraíble/.test(warning))) && <button type="button" disabled={isLoading || attachments.pending} onClick={() => void attachments.reprocess(file.id)} aria-label={`Leer ${file.name} con OCR`}>Leer con OCR</button>}{!file.sessionId && <button type="button" disabled={isLoading || attachments.pending} onClick={() => attachments.select(file)} aria-label={`Adjuntar ${file.name}`}><Paperclip size={15} /></button>}<button type="button" disabled={isLoading || attachments.pending} onClick={() => void attachments.remove(file.id)} aria-label={`Eliminar ${file.name}`}><Trash2 size={15} /></button></div>)}</div></details>}
           </div>
+        </div>
+        <div className={styles.dock} aria-label="Habla o escribe a Zorax">
           <form onSubmit={handleFormSubmit} className={styles.composer}>
             <input ref={fileInputRef} type="file" multiple accept={FILE_ACCEPT} hidden onChange={event => { if (event.target.files) void attachments.upload(event.target.files); event.target.value = ""; }} />
-            <button type="button" disabled={!userId || isLoading || attachments.pending} onClick={() => fileInputRef.current?.click()} aria-label="Adjuntar archivos" title="PDF, fotos PNG/JPG/WebP, Excel, Word o texto · hasta 3 MB" className={styles.micButton}><Paperclip size={19} /></button>
-            {speechSupported && <button type="button" onClick={toggleRecording} aria-label={microphoneArmed ? "Pausar escucha continua" : isPoweredOn ? "Activar escucha continua" : "Activar comando de voz"} aria-pressed={microphoneArmed} className={styles.micButton} data-recording={isRecording}>{microphoneArmed ? <MicOff size={20} /> : <Mic size={20} />}</button>}
-            <input value={input} onChange={e => { if (isPoweredOn) handleInputChange(e); else setInput(e.target.value); }} aria-label="Mensaje o comando para Zorax" placeholder={isRecording ? "Te escucho…" : "O escribe aquí…"} className={styles.input} autoComplete="off" />
+            <button type="button" disabled={!userId || isLoading || attachments.pending} onClick={() => fileInputRef.current?.click()} aria-label="Adjuntar archivos" title="PDF, fotos PNG/JPG/WebP, Excel, Word o texto · hasta 3 MB" className={styles.micButton}><Paperclip size={18} /></button>
+            {speechSupported && <button type="button" onClick={toggleRecording} aria-label={microphoneArmed ? "Pausar escucha continua" : isPoweredOn ? "Activar escucha continua" : "Activar comando de voz"} aria-pressed={microphoneArmed} className={styles.micButton} data-recording={isRecording}>{microphoneArmed ? <MicOff size={19} /> : <Mic size={19} />}</button>}
+            <input value={input} onChange={e => { if (isPoweredOn) handleInputChange(e); else setInput(e.target.value); }} aria-label="Mensaje o comando para Zorax" placeholder={isRecording ? "Te escucho…" : isPoweredOn ? "Dime qué hacemos, o escríbelo aquí" : "Escribe aquí o pulsa Encender"} className={styles.input} autoComplete="off" />
             {(isLoading || voiceBusy) && <button type="button" onClick={() => { stopSpokenTurn(); cancelResponse(); }} aria-label="Detener respuesta y voz" className={styles.sendButton}><Square size={16} /></button>}
             <button type="submit" disabled={(!input.trim() && !attachments.selected.length) || isLoading || attachments.pending} aria-label="Enviar mensaje" className={styles.sendButton}><Send size={18} /></button>
           </form>
           <div className={styles.dockFooter}>
-            <span>{isRecording ? "Escucha continua activa" : microphoneArmed ? "Escucha en pausa temporal" : claps.pending ? "Solicitando micrófono" : claps.listening ? "Aplausos: escucha activa" : "Micrófono apagado"}</span>
+            <span>{isRecording ? "Escucha continua activa" : microphoneArmed ? "Escucha en pausa temporal" : claps.pending ? "Solicitando micrófono" : claps.listening ? "Aplausos: escucha activa" : speechSupported ? "Pulsa el micrófono para hablar con Zorax" : "Este navegador no ofrece reconocimiento de voz"}</span>
             <div>
               <button type="button" onClick={() => { claps.stop(); stopSpokenTurn(); setIsVoiceOutputEnabled(value => !value); }} aria-label={isVoiceOutputEnabled ? "Silenciar voz de Zorax" : "Activar voz de Zorax"} aria-pressed={isVoiceOutputEnabled}>{isVoiceOutputEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}</button>
               <button type="button" onClick={() => openPanel("history")} aria-label="Abrir historial"><MessageSquare size={15} /></button>
             </div>
           </div>
+        </div>
+      </section>
+
+      <aside className={styles.right} aria-label="Lo que pasa en tu negocio">
+        {(invite || suggestion || proactive.alerts.length > 0 || nightly) && <section className={styles.panel}>
+          <p className={styles.panelHead}><i />AVISOS<span>{proactive.alerts.length ? String(proactive.alerts.length) : "AL DÍA"}</span></p>
+          <div className={styles.stack}>{proactiveCards}</div>
+        </section>}
+        <section className={styles.panel}>
+          <p className={styles.panelHead}><i />TRABAJOS<span>{jobs.jobs.length ? String(jobs.jobs.length) : "NINGUNO"}</span></p>
+          {jobs.jobs.length ? <div className={styles.stack}>{jobCards}</div> : <p className={styles.empty}>Sin trabajos en curso. Arrastra un archivo aquí o dime «importa este catálogo».</p>}
         </section>
-      </main>
+        <section className={`${styles.panel} ${styles.feed}`}>
+          <p className={styles.panelHead}><i />ACTIVIDAD<span>RECIENTE</span></p>
+          {nexoActivity.items?.length ? <NexoActivity tone="dark" bare state={nexoActivity} onOpen={href => { const destination = parseOperatorNavigation(href); if (!destination) return; pauseMicrophone(); claps.stop(); stopSpokenTurn(); void openCrmWorkspace(destination); }} /> : <p className={styles.empty}>{userId ? "Lo que haga Zorax por su cuenta aparecerá aquí." : "Inicia sesión para ver lo que hace Zorax."}</p>}
+        </section>
+      </aside>
 
       <dialog ref={dialogRef} className={`${styles.dialog} ${panel === "workspace" ? styles.workspace : ""}`} onCancel={() => setPanel(null)} onClose={() => setPanel(null)} aria-label={panel === "workspace" ? `CRM · ${workspace?.label}` : panel === "history" ? "Conversación con Zorax" : panel === "personalization" ? "Personalización de Zorax" : "Menú de Zorax"}>
         {panel === "workspace" && workspace ? <>
@@ -541,8 +581,9 @@ function JarvisFullscreenInner({
               <DesktopDownloadLink platform="mac" />
               <InstallJarvisButton />
             </AppInstallOptions>
-            <p className={styles.help}>Para los aplausos, pulsa «Activar 2 aplausos» y permite el micrófono. Deja esta pantalla abierta y da dos aplausos separados por medio segundo. La escucha se apaga al encender, cambiar de pestaña o salir.</p>
-            <p className={styles.help}>Al encender Zorax se activa la escucha continua con permiso del micrófono. Espera a que termine de hablar y dile tu siguiente instrucción: no necesitas pulsar el micrófono en cada turno. Puedes pausar la escucha con su botón o decir «Zorax, apágate» o «Zorax, abre el CRM». Mientras hablo, abres un panel o cambias de pestaña, la escucha queda en pausa.</p>
+            {claps.supported && <button type="button" onClick={() => { setPanel(null); toggleClaps(); }} aria-pressed={claps.listening || claps.pending}><Hand size={18} />{claps.listening || claps.pending ? "Desactivar 2 aplausos" : "Encender con 2 aplausos"}</button>}
+            <p className={styles.help}>Con los aplausos activos, deja esta pestaña abierta y da dos aplausos separados por medio segundo: {initialConfig.name || "Zorax"} se enciende y te saluda. La escucha de aplausos se apaga al encender, cambiar de pestaña o salir.</p>
+            <p className={styles.help}>El micrófono del compositor activa la escucha continua: espera a que termine de hablar y dile la siguiente instrucción, sin pulsar nada en cada turno. Apagar deja todo en silencio y conserva la conversación.</p>
           </div>}
           {panel === "history" && <div ref={chatScrollRef} className={styles.history}>
             {messages.length ? messages.map(message => <article key={message.id} data-role={message.role}><span>{message.role === "user" ? "Tú" : initialConfig.name || "Zorax"}</span>{message.role === "assistant" && message.content ? <RichText source={message.content} className={styles.richMessage} onOpen={href => { const destination = parseOperatorNavigation(href); if (destination) void openCrmWorkspace(destination); }} /> : <p>{message.content || "Preparando respuesta…"}</p>}{message.role === "assistant" && <OperatorTask actions={normalizeOperatorActions(message.metadata?.operatorActions)} busy={isLoading} onOpen={destination => void openCrmWorkspace(destination)} />}{Array.isArray(message.metadata?.attachments) && <div className={styles.fileList}>{(message.metadata.attachments as FileSummary[]).map(file => <a key={file.id} href={`/api/jarvis/files/${file.id}`} download className={styles.fileItem}><FileText size={15} />{file.name}</a>)}</div>}</article>) : <p className={styles.help}>Tu conversación aparecerá aquí cuando envíes tu primera instrucción.</p>}

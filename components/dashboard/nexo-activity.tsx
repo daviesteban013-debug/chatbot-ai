@@ -9,21 +9,21 @@ import styles from "@/components/jarvis/order-proposals.module.css";
 const KIND: Record<ActivityItem["kind"], string> = { catalog: "Catálogo", work: "Memoria y tareas", job: "Trabajo en segundo plano", reminder: "Recordatorio de pago", sale: "Venta por WhatsApp" };
 
 /** "Lo que hizo Zorax": actions taken on its own, with a link and Undo where it applies. */
-export function NexoActivity({ state, tone = "light", canConfigure = false, onOpen }: {
+export function NexoActivity({ state, tone = "light", canConfigure = false, bare = false, onOpen }: {
   state: ReturnType<typeof useNexoActivity>;
   tone?: "light" | "dark";
   canConfigure?: boolean;
+  /** Dark tone inside a panel that already has its own heading: the rows alone, no card around them. */
+  bare?: boolean;
   /** Dark Zorax screen: open CRM screens through the operator instead of a plain link. */
   onOpen?(href: string): void;
 }) {
   const { items, error, busy } = state;
   if (tone === "dark") {
     if (!items?.length) return null;
-    return <section className={styles.list} data-compact aria-label="Lo que hizo Zorax">
-      <article className={styles.card}>
-        <div className={styles.heading}><span>LO QUE HIZO Zorax</span><button type="button" onClick={() => void state.refresh()}>Actualizar</button></div>
+    const rows = <>
         {error && <p role="alert" className={styles.error}>{error}</p>}
-        <ul style={{ marginTop: 10 }}>
+        <ul style={{ marginTop: bare ? 0 : 10 }}>
           {items.slice(0, 5).map(item => <li key={`${item.kind}-${item.at}-${item.text}`} style={{ alignItems: "center" }}>
             <div>
               <button type="button" onClick={() => onOpen?.(item.href)} style={{ all: "unset", cursor: "pointer", textDecoration: item.status === "undone" ? "line-through" : undefined }}>{item.text}</button>
@@ -35,6 +35,12 @@ export function NexoActivity({ state, tone = "light", canConfigure = false, onOp
             </button>}
           </li>)}
         </ul>
+    </>;
+    if (bare) return <div className={styles.card} data-bare aria-label="Lo que hizo Zorax" style={{ padding: 0, border: 0, background: "none" }}>{rows}</div>;
+    return <section className={styles.list} data-compact aria-label="Lo que hizo Zorax">
+      <article className={styles.card}>
+        <div className={styles.heading}><span>LO QUE HIZO Zorax</span><button type="button" onClick={() => void state.refresh()}>Actualizar</button></div>
+        {rows}
       </article>
     </section>;
   }
