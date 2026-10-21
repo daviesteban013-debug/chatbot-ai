@@ -93,8 +93,6 @@ export function WelcomePortal({ initial, replay, telemetry, voiceAvailability, v
   const [burst, setBurst] = useState(0);
   // The desktop bubble is too small for the portal: it points to the main window instead.
   const [surface, setSurface] = useState<"web" | "crm" | "bubble">("web");
-  // ElevenLabs when the account has it; the device voice takes over if a request fails mid-portal.
-  const [engineOverride, setEngineOverride] = useState<"browser" | null>(null);
   const sound = useRef<ReturnType<typeof createSound> | null>(null);
   const orbRef = useRef<HTMLDivElement>(null);
   const feedRef = useRef<HTMLDivElement>(null);
@@ -104,14 +102,11 @@ export function WelcomePortal({ initial, replay, telemetry, voiceAvailability, v
   const ids = useRef(0);
   useEffect(() => { answersRef.current = answers; }, [answers]);
 
+  // The welcome always speaks with the neural voice when the account has it; the device voice is
+  // never swapped in mid-portal, so one failed request only costs that line, not the rest.
   const profile = useMemo(() => ({ ...personalizationDefaults, displayName: answers.displayName,
-    voice: { ...personalizationDefaults.voice, ...(voiceProfile ?? {}), engine: engineOverride ?? voiceProfile?.engine ?? "auto", enabled: !muted } }), [answers.displayName, muted, voiceProfile, engineOverride]);
+    voice: { ...personalizationDefaults.voice, ...(voiceProfile ?? {}), engine: "auto" as const, enabled: !muted } }), [answers.displayName, muted, voiceProfile]);
   const voice = useJarvisVoice(profile, answers.tone, undefined, voiceAvailability);
-  useEffect(() => {
-    if (!voice.error || engineOverride) return;
-    const fallback = setTimeout(() => setEngineOverride("browser"), 0);
-    return () => clearTimeout(fallback);
-  }, [voice.error, engineOverride]);
   useEffect(() => {
     const sync = () => setFullscreen(Boolean(document.fullscreenElement));
     const ready = setTimeout(() => {
@@ -127,6 +122,24 @@ export function WelcomePortal({ initial, replay, telemetry, voiceAvailability, v
   const play = (name: keyof ReturnType<typeof createSound>) => { if (!mutedRef.current) sound.current?.[name](); };
   const speakRef = useRef(voice.speak);
   useEffect(() => { speakRef.current = voice.speak; }, [voice.speak]);
+  const phaseRef = useRef(phase);
+  useEffect(() => { phaseRef.current = phase; }, [phase]);
+  // A line that could not be voiced (rate limit, hiccup) is retried once a moment later, with the same voice.
+  const retried = useRef(0);
+  useEffect(() => {
+    if (!voice.error || !typing.text || retried.current === typing.id || !["typing", "after", "done"].includes(phaseRef.current)) return;
+    retried.current = typing.id;
+    const text = typing.text;
+    const again = setTimeout(() => { if (!mutedRef.current) speakRef.current(text); }, 2400);
+    return () => clearTimeout(again);
+  }, [voice.error, typing.id, typing.text]);
+  // Tone previews wait for the choice to settle, so clicking through the cards is one request, not four.
+  const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const previewTone = (tone: string) => {
+    if (previewTimer.current) clearTimeout(previewTimer.current);
+    previewTimer.current = setTimeout(() => { if (!mutedRef.current) speakRef.current(TONE_PREVIEWS[tone] ?? "", true); }, 350);
+  };
+  useEffect(() => () => { if (previewTimer.current) clearTimeout(previewTimer.current); }, []);
   const say = useCallback((text: string, then?: () => void) => {
     const id = ++ids.current, at = stamp();
     afterTyping.current = then ?? null;
@@ -271,6 +284,7 @@ export function WelcomePortal({ initial, replay, telemetry, voiceAvailability, v
     <header className={styles.top}>
       <div className={styles.brand}><NexoMark className={styles.mark} /><div><strong key={agent} data-enter>{agent.toUpperCase()} <span>{"// AGENTE"}</span></strong><small><i data-on={phase !== "boot"} />{phase === "boot" ? "EN ESPERA" : "EN LÍNEA"}</small></div></div>
       <div className={styles.topRight}>
+        {voice.readyToPlay && <button type="button" className={styles.ghost} onClick={() => voice.resume()}><Volume2 size={14} /><span>Reproducir voz</span></button>}
         {canFullscreen && <button type="button" className={styles.ghost} onClick={toggleFullscreen} aria-pressed={fullscreen} title={fullscreen ? "Salir de pantalla completa" : "Pantalla completa"}>{fullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}<span>{fullscreen ? "Salir" : "Pantalla completa"}</span></button>}
         <button type="button" className={styles.ghost} onClick={() => { setMuted(value => !value); voice.stop(); }} aria-pressed={!muted}>{muted ? <VolumeX size={14} /> : <Volume2 size={14} />}<span>{muted ? "Activar voz" : "Silenciar"}</span></button>
         {phase !== "boot" && !finished && <span className={styles.counter}>{String(scene + 1).padStart(2, "0")} / {PORTAL_TOTAL}</span>}
@@ -312,7 +326,7 @@ export function WelcomePortal({ initial, replay, telemetry, voiceAvailability, v
         {phase === "saving" && <p className={styles.saving}><Loader2 size={14} className={styles.spin} />Dejando todo listo…</p>}
         {phase === "asking" && <div className={styles.answer} key={current.key} data-enter>
           <Answer scene={current} answers={answers} draft={draft} setDraft={setDraft} slider={slider} setSlider={setSlider}
-            onPick={(key, value) => { setAnswers(known => ({ ...known, [key]: value })); if (key === "accent") setBurst(count => count + 1); if (key === "tone" && !muted) voice.speak(TONE_PREVIEWS[String(value)] ?? "", true); }}
+            onPick={(key, value) => { setAnswers(known => ({ ...known, [key]: value })); if (key === "accent") setBurst(count => count + 1); if (key === "tone") previewTone(String(value)); }}
             onSubmit={submitForm} submit={submit} onVoiceSample={() => { setMuted(false); voice.speak("Así sueno. Me vas a oír cuando me actives.", true); }} />
         </div>}
         {finished && <div className={styles.summary} data-enter>
