@@ -73,10 +73,13 @@ test("older profiles keep voice preferences and default to auto; neural settings
   const settings = elevenLabsSettings(p, "directo", "Hola");
   assert.equal(settings.speed, 1.2); assert.equal(settings.stability, 0); assert.equal(settings.similarity_boost, 1);
   p.voice.rate = 1; p.voice.stability = 0.5;
-  assert.ok(elevenLabsSettings(p, "profesional", "Primero, $50").speed < 1);
+  // Numbers and steps slow the pace down, relative to the same voice on plain text.
+  assert.ok(elevenLabsSettings(p, "profesional", "Primero, $50").speed < elevenLabsSettings(p, "profesional", "Hola").speed);
   assert.equal(elevenLabsSettings(p, "profesional", "Hola").stability, 0.6);
   p.voice.adaptive = false;
-  assert.deepEqual(elevenLabsSettings(p, "profesional", "Primero, $50"), { speed: 1, stability: 0.5, similarity_boost: 1 });
+  // ElevenLabs runs a notch faster than the stored rate: speed 1 sounded sluggish next to the browser voices.
+  assert.deepEqual(elevenLabsSettings(p, "profesional", "Primero, $50"), { speed: 1.12, stability: 0.5, similarity_boost: 1 });
+  assert.equal(elevenLabsSettings(sanitizePersonalization({}), "amable", "Hola").speed, 1.12);
 });
 
 test("durable quota denials and database failures stop TTS before calling the provider", async () => {

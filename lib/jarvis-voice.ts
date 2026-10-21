@@ -8,6 +8,9 @@ export function voiceEngine(profile: JarvisPersonalization, availability: VoiceA
   return profile.voice.engine;
 }
 
+/** ElevenLabs at speed 1 paces slower than the browser voices at rate 1; this brings it to the same brisk, natural tempo. */
+export const ELEVENLABS_PACE = 1.12;
+
 export function elevenLabsSettings(profile: JarvisPersonalization, tone: string, text: string) {
   let stability = profile.voice.stability;
   if (profile.voice.adaptive) {
@@ -15,7 +18,7 @@ export function elevenLabsSettings(profile: JarvisPersonalization, tone: string,
     if (tone === "divertido") stability -= 0.1;
   }
   return {
-    speed: Math.min(1.2, Math.max(0.7, speechSettings(profile, tone, text).rate)),
+    speed: Math.round(Math.min(1.2, Math.max(0.7, speechSettings(profile, tone, text).rate * ELEVENLABS_PACE)) * 100) / 100,
     stability: Math.min(1, Math.max(0, stability)),
     similarity_boost: profile.voice.similarity,
   };
