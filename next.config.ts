@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { securityHeaders } from "./lib/security-headers";
 
 // The document parser runs in a worker thread and loads these files at runtime.
 const PARSER_FILES = [
@@ -20,11 +21,16 @@ const nextConfig: NextConfig = {
   // Product photos live in the public Supabase bucket "product-images".
   images: { remotePatterns: [{ protocol: "https", hostname: "*.supabase.co", pathname: "/storage/v1/object/public/product-images/**" }] },
   async headers() {
-    return [{ source: "/sw.js", headers: [
-      { key: "Content-Type", value: "application/javascript; charset=utf-8" },
-      { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
-      { key: "Content-Security-Policy", value: "default-src 'self'; script-src 'self'" },
-    ] }];
+    return [
+      // Every page and API response: pinned TLS, no sniffing, no framing by other sites, and a CSP
+      // naming only the origins the app uses (see lib/security-headers.ts).
+      { source: "/:path*", headers: securityHeaders({ supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL, development: process.env.NODE_ENV === "development" }) },
+      { source: "/sw.js", headers: [
+        { key: "Content-Type", value: "application/javascript; charset=utf-8" },
+        { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+        { key: "Content-Security-Policy", value: "default-src 'self'; script-src 'self'" },
+      ] },
+    ];
   },
 };
 
