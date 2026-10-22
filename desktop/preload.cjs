@@ -8,6 +8,8 @@ if (window.top === window && ['https://zoraxpilot.com', 'https://chatbot-ai-gold
     setExpanded: expanded => ipcRenderer.invoke('nexo:expanded', expanded),
     openPanel: path => ipcRenderer.invoke('nexo:panel', path),
     startGoogleSignIn: url => ipcRenderer.invoke('nexo:google', url),
+    // 0.3.1+: the CRM window opens Meta's sign-in dialog (WhatsApp Embedded Signup) in a popup.
+    metaPopups: true,
     quit: () => ipcRenderer.invoke('nexo:quit'),
     notify: notice => ipcRenderer.invoke('nexo:notify', notice),
     readClipboard: () => ipcRenderer.invoke('nexo:clipboard'),

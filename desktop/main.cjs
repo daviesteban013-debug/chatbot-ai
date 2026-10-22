@@ -56,8 +56,19 @@ function syncWatcher() {
 function guard(event, allowCrm = false) {
   if ((event.sender !== bubble?.webContents && !(allowCrm && event.sender === crm?.webContents)) || event.senderFrame !== event.sender.mainFrame || !policy.trustedUrl(event.senderFrame.url)) throw new Error('Solicitud no permitida');
 }
-function secure(window) {
-  window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+function secure(window, { metaPopups = false } = {}) {
+  window.webContents.setWindowOpenHandler(({ url }) => {
+    if (!metaPopups || !policy.metaPopupUrl(url)) return { action: 'deny' };
+    // Meta's sign-in dialog (WhatsApp Embedded Signup): a plain sandboxed window on the same session, nothing else.
+    return { action: 'allow', overrideBrowserWindowOptions: { width: 640, height: 780, minWidth: 420, minHeight: 560, title: 'Meta', autoHideMenuBar: true, backgroundColor: '#ffffff',
+      webPreferences: { partition, nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true } } };
+  });
+  window.webContents.on('did-create-window', child => {
+    child.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    child.webContents.on('will-navigate', (event, url) => { if (!policy.metaPopupNavigation(url)) event.preventDefault(); });
+    child.webContents.on('will-redirect', (event, url) => { if (!policy.metaPopupNavigation(url)) event.preventDefault(); });
+    child.webContents.on('will-attach-webview', event => event.preventDefault());
+  });
   window.webContents.on('will-navigate', (event, url) => { if (!policy.trustedUrl(url)) event.preventDefault(); });
   window.webContents.on('will-redirect', (event, url) => { if (!policy.trustedUrl(url)) event.preventDefault(); });
   window.webContents.on('will-attach-webview', event => event.preventDefault());
@@ -82,7 +93,7 @@ function openPanel(route) {
   if (!crm || crm.isDestroyed()) {
     crm = new BrowserWindow({ width: 1440, height: 960, minWidth: 800, minHeight: 600, title: 'Zorax · CRM', backgroundColor: '#0b0b0c', autoHideMenuBar: true, show: false,
       webPreferences: { preload: path.join(__dirname, 'preload.cjs'), additionalArguments: ['--nexo-surface=crm'], partition, nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true } });
-    secure(crm);
+    secure(crm, { metaPopups: true });
     crm.on('closed', () => { crm = null; app.quit(); });
     const navigated = (_event, destination) => {
       if (!policy.trustedUrl(destination)) return;

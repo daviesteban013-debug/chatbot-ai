@@ -104,8 +104,13 @@ export function WhatsAppSetupView({initial}:{initial:WhatsAppSetup}) {
     // Meta refuses FB.login on plain http (local development included); say so instead of waiting forever.
     if (window.location.protocol!=="https:") {setNotice({error:"La ventana de Meta solo se abre desde una página segura (https). Entra por zoraxpilot.com."});return;}
     if (!fb) {setNotice({error:"La ventana de Meta todavía se está cargando. Espera un segundo y vuelve a pulsar."});return;}
+    // Desktop builds before 0.3.1 block every popup, so Meta's window would never appear and the button would wait forever.
+    const desktop=window.nexoDesktop;
+    if (desktop&&!desktop.metaPopups) {setNotice({error:"Esta versión de Zorax para escritorio no puede abrir la ventana de Meta. Actualízala desde el aviso de arriba o conecta el número desde zoraxpilot.com en tu navegador."});return;}
     sessionRef.current={};setNotice(null);setSignupBusy(true);
-    fb.login(response=>{void (async()=>{
+    // If the popup was blocked or abandoned without the SDK noticing, release the button after three minutes.
+    const watchdog=window.setTimeout(()=>{setSignupBusy(false);setNotice(current=>current??{error:"Meta no respondió. Si la ventana no se abrió, permite las ventanas emergentes e inténtalo de nuevo."});},180_000);
+    fb.login(response=>{window.clearTimeout(watchdog);void (async()=>{
       const code=response.authResponse?.code;
       // The IDs usually arrive by message a moment before the code; give them a short while.
       for (let attempt=0;attempt<30&&code&&!(sessionRef.current.phoneId&&sessionRef.current.wabaId);attempt++) await new Promise(resolve=>setTimeout(resolve,100));

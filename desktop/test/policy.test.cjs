@@ -1,7 +1,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { APP_ORIGIN, LEGACY_ORIGIN, trustedUrl, panelUrl, color, googleUrl, callbackUrl } = require('../policy.cjs');
-const { microphoneConsent, notice } = require('../policy.cjs');
+const { microphoneConsent, notice, metaPopupUrl, metaPopupNavigation } = require('../policy.cjs');
 test('proactive alerts accept short plain text and only CRM panels as destinations', () => {
   assert.deepEqual(notice({ title: 'NEXO', body: 'Ana espera un asesor', href: '/dashboard/handoffs' }), { title: 'NEXO', body: 'Ana espera un asesor', href: '/dashboard/handoffs' });
   assert.equal(notice({ title: ' NEXO\u202e ', body: 'Pagó\u0007 Ana' }).title, 'NEXO');
@@ -86,4 +86,16 @@ test('watched files: supported types up to 3 MB, never temp, hidden or lock file
   assert.equal(clipboardImage(Buffer.from('GIF89a..')), null); assert.equal(clipboardImage(Buffer.alloc(3 * 1024 * 1024 + 1)), null); assert.equal(clipboardImage(null), null);
   assert.equal(fileToken('a'.repeat(32)), 'a'.repeat(32));
   for (const bad of ['A'.repeat(32), 'a'.repeat(31), '../x', null, 7]) assert.throws(() => fileToken(bad), /no disponible/);
+});
+
+test("only Meta's own sign-in dialog may open as a popup, and it may only travel through Meta and Zorax", () => {
+  assert.ok(metaPopupUrl('https://www.facebook.com/v26.0/dialog/oauth?client_id=1&redirect_uri=x'));
+  assert.ok(metaPopupUrl('https://web.facebook.com/dialog/oauth?x=1'));
+  assert.ok(metaPopupUrl('https://www.facebook.com/login.php?next=x'));
+  for (const bad of ['https://evil.test/dialog/oauth', 'https://www.facebook.com/', 'https://www.facebook.com/profile', 'http://www.facebook.com/dialog/oauth', 'https://user:pw@www.facebook.com/dialog/oauth', 'not a url'])
+    assert.equal(metaPopupUrl(bad), null);
+  for (const ok of ['https://business.facebook.com/wa/manage/', 'https://www.facebook.com/privacy/consent/', 'https://static.xx.fbcdn.net/x.js', 'https://staticxx.facebook.com/x/connect/xd_arbiter/', APP_ORIGIN + '/dashboard/whatsapp'])
+    assert.equal(metaPopupNavigation(ok), true, ok);
+  for (const bad of ['https://evil.test/', 'https://facebook.com.evil.test/', 'http://www.facebook.com/', 'https://user:pw@www.facebook.com/x', 'javascript:alert(1)'])
+    assert.equal(metaPopupNavigation(bad), false, bad);
 });

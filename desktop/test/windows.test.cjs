@@ -287,3 +287,23 @@ test('the clipboard gives the orb a PNG or trimmed text, at most ten times a min
   for (let i = 0; i < 6; i++) read();
   assert.throws(read, /Demasiadas/);
 });
+
+test('the CRM window lets Meta open its sign-in dialog in a hardened popup; the orb and other sites get nothing', async () => {
+  const { crm, bubble } = await launch();
+  const dialog = 'https://www.facebook.com/v26.0/dialog/oauth?client_id=1&config_id=2';
+  const allowed = crm.openHandler({ url: dialog });
+  assert.equal(allowed.action, 'allow');
+  const prefs = allowed.overrideBrowserWindowOptions.webPreferences;
+  assert.equal(prefs.sandbox, true); assert.equal(prefs.nodeIntegration, false); assert.equal(prefs.contextIsolation, true); assert.equal(prefs.webSecurity, true);
+  assert.equal(prefs.partition, crm.options.webPreferences.partition);
+  for (const url of ['https://evil.test/dialog/oauth', 'https://www.facebook.com/some/page', policy.APP_ORIGIN + '/dashboard']) assert.equal(crm.openHandler({ url }).action, 'deny', url);
+  assert.equal(bubble.openHandler({ url: dialog }).action, 'deny');
+  const child = new crm.constructor({ webPreferences: prefs });
+  crm.webContents.emit('did-create-window', child, { url: dialog });
+  assert.equal(child.openHandler({ url: dialog }).action, 'deny');
+  const navigates = url => { const event = { prevented: false, preventDefault() { this.prevented = true; } }; child.webContents.emit('will-navigate', event, url); return !event.prevented; };
+  assert.equal(navigates('https://business.facebook.com/wa/manage/'), true);
+  assert.equal(navigates('https://web.facebook.com/login/'), true);
+  assert.equal(navigates('https://evil.test/'), false);
+  assert.equal(navigates('http://www.facebook.com/'), false);
+});

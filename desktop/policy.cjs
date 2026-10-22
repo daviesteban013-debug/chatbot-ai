@@ -85,6 +85,23 @@ function fileToken(value) {
   if (typeof value !== 'string' || !/^[0-9a-f]{32}$/.test(value)) throw new Error('Archivo no disponible');
   return value;
 }
+const META_LOGIN_ORIGINS = new Set(['https://www.facebook.com', 'https://web.facebook.com', 'https://m.facebook.com']);
+/** The window Meta's SDK opens for Facebook Login and WhatsApp Embedded Signup: only the sign-in dialog, only on Meta. */
+function metaPopupUrl(value) {
+  try {
+    const url = new URL(value);
+    return META_LOGIN_ORIGINS.has(url.origin) && !url.username && !url.password && /^(?:\/v\d+\.\d+)?\/(?:dialog\/oauth|login(?:\.php|\/.*)?)$/.test(url.pathname) ? url.href : null;
+  } catch { return null; }
+}
+/** Where that popup may navigate while the person signs in and shares the account: Meta properties and, to close the loop, Zorax. */
+function metaPopupNavigation(value) {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:' || url.username || url.password) return false;
+    const host = url.hostname;
+    return ORIGINS.has(url.origin) || host === 'facebook.com' || host.endsWith('.facebook.com') || host.endsWith('.fbcdn.net') || host === 'whatsapp.com' || host.endsWith('.whatsapp.com') || host.endsWith('.meta.com');
+  } catch { return false; }
+}
 async function microphoneConsent(platform, systemPreferences) {
   if (platform !== 'darwin') return true;
   const status = systemPreferences.getMediaAccessStatus('microphone');
@@ -92,4 +109,4 @@ async function microphoneConsent(platform, systemPreferences) {
   if (status !== 'not-determined') return false;
   return systemPreferences.askForMediaAccess('microphone');
 }
-module.exports = { APP_ORIGIN, LEGACY_ORIGIN, MAX_FILE_BYTES, trustedUrl, panelUrl, color, googleUrl, callbackUrl, microphoneConsent, notice, watchPreference, clipboardText, clipboardImage, watchedFile, fileToken };
+module.exports = { APP_ORIGIN, LEGACY_ORIGIN, MAX_FILE_BYTES, trustedUrl, panelUrl, color, googleUrl, callbackUrl, metaPopupUrl, metaPopupNavigation, microphoneConsent, notice, watchPreference, clipboardText, clipboardImage, watchedFile, fileToken };

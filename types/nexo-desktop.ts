@@ -19,6 +19,8 @@ export interface NexoDesktop {
   setExpanded(expanded: boolean): Promise<DesktopPreferences>;
   openPanel(path: string): Promise<void>;
   startGoogleSignIn(url: string): Promise<void>;
+  /** Zorax 0.3.1+: the CRM window opens Meta's sign-in dialog (WhatsApp Embedded Signup) in a popup. */
+  metaPopups?: boolean;
   quit(): Promise<void>;
   getUpdateState?(): Promise<DesktopUpdateState>;
   checkForUpdates?(): Promise<DesktopUpdateState>;

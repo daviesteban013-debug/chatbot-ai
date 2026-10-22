@@ -11,6 +11,8 @@ Con `WHATSAPP_APP_ID` y `WHATSAPP_SIGNUP_CONFIG_ID` configurados, el dueño ve e
 3. El servidor cambia el código por el token de integración del negocio (`/oauth/access_token` con el secreto de la app), comprueba app, permisos, pertenencia y verificación del número como en la ruta manual, guarda el token cifrado, registra el número con un PIN de seis dígitos generado por Zorax (cifrado en `two_step_pin_enc`) y suscribe la app a los webhooks. El PIN se muestra una vez en pantalla.
 4. Si el número ya tenía PIN de verificación en dos pasos (error 133005), queda vinculado y suscrito, y el dueño termina con su PIN en la sección manual.
 
+En la app de escritorio el botón funciona desde Zorax 0.3.1: la ventana del CRM permite abrir el diálogo de inicio de sesión de Meta en una ventana emergente aislada (solo orígenes de Meta, misma sesión, sin Node). Versiones anteriores bloquean toda ventana emergente y la página lo avisa (`nexoDesktop.metaPopups`).
+
 Requisitos en Meta: producto **Facebook Login for Business** con una configuración de Embedded Signup para WhatsApp, `zoraxpilot.com` en los dominios permitidos del SDK de JavaScript y, para que funcione con negocios ajenos a la app, verificación de negocio de Zorax más acceso avanzado a `whatsapp_business_management` y `whatsapp_business_messaging` (Tech Provider). Antes de eso solo conecta a quienes tengan rol en la app.
 
 ## Activación con una SIM nueva
