@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { ArrowRight, Check, ExternalLink, MessageCircle, RefreshCw } from "lucide-react";
+import { ArrowRight, Check, ExternalLink, MessageCircle, RefreshCw, Smartphone } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +19,8 @@ declare global { interface Window { FB?: FacebookSdk; fbAsyncInit?: () => void }
 
 const SDK_ID = "facebook-jssdk";
 const META_ORIGIN = /^https:\/\/(www|web|business)\.facebook\.com$/;
-type SignupSession = { phoneId?: string; wabaId?: string };
+type SignupSession = { phoneId?: string; wabaId?: string; coexistence?: boolean };
+type SignupMode = "app" | "new";
 
 /**
  * Meta's Embedded Signup: loads the Facebook SDK once and keeps the number and account IDs that the
@@ -38,7 +39,7 @@ function useEmbeddedSignup(config: WhatsAppSignupConfig | null, onEvent: (event:
       try { data = JSON.parse(event.data); } catch { return; } // Facebook also posts messages that are not JSON.
       if (data?.type !== "WA_EMBEDDED_SIGNUP") return;
       if (data.event === "FINISH" || data.event === "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING")
-        sessionRef.current = { phoneId: String(data.data?.phone_number_id ?? ""), wabaId: String(data.data?.waba_id ?? "") };
+        sessionRef.current = { phoneId: String(data.data?.phone_number_id ?? ""), wabaId: String(data.data?.waba_id ?? ""), coexistence: data.event === "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING" };
       handler.current(data.event ?? "");
     };
     window.addEventListener("message", onMessage);
@@ -68,7 +69,7 @@ export function WhatsAppSetupView({initial}:{initial:WhatsAppSetup}) {
   const [token,setToken]=useState("");
   const [pin,setPin]=useState("");
   const [busy,setBusy]=useState(false);
-  const [signupBusy,setSignupBusy]=useState(false);
+  const [signupBusy,setSignupBusy]=useState<SignupMode|null>(null);
   const [manualOpen,setManualOpen]=useState(false);
   const [notice,setNotice]=useState<{error?:string;message?:string}|null>(null);
   const ready=setup.requirements.every(item=>item.ready);
@@ -78,7 +79,7 @@ export function WhatsAppSetupView({initial}:{initial:WhatsAppSetup}) {
     if (!response.ok) throw new Error("No pude actualizar el estado.");
     setSetup(data);
   }
-  async function run(operation:Record<string,string>) {
+  async function run(operation:Record<string,string|boolean>) {
     setBusy(true);setNotice(null);
     try {
       const response=await fetch("/api/whatsapp/setup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(operation)});
@@ -98,7 +99,8 @@ export function WhatsAppSetupView({initial}:{initial:WhatsAppSetup}) {
     else if (event==="SDK_BLOCKED") setNotice({error:"El navegador bloqueó el script de Meta, normalmente por un bloqueador de anuncios. Permítelo en esta página y recarga."});
   },[]);
   const sessionRef=useEmbeddedSignup(setup.canManage ? setup.signup : null,onSignupEvent);
-  function connect() {
+  /** "app": link the WhatsApp Business app already on the phone (coexistence). "new": a number without WhatsApp. */
+  function connect(mode:SignupMode) {
     const config=setup.signup, fb=window.FB;
     if (!config) return;
     // Meta refuses FB.login on plain http (local development included); say so instead of waiting forever.
@@ -107,18 +109,18 @@ export function WhatsAppSetupView({initial}:{initial:WhatsAppSetup}) {
     // Desktop builds before 0.3.1 block every popup, so Meta's window would never appear and the button would wait forever.
     const desktop=window.nexoDesktop;
     if (desktop&&!desktop.metaPopups) {setNotice({error:"Esta versión de Zorax para escritorio no puede abrir la ventana de Meta. Actualízala desde el aviso de arriba o conecta el número desde zoraxpilot.com en tu navegador."});return;}
-    sessionRef.current={};setNotice(null);setSignupBusy(true);
+    sessionRef.current={};setNotice(null);setSignupBusy(mode);
     // If the popup was blocked or abandoned without the SDK noticing, release the button after three minutes.
-    const watchdog=window.setTimeout(()=>{setSignupBusy(false);setNotice(current=>current??{error:"Meta no respondió. Si la ventana no se abrió, permite las ventanas emergentes e inténtalo de nuevo."});},180_000);
+    const watchdog=window.setTimeout(()=>{setSignupBusy(null);setNotice(current=>current??{error:"Meta no respondió. Si la ventana no se abrió, permite las ventanas emergentes e inténtalo de nuevo."});},180_000);
     fb.login(response=>{window.clearTimeout(watchdog);void (async()=>{
       const code=response.authResponse?.code;
       // The IDs usually arrive by message a moment before the code; give them a short while.
-      for (let attempt=0;attempt<30&&code&&!(sessionRef.current.phoneId&&sessionRef.current.wabaId);attempt++) await new Promise(resolve=>setTimeout(resolve,100));
-      const {phoneId:signupPhone,wabaId:signupWaba}=sessionRef.current;
-      setSignupBusy(false);
-      if (!code||!signupPhone||!signupWaba) {setNotice(current=>current??{error:"No se completó la conexión con Meta. Vuelve a pulsar Conectar WhatsApp y termina todos los pasos de la ventana."});return;}
-      await run({operation:"signup",code,phoneId:signupPhone,wabaId:signupWaba});
-    })();},{config_id:config.configId,response_type:"code",override_default_response_type:true,extras:{setup:{},featureType:"whatsapp_business_app_onboarding",sessionInfoVersion:"3"}});
+      for (let attempt=0;attempt<30&&code&&!(sessionRef.current.wabaId&&(sessionRef.current.phoneId||sessionRef.current.coexistence));attempt++) await new Promise(resolve=>setTimeout(resolve,100));
+      const {phoneId:signupPhone,wabaId:signupWaba,coexistence}=sessionRef.current;
+      setSignupBusy(null);
+      if (!code||!signupWaba||(!signupPhone&&!coexistence)) {setNotice(current=>current??{error:"No se completó la conexión con Meta. Vuelve a pulsar Conectar WhatsApp y termina todos los pasos de la ventana."});return;}
+      await run({operation:"signup",code,wabaId:signupWaba,...(signupPhone?{phoneId:signupPhone}:{}),...(coexistence?{coexistence:true}:{})});
+    })();},{config_id:config.configId,response_type:"code",override_default_response_type:true,extras:{setup:{},featureType:mode==="app"?"whatsapp_business_app_onboarding":"",sessionInfoVersion:"3"}});
   }
   const account=setup.account;
   const oneClick=setup.canManage&&Boolean(setup.signup);
@@ -180,15 +182,16 @@ export function WhatsAppSetupView({initial}:{initial:WhatsAppSetup}) {
           <PanelHeader title="Conecta tu WhatsApp en un clic"/>
           <div className="grid gap-5 px-4 py-4 sm:px-5 lg:grid-cols-[1.2fr_1fr] lg:items-center">
             <div className="space-y-3">
-              <p className="text-[13px] leading-6 text-ink-soft">Se abre una ventana de Meta. Entras con Facebook, eliges o creas la cuenta de WhatsApp Business de tu negocio y verificas tu número por SMS o llamada. Zorax guarda el acceso cifrado y deja el número listo para recibir mensajes.</p>
+              <p className="text-[13px] leading-6 text-ink-soft">Se abre una ventana de Meta y entras con Facebook. Si tu negocio ya usa la app de WhatsApp Business, la vinculas escaneando un código desde el celular. Si vas a usar un número nuevo, Meta lo verifica por SMS. Zorax guarda el acceso cifrado y deja el número listo para recibir mensajes.</p>
               <ul className="space-y-1 text-xs leading-5 text-muted">
                 <li className="flex gap-2"><Check className="mt-1 size-3 shrink-0"/>No necesitas ser empresa registrada para empezar.</li>
-                <li className="flex gap-2"><Check className="mt-1 size-3 shrink-0"/>Sirve una SIM nueva. Si tu número ya está en la app de WhatsApp Business del celular, elige conectar esa app: conservas tus chats y Zorax atiende por el mismo número.</li>
-                <li className="flex gap-2"><Check className="mt-1 size-3 shrink-0"/>Sin IDs ni tokens: Zorax hace el registro por ti y te muestra el PIN de seguridad una sola vez.</li>
+                <li className="flex gap-2"><Check className="mt-1 size-3 shrink-0"/>Con tu app de WhatsApp Business conservas tus chats y sigues respondiendo desde el celular; Zorax atiende por el mismo número.</li>
+                <li className="flex gap-2"><Check className="mt-1 size-3 shrink-0"/>Sin IDs ni tokens: Zorax termina la conexión por ti.</li>
               </ul>
             </div>
             <div className="flex flex-col items-start gap-2 lg:items-end">
-              <Button size="lg" disabled={busy||signupBusy} onClick={connect}><MessageCircle className="size-4"/>{signupBusy?"Esperando a Meta…":account?"Conectar otro número":"Conectar WhatsApp con Meta"}</Button>
+              <Button size="lg" disabled={busy||Boolean(signupBusy)} onClick={()=>connect("app")}><Smartphone className="size-4"/>{signupBusy==="app"?"Esperando a Meta…":"Conectar mi app de WhatsApp Business"}</Button>
+              <Button size="lg" variant="secondary" disabled={busy||Boolean(signupBusy)} onClick={()=>connect("new")}><MessageCircle className="size-4"/>{signupBusy==="new"?"Esperando a Meta…":account?"Conectar otro número":"Conectar un número nuevo"}</Button>
               <p className="text-xs text-muted">Permite las ventanas emergentes de Meta si tu navegador las bloquea.</p>
             </div>
           </div>

@@ -32,7 +32,8 @@ async function graphRequest<T = GraphResult>(path: string, token: string, body?:
   return data as T;
 }
 
-export async function verifyCloudPhone(wabaId: string, phoneId: string, token: string): Promise<CloudPhone> {
+/** `requireVerified: false` is for numbers Meta itself just confirmed (WhatsApp Business app linked in Embedded Signup). */
+export async function verifyCloudPhone(wabaId: string, phoneId: string, token: string, { requireVerified = true }: { requireVerified?: boolean } = {}): Promise<CloudPhone> {
   if (!/^\d{5,30}$/.test(wabaId) || !/^\d{5,30}$/.test(phoneId)) throw new CloudSetupError("INVALID_IDS");
   const appId = process.env.WHATSAPP_APP_ID?.trim();
   const secret = process.env.WHATSAPP_APP_SECRET?.trim();
@@ -47,7 +48,7 @@ export async function verifyCloudPhone(wabaId: string, phoneId: string, token: s
   const result = await graphRequest(`${wabaId}/phone_numbers?fields=id,display_phone_number,verified_name,code_verification_status&limit=100`,token);
   const phone = result.data?.find(item=>item.id===phoneId);
   if (!phone || typeof phone.display_phone_number !== "string") throw new CloudSetupError("NUMBER_NOT_IN_WABA");
-  if (phone.code_verification_status !== "VERIFIED" && !isMetaTestNumber(phone)) throw new CloudSetupError("NUMBER_NOT_VERIFIED");
+  if (requireVerified && phone.code_verification_status !== "VERIFIED" && !isMetaTestNumber(phone)) throw new CloudSetupError("NUMBER_NOT_VERIFIED");
   return phone;
 }
 
@@ -60,15 +61,27 @@ export function isMetaTestNumber(phone: Pick<CloudPhone,"display_phone_number"|"
 }
 
 /** Explicit owner action; does not send any customer message. */
-export async function activateCloudPhone(wabaId: string, phoneId: string, token: string, pin?: string): Promise<void> {
+export async function activateCloudPhone(wabaId: string, phoneId: string, token: string, pin?: string, options: { requireVerified?: boolean } = {}): Promise<void> {
   if (pin !== undefined && !/^\d{6}$/.test(pin)) throw new CloudSetupError("INVALID_PIN");
-  await verifyCloudPhone(wabaId,phoneId,token);
+  await verifyCloudPhone(wabaId,phoneId,token,options);
   if (pin !== undefined) {
     const registration = await graphRequest(`${phoneId}/register`,token,{messaging_product:"whatsapp",pin});
     if (registration.success !== true) throw new CloudSetupError("REGISTRATION_FAILED");
   }
   const subscription = await graphRequest(`${wabaId}/subscribed_apps`,token,{});
   if (subscription.success !== true) throw new CloudSetupError("SUBSCRIPTION_FAILED");
+}
+
+/**
+ * The one number of a WhatsApp Business Account. Linking the WhatsApp Business app can finish with only the
+ * account ID; that account holds exactly the number the owner just linked.
+ */
+export async function onlyCloudPhoneId(wabaId: string, token: string): Promise<string> {
+  if (!/^\d{5,30}$/.test(wabaId)) throw new CloudSetupError("INVALID_IDS");
+  const result = await graphRequest(`${wabaId}/phone_numbers?fields=id&limit=5`, token);
+  const ids = (result.data ?? []).map(item => item.id).filter(id => typeof id === "string" && /^\d{5,30}$/.test(id));
+  if (ids.length !== 1) throw new CloudSetupError("NUMBER_NOT_IN_WABA");
+  return ids[0];
 }
 
 /**

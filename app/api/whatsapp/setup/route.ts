@@ -2,7 +2,7 @@ import { z } from "zod";
 import { getCurrentTenant, getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { activateCloudPhone, cloudErrorMessage, CloudSetupError, exchangeSignupCode, generateTwoStepPin, verifyCloudPhone } from "@/lib/whatsapp/cloud";
+import { activateCloudPhone, cloudErrorMessage, CloudSetupError, exchangeSignupCode, generateTwoStepPin, onlyCloudPhoneId, verifyCloudPhone } from "@/lib/whatsapp/cloud";
 import { encryptWhatsAppToken, loadWhatsAppSendOptions } from "@/lib/whatsapp/credentials";
 import { readWhatsAppSetup, setupRequirements, signupConfig } from "@/lib/whatsapp/setup";
 
@@ -11,7 +11,8 @@ const id = z.string().regex(/^\d{5,30}$/);
 const input = z.discriminatedUnion("operation",[
   z.object({operation:z.literal("save"),phoneId:id,wabaId:id,accessToken:z.string().trim().min(20).max(8192).regex(/^\S+$/)}).strict(),
   // Meta's button: a one-time code plus the IDs the signup window posted back. Never a token.
-  z.object({operation:z.literal("signup"),code:z.string().trim().min(10).max(1024).regex(/^[A-Za-z0-9_#.-]+$/),phoneId:id,wabaId:id}).strict(),
+  // `coexistence`: the owner linked the WhatsApp Business app on their phone; Meta may then send only the account ID.
+  z.object({operation:z.literal("signup"),code:z.string().trim().min(10).max(1024).regex(/^[A-Za-z0-9_#.-]+$/),phoneId:id.optional(),wabaId:id,coexistence:z.boolean().optional()}).strict(),
   z.object({operation:z.literal("register"),pin:z.string().regex(/^\d{6}$/)}).strict(),
   z.object({operation:z.literal("subscribe")}).strict(),
 ]);
@@ -43,14 +44,23 @@ export async function POST(request: Request) {
   try {
     if (parsed.data.operation === "signup") {
       if (!signupConfig()) return json({error:"La conexión en un clic no está habilitada en este servidor."},503);
-      const {code,phoneId,wabaId}=parsed.data;
+      const {code,wabaId}=parsed.data, coexistence=parsed.data.coexistence===true;
+      // Checked before the one-time code is spent: a new number always comes with its ID.
+      if (!parsed.data.phoneId && !coexistence) return json({error:"Meta no indicó qué número conectar. Vuelve a pulsar el botón y termina todos los pasos."},400);
       const accessToken=await exchangeSignupCode(code);
-      const phone=await verifyCloudPhone(wabaId,phoneId,accessToken);
+      const phoneId=parsed.data.phoneId ?? await onlyCloudPhoneId(wabaId,accessToken);
+      // A linked WhatsApp Business app is confirmed by Meta in the app itself, not by an SMS code.
+      const phone=await verifyCloudPhone(wabaId,phoneId,accessToken,{requireVerified:!coexistence});
       const {error}=await admin.rpc("configure_whatsapp_cloud",{
         p_tenant:tenant.tenantId,p_user:user.id,p_phone:phoneId,p_waba:wabaId,
         p_display:phone.display_phone_number,p_ciphertext:encryptWhatsAppToken(accessToken,tenant.tenantId,phoneId),
       });
       if (error) return json({error:error.code==="23505" ? "Ese número ya está vinculado a otro negocio." : "No pude guardar la conexión. Comprueba tus permisos e inténtalo de nuevo."},409);
+      if (coexistence) {
+        // Meta already registered the number for the app and the API together; registering again could undo that. Subscribe only.
+        await activateCloudPhone(wabaId,phoneId,accessToken,undefined,{requireVerified:false});
+        return json({ok:true,message:`Listo: ${phone.display_phone_number} quedó conectado a Zorax y sigue funcionando en tu app de WhatsApp Business. Escríbele desde otro teléfono para probar la recepción.`});
+      }
       // Register with a PIN Zorax generates and keeps encrypted; a number that already has one is linked
       // and subscribed anyway, and the owner finishes with their PIN.
       const pin=generateTwoStepPin();

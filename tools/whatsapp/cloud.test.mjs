@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {beforeEach,after,test} from "node:test";
 import {load} from "../agent/load.mjs";
-const {verifyCloudPhone,activateCloudPhone,cloudErrorMessage,exchangeSignupCode,generateTwoStepPin,CloudSetupError}=await import(await load("../../lib/whatsapp/cloud.ts"));
+const {verifyCloudPhone,activateCloudPhone,cloudErrorMessage,exchangeSignupCode,generateTwoStepPin,CloudSetupError,onlyCloudPhoneId}=await import(await load("../../lib/whatsapp/cloud.ts"));
 const originalFetch=globalThis.fetch;
 const originalId=process.env.WHATSAPP_APP_ID, originalSecret=process.env.WHATSAPP_APP_SECRET;
 let calls, phone, debug, responseError;
@@ -74,4 +74,18 @@ test("a PIN mismatch on registration is reported as such, and generated PINs are
   assert.match(cloudErrorMessage(new CloudSetupError("PIN_MISMATCH")),/PIN de verificación/);
   assert.match(cloudErrorMessage(new CloudSetupError("SIGNUP_CODE_INVALID")),/Conectar WhatsApp/);
   for (let i=0;i<50;i++) assert.match(generateTwoStepPin(),/^\d{6}$/);
+});
+
+test("a number Meta just linked from the WhatsApp Business app is accepted without an SMS check, and the account's single number is found",async()=>{
+  phone.code_verification_status="NOT_VERIFIED";
+  await assert.rejects(verifyCloudPhone("1111122222",phone.id,"fixture-token"),/NUMBER_NOT_VERIFIED/);
+  assert.equal((await verifyCloudPhone("1111122222",phone.id,"fixture-token",{requireVerified:false})).id,phone.id);
+  calls=[];await activateCloudPhone("1111122222",phone.id,"fixture-token",undefined,{requireVerified:false});
+  assert.ok(calls.some(call=>call.url.endsWith("/subscribed_apps")));assert.ok(!calls.some(call=>call.url.endsWith("/register")),"never re-registers a linked app");
+  assert.equal(await onlyCloudPhoneId("1111122222","fixture-token"),phone.id);
+  globalThis.fetch=async()=>Response.json({data:[{id:"123456789"},{id:"987654321"}]});
+  await assert.rejects(onlyCloudPhoneId("1111122222","fixture-token"),/NUMBER_NOT_IN_WABA/);
+  globalThis.fetch=async()=>Response.json({data:[]});
+  await assert.rejects(onlyCloudPhoneId("1111122222","fixture-token"),/NUMBER_NOT_IN_WABA/);
+  await assert.rejects(onlyCloudPhoneId("x","fixture-token"),/INVALID_IDS/);
 });

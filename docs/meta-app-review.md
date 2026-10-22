@@ -1,6 +1,6 @@
 # Revisión de la app de Meta (WhatsApp) para Zorax
 
-Qué enviar en **Meta for Developers → Zorax → Revisar → Revisión de la app** para obtener acceso avanzado a `whatsapp_business_messaging` y `whatsapp_business_management`, y después pasar la **verificación de acceso** de proveedor de tecnología. Con eso el botón «Conectar WhatsApp con Meta» funciona para cualquier tienda, no solo para cuentas con rol en la app.
+Qué enviar en **Meta for Developers → Zorax → Revisar → Revisión de la app** para obtener acceso avanzado a `whatsapp_business_messaging` y `whatsapp_business_management`, y después pasar la **verificación de acceso** de proveedor de tecnología. Con eso los botones de conexión de WhatsApp funcionan para cualquier tienda, no solo para cuentas con rol en la app.
 
 Estado al 22 de octubre de 2026: negocio verificado (Zuleima Rodriguez Chona, nombre comercial Zorax), dominio zoraxpilot.com verificado, configuración de Embedded Signup creada, app publicada. Pendiente: enviar la revisión con el video y las credenciales de prueba.
 
@@ -13,8 +13,8 @@ Estado al 22 de octubre de 2026: negocio verificado (Zuleima Rodriguez Chona, no
 ## Guion del video (en pantalla, en este orden)
 
 1. Abrir `https://zoraxpilot.com/login`, entrar con la cuenta de prueba. Se ve el centro de mando de Zorax.
-2. Ir a **WhatsApp** en el menú. Se ve el botón **Conectar WhatsApp con Meta**.
-3. Pulsar el botón. Se abre la ventana de Meta: entrar con Facebook, elegir el portafolio, elegir o crear la cuenta de WhatsApp Business, agregar el número y verificarlo por SMS. Terminar.
+2. Ir a **WhatsApp** en el menú. Se ven los botones **Conectar mi app de WhatsApp Business** y **Conectar un número nuevo**.
+3. Pulsar uno de los dos. Se abre la ventana de Meta: entrar con Facebook, elegir el portafolio, elegir o crear la cuenta de WhatsApp Business, agregar el número y verificarlo por SMS. Terminar.
 4. De vuelta en Zorax, mostrar el aviso «Listo: +57 … quedó conectado» y el estado «Credenciales verificadas». Esto demuestra `whatsapp_business_management`: la app leyó el número de la cuenta, lo registró y suscribió los webhooks sin que el dueño pegara IDs ni tokens.
 5. Desde otro teléfono, escribir al número conectado un mensaje de cliente, por ejemplo «Hola, ¿tienen tenis blancos talla 38?». Mostrar en Zorax, en **Conversaciones**, que el mensaje llegó y que el agente respondió con productos del catálogo. Esto demuestra `whatsapp_business_messaging`.
 6. Mostrar en Conversaciones que una persona del equipo puede tomar la conversación (handoff) y responder a mano.
@@ -46,7 +46,7 @@ Meta revisa en inglés con más rapidez; se incluye cada texto en los dos idioma
 
 **EN**
 1. Go to https://zoraxpilot.com/login and sign in with the test credentials below.
-2. Open "WhatsApp" in the left menu. Click "Conectar WhatsApp con Meta" and complete Embedded Signup with a test WhatsApp Business Account (or watch the attached video, where this is done with a real number).
+2. Open "WhatsApp" in the left menu. Click "Conectar un número nuevo" (or "Conectar mi app de WhatsApp Business" to link an existing WhatsApp Business app) and complete Embedded Signup with a test WhatsApp Business Account (or watch the attached video, where this is done with a real number).
 3. After the popup closes, the page shows the connected number and the status "Credenciales verificadas" (whatsapp_business_management: numbers listed, registered and webhooks subscribed).
 4. From any phone, send a WhatsApp message to the connected number, e.g. "Hola, ¿tienen tenis blancos talla 38?".
 5. Open "Conversaciones" in the left menu: the message appears and Zorax's reply with catalog products is shown (whatsapp_business_messaging).
