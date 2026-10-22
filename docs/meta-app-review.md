@@ -8,9 +8,30 @@ Estado al 22 de octubre de 2026: negocio verificado (Zuleima Rodriguez Chona, no
 
 - **Configuración de la app → Básica**: URL de la política de privacidad `https://zoraxpilot.com/privacidad`; URL de eliminación de datos de usuarios `https://zoraxpilot.com/privacidad#eliminar-datos`; correo de contacto; categoría «Empresa y páginas»; icono 1024×1024 (el logotipo Z sobre fondo oscuro); dominios de la app `zoraxpilot.com`.
 - **Cuenta de prueba para el revisor**: un negocio de prueba en zoraxpilot.com con catálogo cargado, cuya contraseña se escribe solo en el formulario de Meta (sección «Instrucciones para la verificación»). Nunca la cuenta personal del dueño.
-- **Video**: una sola grabación de pantalla, 60 a 120 segundos, sin cortes, con la URL visible. Formato mp4 o mov.
+- **Videos**: uno por permiso, 30 a 90 segundos cada uno, sin cortes, con la URL visible. Formato mp4 o mov. Se graban con la Herramienta Recortes de Windows (Win+Shift+R) o con la Xbox Game Bar (Win+Alt+R).
 
-## Guion del video (en pantalla, en este orden)
+## Por qué no sirve grabar el botón de Zorax todavía
+
+Desde la versión 4 de Embedded Signup, Meta exige el acceso avanzado a los dos permisos para registrar cualquier número desde la ventana de conexión, aunque quien conecta tenga rol en la app. El intento del 22 de octubre de 2026 terminó con el error #2655111: «La app de socio no tiene los permisos avanzados de mensajes y administración de WhatsApp Business necesarios para el registro». Por eso los videos usan la alternativa que Meta acepta para la revisión: el número de prueba y el Administrador de WhatsApp.
+
+## Video 1 · whatsapp_business_messaging
+
+1. Abrir Meta for Developers → Zorax → WhatsApp → Configuración de la API.
+2. Elegir como remitente el número de prueba (+1 555 629 0862) y como destinatario el celular registrado como destinatario de prueba.
+3. Pulsar «Enviar mensaje» y mostrar la respuesta correcta de la API.
+4. Mostrar el mensaje recibido en WhatsApp (WhatsApp Web o el celular frente a la cámara).
+
+## Video 2 · whatsapp_business_management
+
+1. Abrir el Administrador de WhatsApp → Plantillas de mensajes → Crear plantilla.
+2. Crear una plantilla de categoría Utilidad, por ejemplo `confirmacion_pedido`: «Hola {{1}}, tu pedido {{2}} quedó confirmado. Te avisamos cuando salga.»
+3. Enviarla y mostrarla en la lista con su estado.
+
+## Video opcional · el uso real en Zorax
+
+Con el número de prueba conectado por la conexión manual de `/dashboard/whatsapp`, escribir desde el celular de prueba y mostrar en Conversaciones el mensaje y la respuesta de Zorax, y el traspaso a una persona. Refuerza el caso de uso, pero no es obligatorio.
+
+## Guion para después de la aprobación (video de la conexión en un clic)
 
 1. Abrir `https://zoraxpilot.com/login`, entrar con la cuenta de prueba. Se ve el centro de mando de Zorax.
 2. Ir a **WhatsApp** en el menú. Se ven los botones **Conectar mi app de WhatsApp Business** y **Conectar un número nuevo**.
