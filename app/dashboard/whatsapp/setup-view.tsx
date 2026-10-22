@@ -18,7 +18,10 @@ type FacebookSdk = {
 declare global { interface Window { FB?: FacebookSdk; fbAsyncInit?: () => void } }
 
 const SDK_ID = "facebook-jssdk";
-const META_ORIGIN = /^https:\/\/(www|web|business)\.facebook\.com$/;
+// Meta posts from www, web, business or other facebook.com hosts depending on the screen.
+const META_ORIGIN = /^https:\/\/(?:[a-z0-9-]+\.)*facebook\.com$/;
+/** Finish events that hand over a number and its account (v4/v5 session info). */
+const FINISH_EVENTS = new Set(["FINISH", "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING", "FINISH_OBO_MIGRATION", "FINISH_GRANT_ONLY_API_ACCESS"]);
 type SignupSession = { phoneId?: string; wabaId?: string; coexistence?: boolean };
 type SignupMode = "app" | "new";
 
@@ -26,7 +29,7 @@ type SignupMode = "app" | "new";
  * Meta's Embedded Signup: loads the Facebook SDK once and keeps the number and account IDs that the
  * signup window posts back. The one-time code travels to our server; the token never reaches the browser.
  */
-function useEmbeddedSignup(config: WhatsAppSignupConfig | null, onEvent: (event: string) => void) {
+function useEmbeddedSignup(config: WhatsAppSignupConfig | null, onEvent: (event: string, detail?: string) => void) {
   const sessionRef = useRef<SignupSession>({});
   const handler = useRef(onEvent);
   useEffect(() => { handler.current = onEvent; }, [onEvent]);
@@ -34,13 +37,18 @@ function useEmbeddedSignup(config: WhatsAppSignupConfig | null, onEvent: (event:
   useEffect(() => {
     if (!appId || !version) return;
     const onMessage = (event: MessageEvent) => {
-      if (!META_ORIGIN.test(event.origin) || typeof event.data !== "string") return;
-      let data: { type?: string; event?: string; data?: { phone_number_id?: unknown; waba_id?: unknown } };
-      try { data = JSON.parse(event.data); } catch { return; } // Facebook also posts messages that are not JSON.
+      if (!META_ORIGIN.test(event.origin)) return;
+      let data: { type?: string; event?: string; data?: { phone_number_id?: unknown; waba_id?: unknown; error_message?: unknown } };
+      if (typeof event.data === "string") { try { data = JSON.parse(event.data); } catch { return; } } // Facebook also posts messages that are not JSON.
+      else if (event.data && typeof event.data === "object") data = event.data;
+      else return;
       if (data?.type !== "WA_EMBEDDED_SIGNUP") return;
-      if (data.event === "FINISH" || data.event === "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING")
-        sessionRef.current = { phoneId: String(data.data?.phone_number_id ?? ""), wabaId: String(data.data?.waba_id ?? ""), coexistence: data.event === "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING" };
-      handler.current(data.event ?? "");
+      if (data.event && FINISH_EVENTS.has(data.event)) {
+        const id = (value: unknown) => typeof value === "string" || typeof value === "number" ? String(value) : "";
+        sessionRef.current = { phoneId: id(data.data?.phone_number_id), wabaId: id(data.data?.waba_id), coexistence: data.event === "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING" };
+      }
+      const reported = typeof data.data?.error_message === "string" ? data.data.error_message.slice(0, 200) : undefined;
+      handler.current(data.event ?? "", reported);
     };
     window.addEventListener("message", onMessage);
     const init = () => window.FB?.init({ appId, autoLogAppEvents: true, xfbml: false, version });
@@ -92,14 +100,18 @@ export function WhatsAppSetupView({initial}:{initial:WhatsAppSetup}) {
     finally {setToken("");setPin("");setBusy(false);}
   }
   function save(event:FormEvent<HTMLFormElement>) {event.preventDefault();void run({operation:"save",phoneId,wabaId,accessToken:token});}
-  const onSignupEvent=useCallback((event:string)=>{
+  const onSignupEvent=useCallback((event:string,detail?:string)=>{
     if (event==="FINISH_ONLY_WABA") setNotice({error:"Creaste la cuenta de WhatsApp Business pero no agregaste un número. Vuelve a pulsar Conectar y agrega tu número."});
-    else if (event==="CANCEL") setNotice({error:"Cerraste la ventana de Meta antes de terminar. Puedes volver a intentarlo cuando quieras."});
-    else if (event==="ERROR") setNotice({error:"Meta reportó un error durante la conexión. Espera un momento e inténtalo de nuevo."});
+    else if (event==="CANCEL") setNotice({error:detail?`Meta no pudo terminar la conexión: ${detail}`:"Cerraste la ventana de Meta antes de terminar. Puedes volver a intentarlo cuando quieras."});
+    else if (event==="ERROR") setNotice({error:detail?`Meta reportó un error: ${detail}`:"Meta reportó un error durante la conexión. Espera un momento e inténtalo de nuevo."});
     else if (event==="SDK_BLOCKED") setNotice({error:"El navegador bloqueó el script de Meta, normalmente por un bloqueador de anuncios. Permítelo en esta página y recarga."});
   },[]);
   const sessionRef=useEmbeddedSignup(setup.canManage ? setup.signup : null,onSignupEvent);
-  /** "app": link the WhatsApp Business app already on the phone (coexistence). "new": a number without WhatsApp. */
+  /**
+   * "app": link the WhatsApp Business app already on the phone (coexistence). "new": a number without WhatsApp.
+   * Embedded Signup v5: linking the app is on by default; the new-number button turns it off. Launches without
+   * `version` are served as v4 since 2026-10-15, which ignores the old featureType.
+   */
   function connect(mode:SignupMode) {
     const config=setup.signup, fb=window.FB;
     if (!config) return;
@@ -120,7 +132,7 @@ export function WhatsAppSetupView({initial}:{initial:WhatsAppSetup}) {
       setSignupBusy(null);
       if (!code||!signupWaba||(!signupPhone&&!coexistence)) {setNotice(current=>current??{error:"No se completó la conexión con Meta. Vuelve a pulsar Conectar WhatsApp y termina todos los pasos de la ventana."});return;}
       await run({operation:"signup",code,wabaId:signupWaba,...(signupPhone?{phoneId:signupPhone}:{}),...(coexistence?{coexistence:true}:{})});
-    })();},{config_id:config.configId,response_type:"code",override_default_response_type:true,extras:{setup:{},featureType:mode==="app"?"whatsapp_business_app_onboarding":"",sessionInfoVersion:"3"}});
+    })();},{config_id:config.configId,response_type:"code",override_default_response_type:true,extras:mode==="app"?{version:"v5"}:{version:"v5",features:[{name:"whatsapp_business_app_onboarding",enabled:false}]}});
   }
   const account=setup.account;
   const oneClick=setup.canManage&&Boolean(setup.signup);
