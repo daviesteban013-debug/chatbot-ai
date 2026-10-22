@@ -57,9 +57,12 @@ export async function POST(request: Request) {
       try {
         await activateCloudPhone(wabaId,phoneId,accessToken,pin);
       } catch (activation) {
-        if (!(activation instanceof CloudSetupError) || activation.code!=="PIN_MISMATCH") throw activation;
+        if (!(activation instanceof CloudSetupError)) throw activation;
+        // Numbers that keep the WhatsApp Business app (coexistence) are already registered by Meta, and some
+        // have their own PIN: link and subscribe anyway, and say what, if anything, is left to the owner.
         await activateCloudPhone(wabaId,phoneId,accessToken);
-        return json({ok:true,pinPending:true,message:`${phone.display_phone_number} quedó vinculado a Zorax. Ese número ya tiene un PIN de verificación en dos pasos: escríbelo en «Registrar» para terminar.`});
+        if (activation.code==="PIN_MISMATCH") return json({ok:true,pinPending:true,message:`${phone.display_phone_number} quedó vinculado a Zorax. Ese número ya tiene un PIN de verificación en dos pasos: escríbelo en «Registrar» para terminar.`});
+        return json({ok:true,message:`Listo: ${phone.display_phone_number} quedó conectado a Zorax y la app suscrita. Envía un mensaje desde otro teléfono para probar la recepción.`});
       }
       await admin.from("whatsapp_accounts").update({two_step_pin_enc:encryptWhatsAppToken(pin,tenant.tenantId,phoneId)}).eq("tenant_id",tenant.tenantId).eq("phone_number_id",phoneId);
       return json({ok:true,pin,message:`Listo: ${phone.display_phone_number} quedó conectado a Zorax. Guarda este PIN de verificación en dos pasos: ${pin}. Envía un mensaje desde otro teléfono para probar la recepción.`});

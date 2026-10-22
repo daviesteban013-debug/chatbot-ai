@@ -5,7 +5,7 @@ const tenant=crypto.randomUUID(),uid=crypto.randomUUID();
 let state;
 const cloud=moduleUrl(`export const verifyCloudPhone=async(...args)=>{globalThis.__waState.verify.push(args);return {display_phone_number:'+573000000000'}};
 export class CloudSetupError extends Error{constructor(code){super(code);this.code=code}}
-export const activateCloudPhone=async(...args)=>{globalThis.__waState.activate.push(args);if(globalThis.__waState.pinMismatch&&args[3]!==undefined)throw new CloudSetupError('PIN_MISMATCH')};
+export const activateCloudPhone=async(...args)=>{globalThis.__waState.activate.push(args);if(globalThis.__waState.registerFails&&args[3]!==undefined)throw new CloudSetupError(globalThis.__waState.registerFails)};
 export const exchangeSignupCode=async code=>{globalThis.__waState.exchange.push(code);if(globalThis.__waState.exchangeFails)throw new CloudSetupError('SIGNUP_CODE_INVALID');return 'fixture-business-token'};
 export const generateTwoStepPin=()=>'246810';
 export const cloudErrorMessage=()=> 'Provider operation failed';`);
@@ -65,8 +65,12 @@ test('the Meta button: the code is exchanged on the server, the number saved, re
 });
 test('a number that already has a two-step PIN is linked and subscribed anyway; a rejected code is a provider error',async()=>{
  const body={operation:'signup',code:'AQB-fixture-code-1234567890',phoneId:'123456789',wabaId:'987654321'};
- state.pinMismatch=true;const response=await POST(req(body));assert.equal(response.status,200);
+ state.registerFails="PIN_MISMATCH";const response=await POST(req(body));assert.equal(response.status,200);
  const data=await response.json();assert.equal(data.pinPending,true);assert.equal(data.pin,undefined);
  assert.equal(state.activate.length,2);assert.equal(state.activate[1][3],undefined);assert.equal(state.updates.length,0);
- state.pinMismatch=false;state.exchangeFails=true;assert.equal((await POST(req(body))).status,502);assert.equal(state.rpc.length,1);
+ // A number that keeps the WhatsApp Business app is already registered by Meta: linked and subscribed, nothing left to type.
+ state.registerFails="REGISTRATION_FAILED";state.activate=[];state.rpc=[];const kept=await POST(req(body));assert.equal(kept.status,200);
+ const keptData=await kept.json();assert.equal(keptData.pinPending,undefined);assert.equal(keptData.pin,undefined);assert.match(keptData.message,/conectado/);
+ assert.equal(state.activate.length,2);assert.equal(state.activate[1][3],undefined);assert.equal(state.updates.length,0);
+ state.registerFails=null;state.exchangeFails=true;assert.equal((await POST(req(body))).status,502);assert.equal(state.rpc.length,1);
 });

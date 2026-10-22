@@ -118,7 +118,7 @@ export function WhatsAppSetupView({initial}:{initial:WhatsAppSetup}) {
       setSignupBusy(false);
       if (!code||!signupPhone||!signupWaba) {setNotice(current=>current??{error:"No se completó la conexión con Meta. Vuelve a pulsar Conectar WhatsApp y termina todos los pasos de la ventana."});return;}
       await run({operation:"signup",code,phoneId:signupPhone,wabaId:signupWaba});
-    })();},{config_id:config.configId,response_type:"code",override_default_response_type:true,extras:{setup:{},featureType:"",sessionInfoVersion:"3"}});
+    })();},{config_id:config.configId,response_type:"code",override_default_response_type:true,extras:{setup:{},featureType:"whatsapp_business_app_onboarding",sessionInfoVersion:"3"}});
   }
   const account=setup.account;
   const oneClick=setup.canManage&&Boolean(setup.signup);
@@ -183,7 +183,7 @@ export function WhatsAppSetupView({initial}:{initial:WhatsAppSetup}) {
               <p className="text-[13px] leading-6 text-ink-soft">Se abre una ventana de Meta. Entras con Facebook, eliges o creas la cuenta de WhatsApp Business de tu negocio y verificas tu número por SMS o llamada. Zorax guarda el acceso cifrado y deja el número listo para recibir mensajes.</p>
               <ul className="space-y-1 text-xs leading-5 text-muted">
                 <li className="flex gap-2"><Check className="mt-1 size-3 shrink-0"/>No necesitas ser empresa registrada para empezar.</li>
-                <li className="flex gap-2"><Check className="mt-1 size-3 shrink-0"/>Sirve una SIM nueva. Si tu número ya está en la app de WhatsApp Business, Meta puede ofrecerte conservarla y conectar ese mismo número.</li>
+                <li className="flex gap-2"><Check className="mt-1 size-3 shrink-0"/>Sirve una SIM nueva. Si tu número ya está en la app de WhatsApp Business del celular, elige conectar esa app: conservas tus chats y Zorax atiende por el mismo número.</li>
                 <li className="flex gap-2"><Check className="mt-1 size-3 shrink-0"/>Sin IDs ni tokens: Zorax hace el registro por ti y te muestra el PIN de seguridad una sola vez.</li>
               </ul>
             </div>
