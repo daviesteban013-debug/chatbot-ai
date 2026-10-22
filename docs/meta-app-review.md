@@ -53,13 +53,13 @@ Meta revisa en inglés con más rapidez; se incluye cada texto en los dos idioma
 
 ### whatsapp_business_messaging
 
-**EN** — Zorax uses whatsapp_business_messaging to receive the messages that a store's customers send to the store's own WhatsApp Business number (via webhooks) and to reply on the store's behalf inside the 24-hour customer service window: product answers from the catalog, order summaries, payment instructions and handoff notices. Template messages are used only for order follow-ups (payment reminders and delivery updates) that the store owner explicitly enables, and only to customers with an open order. Each store connects its own number through Embedded Signup; Zorax holds one business token per store, stored encrypted, and only acts on that store's number. The reviewer video shows a customer message arriving in the Zorax CRM and the automatic reply.
+**EN** — Zorax uses whatsapp_business_messaging to receive, through webhooks, the messages that a store's customers send to the store's own WhatsApp Business number, and to reply on the store's behalf within the 24-hour customer service window: answers about products, prices and stock from the store's catalog, order summaries, payment instructions, and notices when a person from the store takes over the chat. Zorax only replies inside conversations that the customer started; it does not send unsolicited messages and does not use message templates. Each store connects its own number; Zorax keeps one access token per store, encrypted, and acts only on that number. The store team can read and answer every conversation from the Zorax CRM. The screen recording shows a message sent through the WhatsApp Cloud API from the app's test number to a test recipient, the same call Zorax makes when it replies to a customer.
 
 **ES** — Zorax usa whatsapp_business_messaging para recibir por webhooks los mensajes que los clientes envían al número de WhatsApp Business de cada tienda y para responder en nombre de la tienda dentro de la ventana de atención de 24 horas: respuestas sobre productos según el catálogo, resúmenes de pedido, instrucciones de pago y avisos de entrega a una persona. Las plantillas se usan solo para seguimientos de pedido (recordatorios de pago y actualizaciones de entrega) que el dueño activa expresamente, y solo con clientes que tienen un pedido abierto. Cada tienda conecta su propio número por Embedded Signup; Zorax guarda un token por tienda, cifrado, y solo actúa sobre ese número.
 
 ### whatsapp_business_management
 
-**EN** — Zorax uses whatsapp_business_management right after Embedded Signup to finish the connection without manual steps: it lists the phone numbers of the WhatsApp Business Account the owner shared, confirms the number the owner chose, registers it on the Cloud API with a two-step verification PIN, and subscribes the Zorax app to the account's webhooks. Later it reads the number's status and quality rating to show them in the CRM and to tell the owner when something needs attention. It does not create or edit message templates on behalf of the business beyond the order follow-up templates the owner enables from the CRM.
+**EN** — Zorax uses whatsapp_business_management to finish connecting a store's own WhatsApp number without manual steps. After Embedded Signup, it reads the phone numbers of the WhatsApp Business Account that the store owner shared, confirms the number the owner chose, registers it on the Cloud API with a two-step verification PIN (skipped for numbers that keep the WhatsApp Business app), and subscribes the Zorax app to that account's webhooks so the store's incoming messages reach its CRM. It also reads the number's display name and status to show the owner whether the connection is working. Zorax only accesses the accounts that each store shares with it, and only to run that store's service. Because the connection flow cannot register numbers until advanced access is granted, the screen recording shows managing the app's test WhatsApp Business Account in WhatsApp Manager.
 
 **ES** — Zorax usa whatsapp_business_management justo después de Embedded Signup para terminar la conexión sin pasos manuales: lista los números de la cuenta de WhatsApp Business que el dueño compartió, confirma el número elegido, lo registra en la Cloud API con un PIN de verificación en dos pasos y suscribe la app de Zorax a los webhooks de la cuenta. Después lee el estado y la calificación de calidad del número para mostrarlos en el CRM y avisar al dueño cuando algo requiera atención.
 
@@ -79,6 +79,13 @@ Meta revisa en inglés con más rapidez; se incluye cada texto en los dos idioma
 ### Credenciales de prueba
 
 Se completan directamente en el formulario de Meta, no en este documento: correo y contraseña del negocio de prueba creado para la revisión, y el número de WhatsApp de prueba que queda conectado a ese negocio.
+
+## Tratamiento de datos (respuestas propuestas)
+
+- Encargados con acceso a datos de la plataforma: Supabase (base de datos), Vercel (alojamiento), Groq (modelo de lenguaje que genera las respuestas), OpenAI (transcripción de notas de voz), ElevenLabs (voz de Zorax). Confirmar con el dueño antes de enviar.
+- Responsable de los datos: el titular verificado del negocio (Zuleima Rodriguez Chona, nombre comercial Zorax), Colombia.
+- Datos entregados a autoridades por seguridad nacional en los últimos 12 meses: No.
+- Políticas ante solicitudes de autoridades: las que el dueño confirme.
 
 ## Verificación de acceso (después de la revisión)
 
