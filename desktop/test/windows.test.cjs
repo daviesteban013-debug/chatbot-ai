@@ -175,7 +175,7 @@ test('Google starts in CRM and exchanges the callback there once, with CRM as de
   assert.equal(crm.loads.length, count);
 });
 
-test('only the orb can request audio; CRM, camera, frames and external origins are denied', async () => {
+test('only the orb, or the CRM on the Zorax screen, can request audio; other CRM pages, camera, frames and external origins are denied', async () => {
   const { shared, crm, bubble } = await launch();
   assert.equal(shared.check(bubble.webContents, 'media', policy.APP_ORIGIN, { mediaType: 'audio' }), true);
   for (const [contents, origin, type] of [[crm.webContents, policy.APP_ORIGIN, 'audio'], [bubble.webContents, 'https://evil.test', 'audio'], [bubble.webContents, policy.APP_ORIGIN, 'video']]) assert.equal(shared.check(contents, 'media', origin, { mediaType: type }), false);
@@ -306,4 +306,40 @@ test('the CRM window lets Meta open its sign-in dialog in a hardened popup; the 
   assert.equal(navigates('https://web.facebook.com/login/'), true);
   assert.equal(navigates('https://evil.test/'), false);
   assert.equal(navigates('http://www.facebook.com/'), false);
+});
+
+test('the Zorax screen in the CRM parks the orb, gets the microphone, and leaving it brings the orb back', async () => {
+  const { crm, bubble, shared } = await launch();
+  assert.equal(bubble.visible, true);
+  assert.equal(shared.check(crm.webContents, 'media', policy.APP_ORIGIN, { mediaType: 'audio' }), false);
+  await crm.loadURL(policy.panelUrl('/dashboard/jarvis')); await settle();
+  assert.equal(bubble.visible, false); assert.equal(bubble.webContents.getURL(), 'about:blank', 'the orb unloads, so its microphone and voice stop');
+  assert.equal(shared.check(crm.webContents, 'media', policy.APP_ORIGIN, { mediaType: 'audio' }), true);
+  let granted; shared.request(crm.webContents, 'media', value => { granted = value; }, { isMainFrame: true, requestingUrl: policy.panelUrl('/dashboard/jarvis'), mediaTypes: ['audio'] }); await settle();
+  assert.equal(granted, true);
+  shared.request(crm.webContents, 'media', value => { granted = value; }, { isMainFrame: true, requestingUrl: policy.panelUrl('/dashboard/jarvis'), mediaTypes: ['video'] }); await settle();
+  assert.equal(granted, false);
+  await crm.loadURL(policy.panelUrl('/dashboard/orders')); await settle();
+  assert.equal(bubble.webContents.getURL(), policy.panelUrl('/dashboard/jarvis')); assert.equal(bubble.visible, true);
+  assert.equal(shared.check(crm.webContents, 'media', policy.APP_ORIGIN, { mediaType: 'audio' }), false);
+  // Client-side navigation (the sidebar link) parks it too.
+  crm.webContents.emit('did-navigate-in-page', {}, policy.panelUrl('/dashboard/jarvis'), true); await settle();
+  assert.equal(bubble.visible, false); assert.equal(bubble.webContents.getURL(), 'about:blank');
+});
+test('the tray, the shortcut and a notification without destination open the Zorax screen instead of expanding the orb', async () => {
+  const { state, crm, bubble, shortcuts, handlers, event } = await launch();
+  shortcuts.get('Alt+Shift+N')(); await settle();
+  assert.equal(crm.webContents.getURL(), policy.panelUrl('/dashboard/jarvis')); assert.equal(bubble.bounds.width, 112);
+  await crm.loadURL(policy.panelUrl('/dashboard')); await settle();
+  state.menu.find(item => item.label === 'Hablar con Zorax').click(); await settle();
+  assert.equal(crm.webContents.getURL(), policy.panelUrl('/dashboard/jarvis')); assert.equal(bubble.bounds.width, 112);
+  // On the Zorax screen the CRM window may send alerts (the orb is parked); elsewhere it may not.
+  assert.equal(handlers.get('nexo:notify')(event(crm), { title: 'Zorax', body: 'Resumen listo' }), true);
+  state.notifications.at(-1).emit('click'); await settle();
+  assert.equal(crm.webContents.getURL(), policy.panelUrl('/dashboard/jarvis'));
+  await crm.loadURL(policy.panelUrl('/dashboard')); await settle();
+  assert.throws(() => handlers.get('nexo:notify')(event(crm), { title: 'Zorax', body: 'x' }), /permitida/);
+  assert.equal(handlers.get('nexo:notify')(event(bubble), { title: 'Zorax', body: 'Resumen listo' }), true);
+  state.notifications.at(-1).emit('click'); await settle();
+  assert.equal(crm.webContents.getURL(), policy.panelUrl('/dashboard/jarvis')); assert.equal(bubble.bounds.width, 112);
 });

@@ -83,10 +83,22 @@ function loadBubble() {
   bubbleLoading = true;
   bubble.loadURL(policy.APP_ORIGIN + '/dashboard/jarvis').catch(() => {}).finally(() => { bubbleLoading = false; });
 }
-function showBubble(expanded = preferences.expanded) {
-  if (!bubble) return;
-  if (!dashboardUrl(bubble.webContents.getURL())) { openPanel(); return; }
-  expand(expanded); bubble.show(); bubble.focus();
+/** The full Zorax screen in the CRM window (the same agent as the orb, with room for everything). */
+function zoraxScreen(url) {
+  if (!dashboardUrl(url)) return false;
+  const pathname = new URL(url).pathname;
+  return pathname === '/dashboard/jarvis' || pathname.startsWith('/dashboard/jarvis/');
+}
+/** One agent at a time: while the Zorax screen is open the orb hides and unloads, which releases its microphone and voice. */
+function parkBubble() {
+  if (!bubble || bubble.isDestroyed()) return;
+  bubble.hide();
+  if (bubble.webContents.getURL() !== 'about:blank') bubble.loadURL('about:blank').catch(() => {});
+}
+function openZorax() { openPanel('/dashboard/jarvis'); }
+/** Microphone: the orb, or the CRM window only while it shows the Zorax screen. */
+function voiceSurface(contents) {
+  return Boolean(contents) && (contents === bubble?.webContents || (contents === crm?.webContents && zoraxScreen(contents.getURL())));
 }
 function openPanel(route) {
   const url = policy.panelUrl(route ?? '/dashboard');
@@ -111,6 +123,7 @@ function openPanel(route) {
           return;
         }
       }
+      if (zoraxScreen(destination)) { parkBubble(); return; }
       loadBubble();
     };
     crm.webContents.on('did-navigate', navigated);
@@ -153,9 +166,9 @@ else {
       else app.setAsDefaultProtocolClient('nexo-desktop');
     }
     const shared = session.fromPartition(partition);
-    shared.setPermissionCheckHandler((contents, permission, origin, details) => contents === bubble?.webContents && permission === 'media' && details.mediaType === 'audio' && policy.trustedUrl(origin));
+    shared.setPermissionCheckHandler((contents, permission, origin, details) => voiceSurface(contents) && permission === 'media' && details.mediaType === 'audio' && policy.trustedUrl(origin));
     shared.setPermissionRequestHandler((contents, permission, callback, details) => {
-      const allowed = contents === bubble?.webContents && permission === 'media' && details.isMainFrame && policy.trustedUrl(details.requestingUrl) && details.mediaTypes?.length === 1 && details.mediaTypes[0] === 'audio';
+      const allowed = voiceSurface(contents) && permission === 'media' && details.isMainFrame && policy.trustedUrl(details.requestingUrl) && details.mediaTypes?.length === 1 && details.mediaTypes[0] === 'audio';
       if (!allowed) { callback(false); return; }
       // macOS consent is requested only after the trusted voice UI requests audio.
       policy.microphoneConsent(process.platform, systemPreferences).then(callback, () => callback(false));
@@ -184,12 +197,15 @@ else {
     ipcMain.handle('nexo:quit', event => { guard(event); app.quit(); });
     // Proactive alerts from the orb only: validated text, at most 6 per minute, click opens the CRM panel.
     ipcMain.handle('nexo:notify', (event, value) => {
-      guard(event); const notice = policy.notice(value);
+      // The orb, or the Zorax screen in the CRM window while the orb is parked.
+      guard(event, true);
+      if (event.sender === crm?.webContents && !zoraxScreen(event.senderFrame.url)) throw new Error('Solicitud no permitida');
+      const notice = policy.notice(value);
       const now = Date.now(); notified = notified.filter(at => now - at < 60_000);
       if (notified.length >= 6 || !Notification?.isSupported?.()) return false;
       notified.push(now);
       const shown = new Notification({ title: notice.title, body: notice.body });
-      shown.on('click', () => { if (notice.href) openPanel(notice.href); else showBubble(true); });
+      shown.on('click', () => { if (notice.href) openPanel(notice.href); else openZorax(); });
       shown.show();
       return true;
     });
@@ -259,9 +275,9 @@ else {
       const trayIcon = nativeImage.createFromPath(path.join(__dirname, 'icon.png'));
       tray = new Tray(process.platform === 'darwin' ? trayIcon.resize({ width: 18, height: 18 }) : trayIcon);
       tray.setToolTip('Zorax · Tu agente');
-      tray.setContextMenu(Menu.buildFromTemplate([{ label: 'Abrir CRM', click: () => openPanel() }, { label: 'Hablar con Zorax', click: () => showBubble(true) }, { label: 'Buscar actualizaciones', click: async () => { const state = await updates.check(); openPanel(); void dialog.showMessageBox(crm, { type: 'info', title: 'Actualizaciones de Zorax', message: state.latestVersion ? `Zorax ${state.latestVersion}` : `Zorax ${state.currentVersion}`, detail: state.message }); } }, { type: 'separator' }, { label: 'Salir y apagar micrófono', click: () => app.quit() }]));
+      tray.setContextMenu(Menu.buildFromTemplate([{ label: 'Abrir CRM', click: () => openPanel() }, { label: 'Hablar con Zorax', click: () => openZorax() }, { label: 'Buscar actualizaciones', click: async () => { const state = await updates.check(); openPanel(); void dialog.showMessageBox(crm, { type: 'info', title: 'Actualizaciones de Zorax', message: state.latestVersion ? `Zorax ${state.latestVersion}` : `Zorax ${state.currentVersion}`, detail: state.message }); } }, { type: 'separator' }, { label: 'Salir y apagar micrófono', click: () => app.quit() }]));
       tray.on('click', () => openPanel());
-      globalShortcut.register('Alt+Shift+N', () => showBubble(!preferences.expanded));
+      globalShortcut.register('Alt+Shift+N', () => openZorax());
     }
     if (selfTest) {
       // Hidden, bounded startup validation; never operates the user's UI or microphone.

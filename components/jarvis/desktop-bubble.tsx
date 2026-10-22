@@ -119,17 +119,22 @@ export function DesktopBubble(props: Props) {
       </> : <GripHorizontal size={16} aria-label="Arrastra para mover Zorax" />}
     </header>
 
-    {!settings && <button type="button" className={styles.orbButton} onClick={expanded ? props.onPower : expand} onPointerMove={trackLook} onPointerLeave={() => setLook({ x: 0, y: 0 })}
-      aria-label={expanded ? props.powered ? "Apagar Zorax" : "Encender Zorax y activar escucha" : unread ? `Abrir Zorax: ${unread} ${unread === 1 ? "aviso nuevo" : "avisos nuevos"}` : "Abrir Zorax"}>
+    {!settings && <button type="button" className={styles.orbButton} onClick={props.onPower} onPointerMove={trackLook} onPointerLeave={() => setLook({ x: 0, y: 0 })}
+      aria-label={props.powered ? "Apagar Zorax y el micrófono" : "Hablar con Zorax"} title={props.powered ? "Apagar Zorax" : "Hablar con Zorax"}>
       <span className={styles.aura} data-active={props.powered} />
       {orb}
       {unread > 0 && <span key={unread} className={styles.badge} aria-hidden="true">{unread > 9 ? "9+" : unread}</span>}
     </button>}
 
-    {!settings && <p className={styles.status} role="status" title={expanded ? props.activity : compactStatus} data-alert={!expanded && unread > 0 && !props.error} data-busy={props.busy && !props.speaking}>
+    {!settings && !expanded && <button type="button" className={styles.status} onClick={() => void open("/dashboard/jarvis")} title="Abrir Zorax en pantalla completa"
+      aria-label={unread ? `${compactStatus}. Abrir Zorax: ${unread} ${unread === 1 ? "aviso nuevo" : "avisos nuevos"}` : `${compactStatus}. Abrir Zorax en pantalla completa`} data-alert={unread > 0 && !props.error} data-busy={props.busy && !props.speaking}>
       <span className={styles.statusDot} data-active={props.listening} data-speaking={props.speaking} />
-      <span key={expanded ? props.activity : compactStatus} className={styles.statusText}>{expanded ? props.activity : compactStatus}</span>
-      {expanded && props.busy && !props.speaking && <span className={styles.dots} aria-hidden="true"><b /><b /><b /></span>}
+      <span key={compactStatus} className={styles.statusText}>{compactStatus}</span>
+    </button>}
+    {!settings && expanded && <p className={styles.status} role="status" title={props.activity} data-busy={props.busy && !props.speaking}>
+      <span className={styles.statusDot} data-active={props.listening} data-speaking={props.speaking} />
+      <span key={props.activity} className={styles.statusText}>{props.activity}</span>
+      {props.busy && !props.speaking && <span className={styles.dots} aria-hidden="true"><b /><b /><b /></span>}
     </p>}
 
     {!expanded && <button type="button" className={styles.compactPower} onClick={props.onPower} aria-label={props.powered ? "Apagar Zorax y micrófono" : "Encender Zorax y activar escucha"} aria-pressed={props.powered} title={props.powered ? "Apagar Zorax" : "Encender Zorax"}><Power size={12} /></button>}

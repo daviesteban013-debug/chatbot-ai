@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type MouseEvent } from "react";
 import { usePathname } from "next/navigation";
 import { ChevronDown, Download, LogOut } from "lucide-react";
 import { signOut } from "@/app/dashboard/actions";
@@ -14,13 +13,6 @@ import { TaskAlerts } from "./task-alerts";
 
 export function DashboardSidebar({ tenantName }: { tenantName?: string }) {
   const pathname = usePathname();
-  const [desktopError, setDesktopError] = useState<string | null>(null);
-  function openNexo(event: MouseEvent<HTMLAnchorElement>) {
-    if (window.nexoDesktop?.surface !== "crm") return;
-    event.preventDefault();
-    setDesktopError(null);
-    void window.nexoDesktop.setExpanded(true).catch(() => setDesktopError("No se pudo abrir Zorax. Intenta desde el icono de la bandeja."));
-  }
 
   const isActive = (href: string) =>
     href === "/dashboard"
@@ -49,7 +41,6 @@ export function DashboardSidebar({ tenantName }: { tenantName?: string }) {
               <Link
                 key={href}
                 href={href}
-                onClick={href === "/dashboard/jarvis" ? openNexo : undefined}
                 aria-current={isActive(href) ? "page" : undefined}
                 className={cn(
                   "flex shrink-0 items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] transition",
@@ -63,7 +54,6 @@ export function DashboardSidebar({ tenantName }: { tenantName?: string }) {
           </div>
         ))}
       </nav>
-      {desktopError && <p role="alert" className="px-5 pb-3 text-xs text-rose-700">{desktopError}</p>}
 
       <div className="mt-auto hidden border-t border-line p-3 lg:block">
         <AppInstallOptions>

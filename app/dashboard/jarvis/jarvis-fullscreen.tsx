@@ -130,7 +130,8 @@ function JarvisFullscreenInner({
     const destination = parseOperatorNavigation(target);
     if (!destination) return;
     setNavigationNotice(null);
-    if (window.nexoDesktop) {
+    // Only the orb opens panels through the app; the Zorax screen in the CRM window opens them inside itself, like the web.
+    if (window.nexoDesktop && window.nexoDesktop.surface !== "crm") {
       try {
         await window.nexoDesktop.openPanel(destination.href);
         setNavigationNotice(`Abrí ${destination.label}. Sigo aquí contigo.`);
@@ -310,8 +311,8 @@ function JarvisFullscreenInner({
       stopSpokenTurn();
       cancelResponse();
       void openCrmWorkspace({ href: destination.path, label: destination.label });
-      // The desktop listener remains armed; web pauses it while the CRM is open.
-      return !window.nexoDesktop;
+      // The orb's listener remains armed; the web and the CRM window pause it while the panel is open.
+      return !(window.nexoDesktop && window.nexoDesktop.surface !== "crm");
     }
     if (!poweredRef.current) {
       setCommandNotice("Estoy en espera. Pulsa Encender o escribe «Zorax, enciéndete».");
