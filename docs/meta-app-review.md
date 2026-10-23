@@ -2,7 +2,7 @@
 
 Qué enviar en **Meta for Developers → Zorax → Revisar → Revisión de la app** para obtener acceso avanzado a `whatsapp_business_messaging` y `whatsapp_business_management`, y después pasar la **verificación de acceso** de proveedor de tecnología. Con eso los botones de conexión de WhatsApp funcionan para cualquier tienda, no solo para cuentas con rol en la app.
 
-Estado al 22 de octubre de 2026: negocio verificado (Zuleima Rodriguez Chona, nombre comercial Zorax), dominio zoraxpilot.com verificado, configuración de Embedded Signup creada, app publicada. La solicitud de revisión (submission 29363426229932209) tiene completos la configuración, las descripciones, las llamadas de prueba a la API, las confirmaciones de uso permitido, el tratamiento de datos y las instrucciones para revisores; solo faltan los dos videos para pulsar «Enviar para revisión». La verificación de acceso se envió el 22 de octubre y está en revisión.
+Estado al 23 de octubre de 2026: negocio verificado (Zuleima Rodriguez Chona, nombre comercial Zorax), dominio zoraxpilot.com verificado, configuración de Embedded Signup creada, app publicada. La solicitud de revisión (submission 29363426229932209) se envió el 23 de octubre con los dos videos y está en «Revisión en curso»; Meta revisa la mayoría de las solicitudes en un plazo de 20 días. La verificación de acceso se envió el 22 de octubre y está en revisión.
 
 ## Antes de enviar
 
@@ -73,7 +73,14 @@ Sin credenciales de prueba: el revisor crea su propia cuenta gratis. Los campos 
 
 ## Uso permitido (enviado)
 
-Las llamadas de prueba a la API de los dos permisos de WhatsApp figuran como «Completado». Están marcadas las confirmaciones «Si se aprueba, confirmo que cualquier información que reciba a través de … se usará de acuerdo con el uso permitido» de `whatsapp_business_messaging`, `whatsapp_business_management` y `public_profile`. En los dos permisos de WhatsApp solo falta subir el video.
+Las llamadas de prueba a la API de los dos permisos de WhatsApp figuran como «Completado». Están marcadas las confirmaciones «Si se aprueba, confirmo que cualquier información que reciba a través de … se usará de acuerdo con el uso permitido» de `whatsapp_business_messaging`, `whatsapp_business_management` y `public_profile`.
+
+Videos subidos (los archivos no están en el repositorio):
+
+- `whatsapp_business_messaging`, 38 s: en «Conectar en WhatsApp → Pruébalo» se elige el destinatario de prueba, se pulsa «Enviar mensaje» con «Confirmación del pedido», Meta muestra «Se envió un mensaje» y los webhooks, y el mensaje aparece recibido en WhatsApp de escritorio.
+- `whatsapp_business_management`, 85 s: en el Administrador de WhatsApp de la cuenta de prueba se crea la plantilla `confirmacion_pedido` (Utilidad, Spanish (COL), «Hola {{1}}, tu pedido {{2}} quedó confirmado. Te avisamos cuando salga.» con muestras) y queda «En revisión» en la lista.
+
+Al enviar se aceptó la confirmación de Meta de que el acceso a los datos de la plataforma está sujeto a las Condiciones de la plataforma y las Políticas para desarrolladores; una solicitud en revisión ya no se puede editar ni cancelar.
 
 ## Tratamiento de datos (respuestas enviadas)
 
