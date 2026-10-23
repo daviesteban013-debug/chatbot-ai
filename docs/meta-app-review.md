@@ -2,12 +2,12 @@
 
 Qué enviar en **Meta for Developers → Zorax → Revisar → Revisión de la app** para obtener acceso avanzado a `whatsapp_business_messaging` y `whatsapp_business_management`, y después pasar la **verificación de acceso** de proveedor de tecnología. Con eso los botones de conexión de WhatsApp funcionan para cualquier tienda, no solo para cuentas con rol en la app.
 
-Estado al 22 de octubre de 2026: negocio verificado (Zuleima Rodriguez Chona, nombre comercial Zorax), dominio zoraxpilot.com verificado, configuración de Embedded Signup creada, app publicada. Pendiente: enviar la revisión con el video y las credenciales de prueba.
+Estado al 22 de octubre de 2026: negocio verificado (Zuleima Rodriguez Chona, nombre comercial Zorax), dominio zoraxpilot.com verificado, configuración de Embedded Signup creada, app publicada. La solicitud de revisión (submission 29363426229932209) tiene completos la configuración, las descripciones, las llamadas de prueba a la API, las confirmaciones de uso permitido, el tratamiento de datos y las instrucciones para revisores; solo faltan los dos videos para pulsar «Enviar para revisión». La verificación de acceso se envió el 22 de octubre y está en revisión.
 
 ## Antes de enviar
 
 - **Configuración de la app → Básica**: URL de la política de privacidad `https://zoraxpilot.com/privacidad`; URL de eliminación de datos de usuarios `https://zoraxpilot.com/privacidad#eliminar-datos`; correo de contacto; categoría «Empresa y páginas»; icono 1024×1024 (el logotipo Z sobre fondo oscuro); dominios de la app `zoraxpilot.com`.
-- **Cuenta de prueba para el revisor**: un negocio de prueba en zoraxpilot.com con catálogo cargado, cuya contraseña se escribe solo en el formulario de Meta (sección «Instrucciones para la verificación»). Nunca la cuenta personal del dueño.
+- **Acceso del revisor**: no se entregan credenciales. El revisor crea una cuenta gratis en `https://zoraxpilot.com/signup` con correo o con Google; la prueba gratis no pide pago ni código. Nunca se comparte la cuenta personal del dueño.
 - **Videos**: uno por permiso, 30 a 90 segundos cada uno, sin cortes, con la URL visible. Formato mp4 o mov. Se graban con la Herramienta Recortes de Windows (Win+Shift+R) o con la Xbox Game Bar (Win+Alt+R).
 
 ## Por qué no sirve grabar el botón de Zorax todavía
@@ -63,30 +63,32 @@ Meta revisa en inglés con más rapidez; se incluye cada texto en los dos idioma
 
 **ES** — Zorax usa whatsapp_business_management justo después de Embedded Signup para terminar la conexión sin pasos manuales: lista los números de la cuenta de WhatsApp Business que el dueño compartió, confirma el número elegido, lo registra en la Cloud API con un PIN de verificación en dos pasos y suscribe la app de Zorax a los webhooks de la cuenta. Después lee el estado y la calificación de calidad del número para mostrarlos en el CRM y avisar al dueño cuando algo requiera atención.
 
-### Instrucciones paso a paso para el revisor
+### Instrucciones para el revisor (enviadas)
 
-**EN**
-1. Go to https://zoraxpilot.com/login and sign in with the test credentials below.
-2. Open "WhatsApp" in the left menu. Click "Conectar un número nuevo" (or "Conectar mi app de WhatsApp Business" to link an existing WhatsApp Business app) and complete Embedded Signup with a test WhatsApp Business Account (or watch the attached video, where this is done with a real number).
-3. After the popup closes, the page shows the connected number and the status "Credenciales verificadas" (whatsapp_business_management: numbers listed, registered and webhooks subscribed).
-4. From any phone, send a WhatsApp message to the connected number, e.g. "Hola, ¿tienen tenis blancos talla 38?".
-5. Open "Conversaciones" in the left menu: the message appears and Zorax's reply with catalog products is shown (whatsapp_business_messaging).
-6. Click "Tomar conversación" to see a human agent take over and answer manually.
-7. Data deletion instructions: https://zoraxpilot.com/privacidad#eliminar-datos
+Sitio para la revisión: `https://zoraxpilot.com/`. «Is Facebook Login integrated on this platform?»: Sí, porque la ventana de Embedded Signup es el inicio de sesión de Facebook.
 
-**ES** — los mismos pasos en español, por si el revisor prefiere el idioma del producto.
+> Zorax is a web app (interface in Spanish) at https://zoraxpilot.com. 1) Create a free account at https://zoraxpilot.com/signup with any email or with Google; the free trial needs no payment or code. 2) After the short welcome setup you land in the Zorax CRM. 3) Open "WhatsApp" in the left menu: the buttons "Conectar mi app de WhatsApp Business" and "Conectar un número nuevo" launch Embedded Signup, which is where a store shares its WhatsApp Business account with Zorax. Registering a number there requires the advanced access requested here, so the WhatsApp usage itself is shown in the screen recordings attached to each permission (Cloud API message sent from the app's test number; WhatsApp Business Account managed in WhatsApp Manager). 4) "Conversaciones" in the left menu is where the store team reads and answers the WhatsApp conversations that Zorax handles. Contact: [correo de contacto de la app].
 
-### Credenciales de prueba
+Sin credenciales de prueba: el revisor crea su propia cuenta gratis. Los campos opcionales de códigos de acceso, restricciones geográficas y documentación complementaria quedaron vacíos.
 
-Se completan directamente en el formulario de Meta, no en este documento: correo y contraseña del negocio de prueba creado para la revisión, y el número de WhatsApp de prueba que queda conectado a ese negocio.
+## Uso permitido (enviado)
 
-## Tratamiento de datos (respuestas propuestas)
+Las llamadas de prueba a la API de los dos permisos de WhatsApp figuran como «Completado». Están marcadas las confirmaciones «Si se aprueba, confirmo que cualquier información que reciba a través de … se usará de acuerdo con el uso permitido» de `whatsapp_business_messaging`, `whatsapp_business_management` y `public_profile`. En los dos permisos de WhatsApp solo falta subir el video.
 
-- Encargados con acceso a datos de la plataforma: Supabase (base de datos), Vercel (alojamiento), Groq (modelo de lenguaje que genera las respuestas), OpenAI (transcripción de notas de voz), ElevenLabs (voz de Zorax). Confirmar con el dueño antes de enviar.
-- Responsable de los datos: el titular verificado del negocio (Zuleima Rodriguez Chona, nombre comercial Zorax), Colombia.
-- Datos entregados a autoridades por seguridad nacional en los últimos 12 meses: No.
-- Políticas ante solicitudes de autoridades: las que el dueño confirme.
+## Tratamiento de datos (respuestas enviadas)
 
-## Verificación de acceso (después de la revisión)
+- ¿Hay encargados del tratamiento con acceso a datos de la plataforma?: Sí. Supabase (base de datos), Vercel (alojamiento), Groq (modelo de lenguaje que genera las respuestas), OpenAI (transcripción de notas de voz) y ElevenLabs (voz de Zorax), todos con la categoría «Soluciones y servicios de TI, incluido el almacenamiento en la nube y el procesamiento» y país Estados Unidos de América.
+- Responsable de los datos: «Zuleima Rodriguez Chona (nombre comercial: Zorax)», Colombia.
+- Datos entregados a autoridades por seguridad nacional en los últimos 12 meses: «No.»
+- Políticas ante solicitudes de autoridades: «Revisión obligatoria de la legalidad de estas solicitudes».
 
-Meta pregunta por el negocio que opera la app. Respuestas: sitio web `https://zoraxpilot.com`; descripción como la del punto «Descripción de la app»; país Colombia; el negocio ya está verificado como Zuleima Rodriguez Chona con nombre comercial Zorax; política de privacidad `https://zoraxpilot.com/privacidad`. Si piden un documento, el RUT vigente del negocio.
+## Verificación de acceso (enviada el 22 de octubre de 2026)
+
+Meta la pide para confirmar que el negocio es un proveedor de tecnología; la fecha límite para evitar restricciones en la app es el 21 de diciembre de 2026. Respuestas enviadas:
+
+- Tipo de negocio: «Plataforma SaaS».
+- Uso de los datos de la plataforma: «Zorax es una plataforma SaaS para tiendas pequeñas de Colombia que venden por WhatsApp. Cada tienda conecta su propio número de WhatsApp Business a Zorax. Con los datos de la plataforma (los mensajes que los clientes envían a ese número y la información de la cuenta de WhatsApp Business de la tienda), Zorax responde en nombre de la tienda las preguntas sobre productos, precios y existencias según su catálogo, prepara los pedidos, envía el enlace de pago y avisa al equipo cuando un cliente pide hablar con una persona. El equipo de la tienda lee y responde todas las conversaciones desde el CRM de Zorax. Los datos solo se usan para prestar este servicio a la tienda dueña del número; no se venden ni se usan para publicidad.»
+- ¿Administra varios portafolios comerciales?: No.
+- Sitio web: `www.zoraxpilot.com`, que redirige a `https://zoraxpilot.com`.
+
+Estado: en revisión; Meta escribe en un plazo de cinco días si necesita más información. El portafolio comercial todavía se llama NEXO en Meta; si preguntan, el nombre legal verificado es Zuleima Rodriguez Chona y Zorax es el nombre comercial. Si piden un documento, el RUT vigente.
