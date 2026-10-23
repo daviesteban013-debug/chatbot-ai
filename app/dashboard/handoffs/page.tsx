@@ -16,6 +16,7 @@ import { EmptyState } from "@/components/dashboard/empty-state";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Panel, Segmented, StatusDot } from "@/components/dashboard/panel";
 import { TakeHandoffButton } from "./take-handoff-button";
+import { DesktopNudge } from "@/components/dashboard/desktop-nudge";
 import {
   handoffPriorityLabel,
   handoffReasonLabel,
@@ -97,6 +98,8 @@ export default async function HandoffsPage({
           }))}
         />
       </div>
+
+      <DesktopNudge waiting={activeFilter === "open" ? rows.length : 0} />
 
       {rows.length > 0 ? (
         <Panel className="overflow-hidden">

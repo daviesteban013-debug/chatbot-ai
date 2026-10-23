@@ -10,6 +10,7 @@ import { SalesResults } from "@/components/dashboard/sales-results";
 import { Panel, PanelHeader, PanelLink, Stat, StatGrid, StatusDot } from "@/components/dashboard/panel";
 import { HomeActivity } from "@/components/dashboard/home-activity";
 import { HomeSuggestions } from "@/components/dashboard/home-suggestions";
+import { DesktopAppCard } from "@/components/dashboard/desktop-app-card";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { metricPeriod, type SalesMetrics } from "@/lib/sales-metrics";
 import { buildBriefing, type BriefingData } from "@/lib/briefing";
@@ -112,6 +113,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <p className="mt-1 text-sm text-muted">Resumen de <span className="font-medium text-ink-soft">{tenantName}</span></p>
         </div>
       </header>
+
+      <DesktopAppCard />
 
       <div className="mb-5 grid gap-5 xl:grid-cols-[1.25fr_.75fr]">
         <Panel aria-labelledby="today-title">

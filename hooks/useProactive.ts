@@ -17,10 +17,14 @@ export type Announcement = { alerts: ProactiveAlert[]; routine: RoutineCard | nu
  * Zorax's proactive bubble: watches the business and runs the routines the person chose.
  * Settings live on this computer (like the bubble color); the data comes from the CRM.
  */
-export function useProactive(enabled: boolean, userId: string | undefined, onAnnounce: (announcement: Announcement) => void, name?: string) {
+export function useProactive(enabled: boolean, userId: string | undefined, onAnnounce: (announcement: Announcement) => void, name?: string, { watchPending = false }: { watchPending?: boolean } = {}) {
   const keys = { settings: `nexo-proactive:${userId}`, seen: `nexo-proactive-seen:${userId}`, routines: `nexo-proactive-routines:${userId}` };
   const [settings, setSettings] = useState<ProactiveSettings>(defaultSettings);
   const [alerts, setAlerts] = useState<ProactiveAlert[]>([]);
+  /** Customers waiting for a person plus orders to approve; tracked even with alerts off when `watchPending` (desktop badge). */
+  const [pending, setPending] = useState<number | null>(null);
+  const watchPendingRef = useRef(watchPending);
+  useEffect(() => { watchPendingRef.current = watchPending; }, [watchPending]);
   const [routine, setRoutine] = useState<RoutineCard | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
@@ -45,11 +49,13 @@ export function useProactive(enabled: boolean, userId: string | undefined, onAnn
 
   const check = useCallback(async (signal?: AbortSignal) => {
     const current = settingsRef.current;
-    if (!current.alerts) return;
+    if (!current.alerts && !watchPendingRef.current) return;
     const response = await fetch("/api/jarvis/pulse", { cache: "no-store", signal });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(body.error ?? "No pude revisar tu negocio.");
     const pulse = pulseSchema.parse(body.pulse);
+    setPending(pulse.handoffs.length + pulse.approvals.length);
+    if (!current.alerts) return;
     const { fresh, seen } = diffPulse(pulse, read<Seen | null>(keys.seen, null), Date.now());
     write(keys.seen, seen);
     setError(null);
@@ -103,5 +109,5 @@ export function useProactive(enabled: boolean, userId: string | undefined, onAnn
   const closeRoutine = useCallback(() => setRoutine(null), []);
   /** Look at the business right now (a job just finished) instead of waiting for the next poll. */
   const refresh = useCallback(() => { void check().catch(() => {}); }, [check]);
-  return { settings, ready, update, alerts, dismiss, clear, routine, closeRoutine, error, refresh };
+  return { settings, ready, update, alerts, dismiss, clear, routine, closeRoutine, error, refresh, pending };
 }

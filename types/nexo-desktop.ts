@@ -30,6 +30,10 @@ export interface NexoDesktop {
   onPreferences(callback: (preferences: DesktopPreferences) => void): () => void;
   /** Zorax 0.2.4+: a system notification that opens the given CRM panel when clicked. */
   notify?(notice: { title: string; body: string; href?: string }): Promise<boolean>;
+  /** Zorax 0.4.0+: customers waiting plus orders to approve on the taskbar icon; `fresh` flashes it. */
+  setAttention?(attention: { count: number; fresh: boolean }): Promise<boolean>;
+  /** Zorax 0.4.0+: the app keeps running in the tray when its window closes and opens with the computer. */
+  background?: boolean;
   /** Zorax 0.2.5+: what the person copied (text up to 8 000 characters or a PNG up to 3 MB). */
   readClipboard?(): Promise<ClipboardContent>;
   /** Zorax 0.2.5+: watched folder settings; files saved there arrive through onFileReady. */

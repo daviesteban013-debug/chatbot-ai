@@ -1,4 +1,4 @@
-import { ArrowUpRight, Mic, Monitor, Palette } from "lucide-react";
+import { BellRing, Hash, Mic, Monitor, Power } from "lucide-react";
 import { DesktopDownloadLink } from "@/components/pwa/desktop-download-link";
 import { desktopRelease, macDesktopRelease } from "@/lib/desktop-release";
 
@@ -8,8 +8,8 @@ export function DesktopDownloadSection() {
       <div className="relative grid items-center gap-9 md:grid-cols-[1.4fr_1fr]">
         <div>
           <p className="landing-eyebrow inline-flex items-center gap-2"><Monitor size={14} /> Zorax EN TU ESCRITORIO</p>
-          <h2 id="desktop-title" className="mt-4 text-3xl font-medium leading-tight tracking-tight text-white sm:text-4xl">Tu CRM completo. Zorax a tu lado.</h2>
-          <p className="mt-4 max-w-lg text-sm leading-7 text-zinc-400">Abre tu CRM en una ventana maximizada y lleva a Zorax contigo en una burbuja discreta. Habla, abre paneles y revisa propuestas de pedidos antes de confirmarlas. Tú eliges su color.</p>
+          <h2 id="desktop-title" className="mt-4 text-3xl font-medium leading-tight tracking-tight text-white sm:text-4xl">No vuelvas a perder una venta por no ver el chat.</h2>
+          <p className="mt-4 max-w-lg text-sm leading-7 text-zinc-400">La app de escritorio sigue atenta aunque cierres el navegador. Te avisa al instante cuando un cliente pide un asesor, hay un pedido por aprobar o entra un pago, y el icono muestra cuántos te esperan. Se abre sola al encender el computador, con Zorax listo para hablar.</p>
           <div className="mt-6 flex flex-wrap gap-4">
             <div><DesktopDownloadLink className="min-h-12 border-yellow-300! bg-yellow-300! px-5! text-zinc-950! hover:bg-yellow-200!" /><p className="mt-2 text-[11px] leading-5 text-zinc-500">Beta {desktopRelease.version} · Windows 10/11 · {desktopRelease.sizeLabel}</p></div>
             <div><DesktopDownloadLink platform="mac" className="min-h-12 px-5!" /><p className="mt-2 text-[11px] leading-5 text-zinc-500">Beta {macDesktopRelease.version} · {macDesktopRelease.systemLabel}</p></div>
@@ -23,11 +23,12 @@ export function DesktopDownloadSection() {
             <i className="h-7 w-3 rounded-full bg-yellow-50 shadow-[0_0_13px_#fff8]" /><i className="h-7 w-3 rounded-full bg-yellow-50 shadow-[0_0_13px_#fff8]" />
           </div>
           <ul className="space-y-4 text-xs text-zinc-300">
-            <li className="flex items-center gap-3"><Mic size={15} className="text-yellow-300" />Habla entre respuestas</li>
-            <li className="flex items-center gap-3"><ArrowUpRight size={15} className="text-yellow-300" />«Zorax, abre pedidos»</li>
-            <li className="flex items-center gap-3"><Palette size={15} className="text-yellow-300" />Elige y guarda tu color</li>
+            <li className="flex items-center gap-3"><BellRing size={15} className="text-yellow-300" />Avisos al instante, con el navegador cerrado</li>
+            <li className="flex items-center gap-3"><Hash size={15} className="text-yellow-300" />Los clientes que te esperan, en el icono</li>
+            <li className="flex items-center gap-3"><Power size={15} className="text-yellow-300" />Se abre sola al encender el computador</li>
+            <li className="flex items-center gap-3"><Mic size={15} className="text-yellow-300" />Habla con Zorax desde cualquier ventana</li>
           </ul>
-          <p className="mt-5 border-t border-white/10 pt-4 text-[11px] leading-5 text-zinc-500">Alt + Shift + N para expandir o contraer.</p>
+          <p className="mt-5 border-t border-white/10 pt-4 text-[11px] leading-5 text-zinc-500">Alt + Shift + N abre a Zorax desde cualquier ventana.</p>
         </div>
       </div>
     </div>

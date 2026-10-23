@@ -222,7 +222,19 @@ function JarvisFullscreenInner({
     if (settings.voice && poweredRef.current && voiceOnRef.current && !busyRef.current)
       speak(routine ? routine.headline : alerts.length === 1 ? alerts[0].text : `Tienes ${alerts.length} avisos nuevos. ${alerts[0].text}.`);
   }, [speak]);
-  const proactive = useProactive(Boolean(userId), userId, announce, profile.displayName || undefined);
+  // Desktop 0.4.0+: customers waiting and orders to approve go on the taskbar icon, with alerts on or off.
+  const attentionBridge = typeof window !== "undefined" && Boolean(window.nexoDesktop?.setAttention);
+  const proactive = useProactive(Boolean(userId), userId, announce, profile.displayName || undefined, { watchPending: attentionBridge });
+  const pendingCount = proactive.pending;
+  const reportedPendingRef = useRef<number | null>(null);
+  useEffect(() => {
+    const setAttention = window.nexoDesktop?.setAttention;
+    if (!setAttention || pendingCount === null) return;
+    // Only a rise flashes the icon: the first count after opening is the current state, not news.
+    const fresh = reportedPendingRef.current !== null && pendingCount > reportedPendingRef.current;
+    reportedPendingRef.current = pendingCount;
+    void setAttention({ count: Math.min(pendingCount, 999), fresh }).catch(() => {});
+  }, [pendingCount]);
   const suggestions = useAutomationSuggestions(Boolean(userId));
   const suggestion = suggestions.suggestions[0] ?? null;
   const proactiveRefresh = proactive.refresh;
