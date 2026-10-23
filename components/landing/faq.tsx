@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { ArrowRight, Plus } from "lucide-react";
 
@@ -14,14 +14,15 @@ const questions = [
   ["¿Los mensajes de Meta están incluidos?", "No en los precios ilustrativos de esta página. Los cargos de WhatsApp Business pueden variar según el tipo de mensaje y las tarifas de Meta. Confirma el costo total y los límites antes de contratar."],
 ];
 
-export function Faq() {
+/** The landing FAQ by default; other pages pass their own `id`, copy and questions. */
+export function Faq({ id = "faq", eyebrow = "Hablemos claro", title = <>Buenas preguntas.<br />Respuestas directas.</>, copy = "Antes de darle las llaves de tu WhatsApp a un asistente, es normal querer saber más.", items = questions }: { id?: string; eyebrow?: string; title?: ReactNode; copy?: string; items?: string[][] }) {
   const [open, setOpen] = useState<number | null>(0);
   return (
-    <section id="faq" className="landing-section grid gap-10 border-t border-white/8 lg:grid-cols-[0.85fr_1.15fr]" aria-labelledby="faq-title">
-      <div><p className="landing-eyebrow">Hablemos claro</p><h2 id="faq-title" className="landing-title">Buenas preguntas.<br />Respuestas directas.</h2><p className="landing-copy">Antes de darle las llaves de tu WhatsApp a un asistente, es normal querer saber más.</p><Link href="/signup" className="landing-secondary mt-6">Explora Zorax gratis <ArrowRight className="size-4" /></Link></div>
-      <div>{questions.map(([question, answer], index) => <div key={question} className="border-b border-white/10 first:border-t">
-        <h3><button id={`faq-button-${index}`} type="button" aria-expanded={open === index} aria-controls={`faq-answer-${index}`} onClick={() => setOpen(open === index ? null : index)} className="flex w-full items-center justify-between gap-5 py-6 text-left text-sm font-medium text-zinc-200"><span>{question}</span><Plus className={`size-4 shrink-0 text-yellow-300 transition-transform ${open === index ? "rotate-45" : ""}`} /></button></h3>
-        <div id={`faq-answer-${index}`} role="region" aria-labelledby={`faq-button-${index}`} hidden={open !== index}><p className="pb-6 pr-6 text-sm leading-7 text-zinc-400">{answer}</p></div>
+    <section id={id} className="landing-section grid gap-10 border-t border-white/8 lg:grid-cols-[0.85fr_1.15fr]" aria-labelledby={`${id}-title`}>
+      <div><p className="landing-eyebrow">{eyebrow}</p><h2 id={`${id}-title`} className="landing-title">{title}</h2><p className="landing-copy">{copy}</p><Link href="/signup" className="landing-secondary mt-6">Explora Zorax gratis <ArrowRight className="size-4" /></Link></div>
+      <div>{items.map(([question, answer], index) => <div key={question} className="border-b border-white/10 first:border-t">
+        <h3><button id={`${id}-button-${index}`} type="button" aria-expanded={open === index} aria-controls={`${id}-answer-${index}`} onClick={() => setOpen(open === index ? null : index)} className="flex w-full items-center justify-between gap-5 py-6 text-left text-sm font-medium text-zinc-200"><span>{question}</span><Plus className={`size-4 shrink-0 text-yellow-300 transition-transform ${open === index ? "rotate-45" : ""}`} /></button></h3>
+        <div id={`${id}-answer-${index}`} role="region" aria-labelledby={`${id}-button-${index}`} hidden={open !== index}><p className="pb-6 pr-6 text-sm leading-7 text-zinc-400">{answer}</p></div>
       </div>)}</div>
     </section>
   );
