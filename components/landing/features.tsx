@@ -35,8 +35,6 @@ export function Features() {
               wide ? "md:col-span-2" : ""
             }`}
           >
-            {/* Top subtle scanner laser line on hover */}
-            <div className="pointer-events-none absolute -left-full top-0 h-[2px] w-full bg-gradient-to-r from-transparent via-yellow-400 to-transparent opacity-0 transition-all duration-700 group-hover:left-full group-hover:opacity-100" />
             <div className="flex items-center gap-3">
               <span className="flex size-9 items-center justify-center rounded-xl bg-yellow-400/10 border border-yellow-400/20 text-yellow-300">
                 <Icon className="size-4" />

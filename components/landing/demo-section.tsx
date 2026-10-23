@@ -7,11 +7,16 @@ import {
   ArrowRight,
   Check,
   CheckCheck,
+  Footprints,
+  Headphones,
+  Package,
   RotateCcw,
   Send,
   ShieldCheck,
+  ShoppingBag,
   Sparkles,
   Zap,
+  type LucideIcon,
 } from "lucide-react";
 
 interface DemoMessage {
@@ -26,7 +31,7 @@ interface SectorScenario {
   badge: string;
   name: string;
   businessName: string;
-  avatarIcon: string;
+  avatarIcon: LucideIcon;
   description: string;
   quickPrompts: string[];
   initialMessages: DemoMessage[];
@@ -43,7 +48,7 @@ const SECTORS: SectorScenario[] = [
     badge: "Moda",
     name: "Moda & Ropa",
     businessName: "Aura Concept Store",
-    avatarIcon: "🛍️",
+    avatarIcon: ShoppingBag,
     description: "Recomienda prendas del catálogo, verifica tallas en stock y deja el pedido listo para pagar.",
     quickPrompts: [
       "¿Qué tallas tienen de la chaqueta?",
@@ -82,7 +87,7 @@ const SECTORS: SectorScenario[] = [
     badge: "Calzado",
     name: "Calzado & Accesorios",
     businessName: "Paso Firme Sneakers",
-    avatarIcon: "👟",
+    avatarIcon: Footprints,
     description: "Revisa talla y color por variante, envía la foto del producto y cotiza el envío a la ciudad del cliente.",
     quickPrompts: [
       "¿Los tienen en talla 40?",
@@ -121,7 +126,7 @@ const SECTORS: SectorScenario[] = [
     badge: "Tecnología",
     name: "Tecnología & Gadgets",
     businessName: "Voltio Tech Store",
-    avatarIcon: "🎧",
+    avatarIcon: Headphones,
     description: "Responde dudas técnicas con tu catálogo, explica la garantía y ofrece pago contraentrega o por link.",
     quickPrompts: [
       "¿Qué garantía tienen los audífonos?",
@@ -160,7 +165,7 @@ const SECTORS: SectorScenario[] = [
     badge: "Al por mayor",
     name: "Ventas al por mayor",
     businessName: "Distribuidora Andina",
-    avatarIcon: "📦",
+    avatarIcon: Package,
     description: "Aplica precio mayorista desde la cantidad mínima, calcula el total del pedido y envía los datos de pago.",
     quickPrompts: [
       "¿Desde cuántas unidades es precio mayorista?",
@@ -299,7 +304,6 @@ export function DemoSection() {
     >
       {/* Background ambient lighting */}
       <div className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 h-[600px] w-[950px] rounded-full bg-[radial-gradient(ellipse_at_center,rgba(250,204,21,0.08),rgba(16,185,129,0.04)_45%,transparent_75%)] blur-3xl" />
-      <div className="pointer-events-none absolute inset-0 opacity-15 cyber-grid-pattern" />
 
       <div className="relative mx-auto max-w-7xl px-5 sm:px-8">
         {/* Section Header */}
@@ -341,7 +345,7 @@ export function DemoSection() {
                     : "border border-white/10 bg-zinc-900/60 text-zinc-400 hover:border-white/20 hover:text-white backdrop-blur-md"
                 }`}
               >
-                <span className="text-sm">{sector.avatarIcon}</span>
+                <sector.avatarIcon aria-hidden="true" className="size-3.5" />
                 <span>{sector.name}</span>
                 <span
                   className={`hidden sm:inline-block rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
@@ -372,8 +376,8 @@ export function DemoSection() {
                 {/* WhatsApp Chat Header */}
                 <div className="flex items-center justify-between border-b border-white/10 bg-[#202c33] px-4 py-3 text-white">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="relative flex size-10 shrink-0 items-center justify-center rounded-full bg-zinc-700 text-lg">
-                      {currentSector.avatarIcon}
+                    <div className="relative flex size-10 shrink-0 items-center justify-center rounded-full bg-zinc-700 text-zinc-200">
+                      <currentSector.avatarIcon aria-hidden="true" className="size-[18px]" />
                       <span className="absolute bottom-0 right-0 size-2.5 rounded-full bg-emerald-500 ring-2 ring-[#202c33]" />
                     </div>
                     <div className="min-w-0">

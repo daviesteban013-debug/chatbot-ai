@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Bot, Download, Menu, X } from "lucide-react";
+import { Download, Menu, X } from "lucide-react";
+import { NexoMark } from "@/components/brand/nexo-mark";
 
 const links = [
   ["Producto", "#producto"],
@@ -26,8 +27,9 @@ export function LandingNavbar() {
     <header onKeyDown={(event) => { if (event.key === "Escape") { setOpen(false); document.getElementById("landing-menu-toggle")?.focus(); } }} className="fixed inset-x-0 top-4 z-50 px-4">
       <nav aria-label="Navegación principal" className={`mx-auto flex w-full max-w-6xl items-center justify-between rounded-2xl border px-3 py-3 backdrop-blur-xl transition duration-300 sm:px-5 ${scrolled || open ? "border-white/15 bg-zinc-950/95 shadow-2xl shadow-black/40" : "border-white/8 bg-zinc-950/60"}`}>
         <Link href="/" className="flex items-center gap-2.5" aria-label="Zorax, inicio">
-          <span className="flex size-9 items-center justify-center rounded-xl bg-yellow-400 text-zinc-950 shadow-lg shadow-yellow-400/20">
-            <Bot className="size-5" strokeWidth={2.4} />
+          {/* The intro's mark lands here (data-zx-mark). */}
+          <span data-zx-mark className="block size-9 rounded-[10px] shadow-[0_0_0_1px_rgb(255_255_255/0.1),0_8px_24px_-8px_rgb(250_204_21/0.45)]">
+            <NexoMark className="size-9" />
           </span>
           <span className="text-lg font-semibold tracking-tight text-white">Zorax<span className="text-yellow-300">.</span></span>
         </Link>

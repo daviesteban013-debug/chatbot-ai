@@ -7,6 +7,8 @@ import { ArrowDown, ArrowRight, AudioLines, Check, MessageCircle, Package, Users
 import { BlurText, BlurWord } from "@/components/react-bits/blur-text";
 import { RotatingText } from "@/components/react-bits/rotating-text";
 import { TextType } from "@/components/react-bits/text-type";
+import { useIntroDone } from "./event-horizon/use-intro-done";
+import { HeroThreads } from "./hero-threads";
 import styles from "./nexo-hero.module.css";
 
 const LiquidAvatar = dynamic(() => import("@/components/jarvis/liquid-avatar").then(module => module.JarvisLiquidAvatar), {
@@ -23,8 +25,10 @@ const niches = ["ecommerce", "tiendas de ropa", "tiendas de tenis", "tiendas de 
 
 export function NexoHero() {
   const [selected, setSelected] = useState(0);
+  const shown = useIntroDone();
   const prompt = prompts[selected];
   return <section aria-labelledby="hero-title" className={styles.hero}>
+    <HeroThreads className={styles.threads} />
     <div className={styles.glow} aria-hidden="true" />
     <div className={styles.layout}>
       <div className={styles.copy}>
@@ -32,7 +36,7 @@ export function NexoHero() {
         <h1 id="hero-title"><BlurText text="Tu tienda vende" /><br /><BlurText text="por WhatsApp" start={3} /> <BlurWord index={5} className={styles.accent}><span className="rb-gradient-text">24/7.</span></BlurWord></h1>
         <p className={styles.description}>
           <span className={styles.lead}>Tu vendedor de IA para</span>
-          <RotatingText texts={niches} label="ecommerce: tiendas de ropa, tenis, tecnología, cosmética y ventas al por mayor." className={styles.niche} />
+          <RotatingText paused={!shown} texts={niches} label="ecommerce: tiendas de ropa, tenis, tecnología, cosmética y ventas al por mayor." className={styles.niche} />
           <span className={styles.detail}>Vende por WhatsApp con tu catálogo: responde por tallas y stock, cotiza el envío y deja cada pedido listo para pagar.</span>
         </p>
         <div className={styles.actions}>
@@ -45,7 +49,7 @@ export function NexoHero() {
         <div className={styles.orbit} aria-hidden="true"><span /></div>
         <div className={styles.orbitTwo} aria-hidden="true" />
         <span className={styles.coordinate} aria-hidden="true">N / 01 · TU CENTRO DE MANDO</span>
-        <div className={styles.avatar}><LiquidAvatar powered state="IDLE" accent="#facc15" onActivate={() => {}} /></div>
+        <div className={styles.avatar} data-zx-orb><LiquidAvatar powered state="IDLE" accent="#facc15" onActivate={() => {}} /></div>
         <span className={styles.sparkOne} aria-hidden="true">+</span><span className={styles.sparkTwo} aria-hidden="true">+</span>
         <div className={styles.hello}><span className={styles.presence} /><span>Hola, soy <strong>Zorax.</strong></span><AudioLines size={18} /></div>
         <p className={styles.orbCaption}>Una nueva forma de estar al frente.</p>
@@ -54,7 +58,7 @@ export function NexoHero() {
     <div className={styles.preview}>
       <div className={styles.previewTitle}><MessageCircle size={17} /><span>Empieza por una pregunta</span><small>Ejemplos de consulta</small></div>
       <div className={styles.previewBody}>
-        <div className={styles.promptText} aria-live="polite"><p><span className="sr-only">“{prompt.question}”</span><TextType key={selected} text={`“${prompt.question}”`} /></p><span>{prompt.detail}</span></div>
+        <div className={styles.promptText} aria-live="polite"><p><span className="sr-only">“{prompt.question}”</span><TextType key={selected} paused={!shown} text={`“${prompt.question}”`} /></p><span>{prompt.detail}</span></div>
         <div className={styles.promptButtons} role="group" aria-label="Ejemplos para Zorax">{prompts.map((item, index) => <button key={item.label} type="button" aria-pressed={selected === index} onClick={() => setSelected(index)}><item.icon size={14} />{item.label}</button>)}</div>
       </div>
     </div>

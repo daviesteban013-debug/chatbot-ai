@@ -199,8 +199,11 @@ textarea {
 /* React Bits effects (reactbits.dev, MIT + Commons Clause), rebuilt light for the landing in
    components/react-bits. Each one rests in its final state, so stopping its animation is safe. */
 
-/* BlurText: words fall into place out of a blur, in the order of --rb-i. */
+/* BlurText: words fall into place out of a blur, in the order of --rb-i. They wait while the
+   landing intro covers the page and start as it opens. */
 .rb-blur { display: inline-block; animation: rb-blur-in 0.95s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--rb-i, 0) * 110ms + 120ms) both; }
+.landing-root:has(#zx-intro[data-play]:not([data-dive])) .rb-blur { animation-play-state: paused; }
+html:has(#zx-intro[data-play]) { overflow: hidden; }
 @keyframes rb-blur-in {
   0% { opacity: 0; filter: blur(10px); transform: translateY(-0.5em); }
   50% { opacity: 0.5; filter: blur(5px); transform: translateY(0.05em); }

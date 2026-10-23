@@ -7,9 +7,9 @@ import { AnimatePresence, motion, useInView, useReducedMotion } from "framer-mot
  * React Bits «RotatingText» (reactbits.dev, MIT + Commons Clause): phrases take turns inside a
  * highlighted pill, letter by letter, while the pill eases to the width of each one. Screen
  * readers hear `label` instead of the changing phrase. It waits while off screen or under the
- * pointer, and stays on the first phrase with reduced motion.
+ * pointer or while `paused`, and stays on the first phrase with reduced motion.
  */
-export function RotatingText({ texts, label, interval = 2200, className }: { texts: string[]; label: string; interval?: number; className?: string }) {
+export function RotatingText({ texts, label, interval = 2200, paused = false, className }: { texts: string[]; label: string; interval?: number; paused?: boolean; className?: string }) {
   const rootRef = useRef<HTMLSpanElement>(null);
   const contentRef = useRef<HTMLSpanElement>(null);
   const [index, setIndex] = useState(0);
@@ -18,10 +18,10 @@ export function RotatingText({ texts, label, interval = 2200, className }: { tex
   const reduced = useReducedMotion();
 
   useEffect(() => {
-    if (!inView || hovered || reduced || texts.length < 2) return;
+    if (!inView || hovered || paused || reduced || texts.length < 2) return;
     const timer = window.setTimeout(() => setIndex(current => (current + 1) % texts.length), interval);
     return () => window.clearTimeout(timer);
-  }, [index, inView, hovered, reduced, interval, texts.length]);
+  }, [index, inView, hovered, paused, reduced, interval, texts.length]);
 
   // The pill takes the width of the phrase inside it, so each change of size can ease.
   useEffect(() => {

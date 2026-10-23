@@ -15,14 +15,13 @@ export function ProblemSolution() {
       <h2 id="problema-title" className="landing-title"><ScrollReveal lines={["Que un mensaje sin responder", "no sea una venta perdida."]} accent={2} breakClassName="hidden sm:block" /></h2>
       <div className="mt-10 grid gap-4 md:grid-cols-2">
         <div className="rounded-3xl border border-white/10 bg-zinc-900/40 p-6 backdrop-blur-md sm:p-8">
-          <p className="mb-8 text-xs font-mono uppercase tracking-widest text-zinc-500">{"// Sin una mano extra"}</p>
+          <p className="mb-8 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Sin una mano extra</p>
           <div className="space-y-7">{problems.map(({ icon: Icon, title, copy }) => <div key={title} className="flex gap-4"><Icon className="mt-1 size-5 shrink-0 text-zinc-500" /><div><h3 className="text-sm font-medium text-zinc-200">{title}</h3><p className="mt-2 text-sm leading-relaxed text-zinc-500">{copy}</p></div></div>)}</div>
         </div>
         <div className="cyber-card relative overflow-hidden rounded-3xl border border-yellow-300/30 bg-[radial-gradient(ellipse_at_top_right,#facc1515,transparent_70%)] bg-zinc-950/70 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.5)] backdrop-blur-xl sm:p-8">
-          <div className="scanner-line opacity-30" />
-          <p className="mb-8 flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-yellow-300">
+          <p className="mb-8 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-yellow-300">
             <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
-            {"// Con Zorax de tu lado"}
+            Con Zorax de tu lado
           </p>
           <div className="space-y-7">{[
             ["Una respuesta, sin hacer esperar.", "Zorax atiende las preguntas de tus compradores con la información de tu catálogo."],

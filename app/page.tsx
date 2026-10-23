@@ -14,6 +14,7 @@ import { Pricing } from "@/components/landing/pricing";
 import { Faq } from "@/components/landing/faq";
 import { FinalCta } from "@/components/landing/final-cta";
 import { LandingFooter } from "@/components/landing/footer";
+import { EventHorizon } from "@/components/landing/event-horizon/event-horizon";
 
 export default async function HomePage({
   searchParams,
@@ -33,6 +34,7 @@ export default async function HomePage({
 
   return (
     <div className="landing-root relative min-h-screen overflow-x-hidden">
+      <EventHorizon />
       <div className="nexo-field" aria-hidden="true"><DotField /></div>
       <a href="#contenido" className="sr-only z-[60] rounded-lg bg-yellow-300 p-3 text-zinc-950 focus:fixed focus:left-4 focus:top-4 focus:not-sr-only">Saltar al contenido</a>
       <LandingNavbar />
