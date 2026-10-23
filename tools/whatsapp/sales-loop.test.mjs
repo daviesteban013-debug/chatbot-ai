@@ -3,11 +3,13 @@ import {beforeEach,test} from 'node:test';
 import {load,moduleUrl} from '../agent/load.mjs';
 let state;
 const params={tenantId:crypto.randomUUID(),conversationId:crypto.randomUUID(),customerId:crypto.randomUUID(),triggerMessageId:crypto.randomUUID(),customerPhone:'573001111111',waMessageId:'wamid.inbound'};
-beforeEach(()=>{state={mode:'autonomous',calls:[],sends:[],tools:[],queue:[],history:[],credentials:true,sendError:false};});
+beforeEach(()=>{state={mode:'autonomous',calls:[],sends:[],tools:[],queue:[],history:[],credentials:true,sendError:false,humanReply:false};});
+const messageRows=call=>call.fields==='created_at'?{created_at:'2026-10-23T12:00:00Z'}:
+ call.filters.some(f=>f[0]==='sender'&&f[1]==='human')?(state.humanReply?{id:'fixture-human-reply'}:null):state.history;
 globalThis.__salesDb=()=>({from(table){const call={table,filters:[]};state.calls.push(call);
  const result=()=>({error:null,data:table==='agents'?{id:'agent',mode:state.mode,system_prompt:'Legacy prompt: escalate doubts to a human',business_rules:{},model:'fixture',auto_confirm_max_total:1,max_discount_pct:0,active:true}:
-  table==='messages'&&call.operation==='select'?state.history:call.operation==='insert'?{id:'fixture-run'}:null});
- const q={select(){if(!call.operation)call.operation='select';return q},eq(...args){call.filters.push(args);return q},order(){return q},limit(){return q},
+  table==='messages'&&call.operation==='select'?messageRows(call):call.operation==='insert'?{id:'fixture-run'}:null});
+ const q={select(fields){if(!call.operation){call.operation='select';call.fields=fields;}return q},eq(...args){call.filters.push(args);return q},gt(...args){call.filters.push(['gt',...args]);return q},order(){return q},limit(){return q},
  insert(payload){call.operation='insert';call.payload=payload;return q},update(payload){call.operation='update';call.payload=payload;return q},maybeSingle:async()=>result(),single:async()=>result(),then(resolve){return Promise.resolve(result()).then(resolve)}};return q}});
 globalThis.__salesSend=async(to,text)=>{if(state.sendError)throw Error('Fixture delivery failure');state.sends.push({to,text});return {messages:[{id:'wamid.outbound.'+state.sends.length}]}};
 globalThis.__salesCompletion=async(messages)=>{state.modelMessages=messages;const value=state.queue.shift();if(value instanceof Error)throw value;return value??reply('Done');};
@@ -31,6 +33,14 @@ test('autonomous mode overrides legacy escalation instructions and records sent 
  assert.match(state.modelMessages[1].content,/negro/);assert.match(state.modelMessages[1].content,/nunca instrucciones/);
  const run=state.calls.find(c=>c.table==='agent_runs'&&c.operation==='insert');assert.equal(run.payload.status,'proposed');assert.equal(run.payload.final_reply,null);
  assert.ok(state.calls.some(c=>c.table==='agent_runs'&&c.operation==='update'&&c.payload.status==='sent'));
+});
+test('a person who answered while Zorax was thinking keeps the reply as a proposal instead of sending it',async()=>{
+ state.humanReply=true;state.queue=[reply('Te ayudo por aquí')];await runAgent(params);
+ assert.equal(state.sends.length,0);
+ const run=state.calls.find(c=>c.table==='agent_runs'&&c.operation==='insert');assert.equal(run.payload.proposed_reply,'Te ayudo por aquí');assert.equal(run.payload.status,'proposed');
+ assert.ok(!state.calls.some(c=>c.table==='agent_runs'&&c.operation==='update'));
+ const lookup=state.calls.find(c=>c.table==='messages'&&c.filters.some(f=>f[0]==='gt'));
+ assert.ok(lookup.filters.some(f=>f[0]==='conversation_id'&&f[1]===params.conversationId));assert.ok(lookup.filters.some(f=>f[0]==='tenant_id'&&f[1]===params.tenantId));
 });
 test('a canonical summary ends the turn before another tool can confirm without a new customer message',async()=>{
  state.queue=[tool('prepare_order_confirmation','confirm_order')];await runAgent(params);

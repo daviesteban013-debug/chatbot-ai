@@ -305,8 +305,12 @@ async function runAgentInner(
     console.error("[Agent] Error persistiendo agent_run:", runError.message);
   }
 
-  // 9. Enviar respuesta si está en modo autónomo
-  if (shouldAutoSend && finalReply) {
+  // 9. Enviar respuesta si está en modo autónomo, salvo que una persona del
+  //    negocio haya contestado mientras Zorax pensaba (queda como propuesta).
+  const humanReplied = shouldAutoSend && await humanRepliedAfter(supabase, tenantId, conversationId, triggerMessageId);
+  if (humanReplied) {
+    console.log(`[Agent] Una persona ya respondió en la conversación ${conversationId}; no se envía la respuesta.`);
+  } else if (shouldAutoSend && finalReply) {
     if (!sendOpts) {
       runStatus = "error";
       console.error(
@@ -417,6 +421,37 @@ async function loadAgentConfig(
 }
 
 const loadSendOptions = loadWhatsAppSendOptions;
+
+/**
+ * Indica si alguien del negocio respondió en la conversación después del
+ * mensaje que disparó esta ejecución, desde el CRM o desde la app de WhatsApp
+ * Business (coexistencia).
+ */
+async function humanRepliedAfter(
+  supabase: ReturnType<typeof createAdminClient>,
+  tenantId: string,
+  conversationId: string,
+  triggerMessageId: string
+): Promise<boolean> {
+  const { data: trigger } = await supabase
+    .from("messages")
+    .select("created_at")
+    .eq("tenant_id", tenantId)
+    .eq("id", triggerMessageId)
+    .maybeSingle();
+  if (!trigger) return false;
+
+  const { data: reply } = await supabase
+    .from("messages")
+    .select("id")
+    .eq("tenant_id", tenantId)
+    .eq("conversation_id", conversationId)
+    .eq("sender", "human")
+    .gt("created_at", trigger.created_at)
+    .limit(1)
+    .maybeSingle();
+  return Boolean(reply);
+}
 
 /**
  * Carga el historial de la conversación incluyendo mensajes de audio transcritos

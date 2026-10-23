@@ -8,6 +8,8 @@
  *  - Buscar o crear la conversación abierta.
  *  - Persistir el mensaje entrante de forma idempotente (`wa_message_id`).
  *  - Actualizar `conversations.last_message_at`.
+ *  - Guardar los ecos (`smb_message_echoes`) de lo que el negocio responde
+ *    desde la app de WhatsApp Business y pasar ese chat a atención humana.
  *  Si algo falla, el route responde error y Meta reintenta: ningún mensaje
  *  se pierde aunque el agente se interrumpa después.
  *
@@ -25,12 +27,20 @@ import type { Json, MessageType } from "@/lib/database.types";
 import type {
   WhatsAppWebhookPayload,
   WhatsAppMessage,
+  WhatsAppMessageEcho,
 } from "./types";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
 /** Código de error de Postgres para violación de restricción única. */
 const UNIQUE_VIOLATION = "23505";
+
+/** Campo del webhook con los mensajes que el negocio envía desde la app (coexistencia). */
+const ECHO_FIELD = "smb_message_echoes";
+
+/** Resumen del handoff que abre una respuesta del negocio desde la app. */
+const BUSINESS_REPLY_SUMMARY =
+  "El negocio respondió desde la app de WhatsApp Business. Zorax queda en pausa en este chat hasta que lo resuelvas.";
 
 /** Trabajo pendiente para el agente tras persistir un mensaje entrante. */
 export type WebhookAgentJob = {
@@ -63,10 +73,11 @@ export async function persistWebhookPayload(
 
   for (const entry of payload.entry ?? []) {
     for (const change of entry.changes ?? []) {
-      if (change.field !== "messages") continue;
+      if (change.field !== "messages" && change.field !== ECHO_FIELD) continue;
 
       const value = change.value;
       const phoneNumberId = value.metadata.phone_number_id;
+      const received = (value.messages?.length ?? 0) + (value.message_echoes?.length ?? 0);
 
       // Resolver tenant por phone_number_id (constraint único en whatsapp_accounts).
       const { data: waAccount, error: accountError } = await admin
@@ -77,7 +88,7 @@ export async function persistWebhookPayload(
 
       if (accountError) {
         console.error(`[webhook] No se pudo resolver phone_number_id ${phoneNumberId}:`, accountError.message);
-        result.failed += value.messages?.length ?? 0;
+        result.failed += received;
         continue;
       }
       if (!waAccount) {
@@ -90,7 +101,7 @@ export async function persistWebhookPayload(
       const tenantId = waAccount.tenant_id;
       const sendOptions = await loadWhatsAppSendOptions(admin,tenantId,phoneNumberId);
       const waAccessToken = sendOptions?.accessToken ?? null;
-      if (value.messages?.length) {
+      if (received) {
         await admin.from("whatsapp_accounts").update({last_webhook_at:new Date().toISOString()})
           .eq("tenant_id",tenantId).eq("phone_number_id",phoneNumberId);
       }
@@ -127,6 +138,16 @@ export async function persistWebhookPayload(
               error
             );
           }
+        }
+      }
+
+      // Lo que el negocio responde desde la app de WhatsApp Business: no dispara al agente.
+      for (const echo of value.message_echoes ?? []) {
+        try {
+          await persistBusinessEcho(admin, tenantId, echo);
+        } catch (error) {
+          result.failed++;
+          console.error(`[webhook] Error persistiendo eco ${echo.id}:`, error);
         }
       }
 
@@ -317,6 +338,115 @@ async function persistIncomingMessage(
     audioId: message.type === "audio" ? message.audio?.id ?? null : null,
     accessToken,
   };
+}
+
+/**
+ * Guarda un mensaje que el negocio escribió desde la app de WhatsApp Business
+ * (coexistencia) en la conversación del cliente y pone el chat en atención
+ * humana para que Zorax no responda encima. Idempotente por `wa_message_id`:
+ * la pausa va antes del guardado para que un reintento de Meta la complete.
+ */
+async function persistBusinessEcho(
+  admin: AdminClient,
+  tenantId: string,
+  echo: WhatsAppMessageEcho
+): Promise<void> {
+  const { data: existing, error: existingError } = await admin
+    .from("messages")
+    .select("id")
+    .eq("wa_message_id", echo.id)
+    .maybeSingle();
+
+  if (existingError) throw new Error(`Error verificando duplicados: ${existingError.message}`);
+  if (existing) return;
+
+  const customerId = await upsertCustomer(admin, tenantId, echo.to, null);
+  const conversationId = await resolveConversation(admin, tenantId, customerId);
+  await pauseForBusinessReply(admin, tenantId, conversationId);
+
+  const { error } = await admin.from("messages").insert({
+    tenant_id: tenantId,
+    conversation_id: conversationId,
+    direction: "outbound",
+    sender: "human",
+    type: mapMessageType(echo.type),
+    body: extractBody(echo),
+    media_url: extractMediaRef(echo),
+    wa_message_id: echo.id,
+    raw: echo as unknown as Json,
+  });
+
+  if (error) {
+    if (error.code === UNIQUE_VIOLATION) return;
+    throw new Error(`Error persistiendo eco: ${error.message}`);
+  }
+
+  await admin
+    .from("conversations")
+    .update({ last_message_at: new Date().toISOString() })
+    .eq("tenant_id", tenantId)
+    .eq("id", conversationId);
+}
+
+/**
+ * Pasa la conversación a handoff tomado por el dueño del negocio, como cuando
+ * un asesor toma el chat en el CRM; resolverlo devuelve el chat a Zorax. Si un
+ * cliente ya esperaba asesor, ese handoff queda tomado en vez de abrir otro.
+ */
+async function pauseForBusinessReply(
+  admin: AdminClient,
+  tenantId: string,
+  conversationId: string
+): Promise<void> {
+  const { error: statusError } = await admin
+    .from("conversations")
+    .update({ status: "handoff" })
+    .eq("tenant_id", tenantId)
+    .eq("id", conversationId);
+  if (statusError) throw new Error(`Error pausando la conversación: ${statusError.message}`);
+
+  const { data: owner } = await admin
+    .from("tenant_members")
+    .select("user_id")
+    .eq("tenant_id", tenantId)
+    .eq("role", "owner")
+    .limit(1)
+    .maybeSingle();
+  const ownerId = owner?.user_id ?? null;
+
+  const { data: current, error: currentError } = await admin
+    .from("handoffs")
+    .select("id, status")
+    .eq("tenant_id", tenantId)
+    .eq("conversation_id", conversationId)
+    .in("status", ["open", "taken"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (currentError) throw new Error(`Error consultando handoffs: ${currentError.message}`);
+
+  if (current) {
+    if (current.status === "open" && ownerId) {
+      await admin
+        .from("handoffs")
+        .update({ status: "taken", taken_by: ownerId })
+        .eq("tenant_id", tenantId)
+        .eq("id", current.id)
+        .eq("status", "open");
+    }
+    return;
+  }
+
+  const { error: insertError } = await admin.from("handoffs").insert({
+    tenant_id: tenantId,
+    conversation_id: conversationId,
+    reason: "otro",
+    summary: BUSINESS_REPLY_SUMMARY,
+    priority: "low",
+    status: ownerId ? "taken" : "open",
+    taken_by: ownerId,
+  });
+  if (insertError) throw new Error(`Error creando handoff: ${insertError.message}`);
 }
 
 /**

@@ -39,6 +39,8 @@ export interface WhatsAppValue {
   };
   contacts?: WhatsAppContact[];
   messages?: WhatsAppMessage[];
+  /** Campo `smb_message_echoes`: lo que el negocio envía desde la app de WhatsApp Business (coexistencia). */
+  message_echoes?: WhatsAppMessageEcho[];
   statuses?: WhatsAppStatus[];
 }
 
@@ -87,6 +89,15 @@ export interface WhatsAppMessage {
   interactive?: unknown;
   /** Presente cuando el mensaje es respuesta a otro. */
   context?: { from: string; id: string };
+}
+
+/**
+ * Mensaje que el negocio escribió desde la app de WhatsApp Business o un
+ * dispositivo vinculado. `from` es el número del negocio.
+ */
+export interface WhatsAppMessageEcho extends WhatsAppMessage {
+  /** Cliente al que el negocio le escribió (sin el prefijo "+"). */
+  to: string;
 }
 
 export interface WhatsAppStatus {
