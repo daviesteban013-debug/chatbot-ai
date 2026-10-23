@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { ArrowRight, Check, ExternalLink, MessageCircle, RefreshCw, Smartphone } from "lucide-react";
+import { ArrowRight, Check, ExternalLink, History, MessageCircle, RefreshCw, Smartphone } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -136,6 +136,16 @@ export function WhatsAppSetupView({initial}:{initial:WhatsAppSetup}) {
   }
   const account=setup.account;
   const oneClick=setup.canManage&&Boolean(setup.signup);
+  const appSync=setup.appSync;
+  // Contacts and chats of the linked WhatsApp Business app: Meta sends them once, if asked within 24 hours.
+  const appSyncNote={
+    none:null,
+    pending:`Falta pedirle a Meta tus contactos y tus chats de la app de WhatsApp Business. Tienes hasta el ${appSync.retryUntil?new Date(appSync.retryUntil).toLocaleString("es-CO"):"plazo de 24 horas"}.`,
+    importing:`Trayendo tus chats de WhatsApp Business: ${appSync.progress??0} %. Pulsa Actualizar para ver el avance.`,
+    done:"Tus contactos y tus chats de los últimos 6 meses ya están en Conversaciones.",
+    declined:"En la app de WhatsApp Business elegiste no compartir tus chats anteriores. Los mensajes nuevos sí llegan a Zorax.",
+    expired:"Pasaron las 24 horas para traer tus chats anteriores. Para traerlos, desvincula Zorax en la app de WhatsApp Business y vuelve a conectarla.",
+  }[appSync.status];
   const manual=<div className="grid items-start gap-5 lg:grid-cols-[1fr_1.1fr]">
     <Panel>
       <PanelHeader title="Prepara tu número"/>
@@ -188,6 +198,10 @@ export function WhatsAppSetupView({initial}:{initial:WhatsAppSetup}) {
         </div>
         <Badge variant={account?.last_webhook_at ? "success" : account?.connection_status==="verified" ? "info" : "warning"}>{account?.last_webhook_at ? "Recepción comprobada" : account?.connection_status==="verified" ? "Credenciales verificadas" : "Pendiente de vincular"}</Badge>
       </Panel>
+      {appSyncNote&&<Panel className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-5">
+        <p role="status" className="min-w-0 text-[13px] leading-6 text-ink-soft">{appSyncNote}</p>
+        {appSync.status==="pending"&&setup.canManage&&<Button size="sm" disabled={busy} onClick={()=>void run({operation:"sync"})}><History className="size-4"/>Traer mis chats</Button>}
+      </Panel>}
       {notice&&<p role={notice.error?"alert":"status"} className={`rounded-md border px-4 py-3 text-[13px] ${notice.error?"border-rose-200 bg-rose-50 text-rose-800":"border-emerald-200 bg-emerald-50 text-emerald-800"}`}>{notice.error||notice.message}</p>}
       {oneClick ? <>
         <Panel>

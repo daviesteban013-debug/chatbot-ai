@@ -9,6 +9,7 @@ export const activateCloudPhone=async(...args)=>{globalThis.__waState.activate.p
 export const exchangeSignupCode=async code=>{globalThis.__waState.exchange.push(code);if(globalThis.__waState.exchangeFails)throw new CloudSetupError('SIGNUP_CODE_INVALID');return 'fixture-business-token'};
 export const generateTwoStepPin=()=>'246810';
 export const onlyCloudPhoneId=async(...args)=>{globalThis.__waState.onlyPhone.push(args);return '555000111'};
+export const requestAppDataSync=async(...args)=>{globalThis.__waState.syncs.push(args);if(globalThis.__waState.syncFails===args[2])throw new CloudSetupError('META_UNAVAILABLE')};
 export const cloudErrorMessage=()=> 'Provider operation failed';`);
 const {GET,POST}=await import(await load('../../app/api/whatsapp/setup/route.ts',{
  zod:import.meta.resolve('zod'),
@@ -17,12 +18,12 @@ const {GET,POST}=await import(await load('../../app/api/whatsapp/setup/route.ts'
  '@/lib/supabase/admin':moduleUrl('export const createAdminClient=()=>globalThis.__waAdmin();'),
  '@/lib/whatsapp/cloud':cloud,
  '@/lib/whatsapp/credentials':moduleUrl('export const encryptWhatsAppToken=()=>"wa.v1.fixture-encrypted";export const loadWhatsAppSendOptions=async()=>({accessToken:"fixture-stored-token"});'),
- '@/lib/whatsapp/setup':moduleUrl('export const signupConfig=()=>globalThis.__waState.signup;export const setupRequirements=()=>[{name:"TEST",ready:globalThis.__waState.ready}];export const readWhatsAppSetup=async(_,tid,owner)=>({account:{phone_number_id:"123456789"},canManage:owner});'),
+ '@/lib/whatsapp/setup':moduleUrl('export const APP_SYNC_WINDOW_MS=86400000;export const signupConfig=()=>globalThis.__waState.signup;export const setupRequirements=()=>[{name:"TEST",ready:globalThis.__waState.ready}];export const readWhatsAppSetup=async(_,tid,owner)=>({account:{phone_number_id:"123456789"},canManage:owner});'),
 }));
-beforeEach(()=>{state={user:{id:uid},tenant:{tenantId:tenant,role:'owner'},ready:true,verify:[],activate:[],rpc:[],exchange:[],updates:[],onlyPhone:[],signup:{appId:'987654321',configId:'111222333',version:'v26.0'},membership:'owner'};globalThis.__waState=state;});
+beforeEach(()=>{state={user:{id:uid},tenant:{tenantId:tenant,role:'owner'},ready:true,verify:[],activate:[],rpc:[],exchange:[],updates:[],onlyPhone:[],syncs:[],syncFails:null,appLinkedAt:null,signup:{appId:'987654321',configId:'111222333',version:'v26.0'},membership:'owner'};globalThis.__waState=state;});
 globalThis.__waAdmin=()=>({
  rpc:async(name,args)=>{state.rpc.push({name,args});return {data:crypto.randomUUID(),error:state.error};},
- from(table){const q={select(){return q},update(values){state.updates.push({table,values});return q},eq(){return q},maybeSingle:async()=>({data:table==='tenant_members'?{role:state.membership}:{phone_number_id:'123456789',waba_id:'987654321'},error:null})};return q;},
+ from(table){const q={select(){return q},update(values){state.updates.push({table,values});return q},eq(){return q},maybeSingle:async()=>({data:table==='tenant_members'?{role:state.membership}:{phone_number_id:'123456789',waba_id:'987654321',app_linked_at:state.appLinkedAt},error:null})};return q;},
 });
 const req=(body={operation:'save',phoneId:'123456789',wabaId:'987654321',accessToken:'fixture-token-long-enough'},origin='https://nexo.test')=>new Request('https://nexo.test/api/whatsapp/setup',{method:'POST',headers:{origin,'content-type':'application/json'},body:JSON.stringify(body)});
 test('missing login, anonymous sessions, non-owners and cross-origin writes are blocked before Meta',async()=>{
@@ -83,11 +84,33 @@ test('linking the WhatsApp Business app: the one number of the account is found,
  assert.deepEqual(state.verify[0],['987654321','555000111','fixture-business-token',{requireVerified:false}]);
  assert.equal(state.rpc[0].args.p_phone,'555000111');
  assert.equal(state.activate.length,1);assert.equal(state.activate[0][3],undefined,'no PIN registration for a linked app');
- assert.deepEqual(state.activate[0][4],{requireVerified:false});assert.equal(state.updates.length,0);
- const data=await response.json();assert.equal(data.pin,undefined);assert.match(data.message,/WhatsApp Business/);
+ assert.deepEqual(state.activate[0][4],{requireVerified:false});
+ // Linking opens Meta's 24-hour window: contacts are asked first, then the chats, and each request is recorded.
+ assert.ok(state.updates[0].values.app_linked_at);assert.equal(state.updates[0].values.history_sync_requested_at,null);assert.equal(state.updates[0].values.history_sync_declined,false);
+ assert.deepEqual(state.syncs,[['555000111','fixture-business-token','smb_app_state_sync'],['555000111','fixture-business-token','history']]);
+ assert.ok(state.updates[1].values.contacts_sync_requested_at);assert.ok(state.updates[2].values.history_sync_requested_at);assert.equal(state.updates.length,3);
+ const data=await response.json();assert.equal(data.pin,undefined);assert.match(data.message,/WhatsApp Business/);assert.match(data.message,/trayendo tus contactos y tus chats/);
  // With the phone ID present it is used as given.
  state.onlyPhone=[];state.verify=[];assert.equal((await POST(req({...body,phoneId:'123456789'}))).status,200);
  assert.equal(state.onlyPhone.length,0);assert.equal(state.verify[0][1],'123456789');
+});
+test('if Meta refuses the history request the app stays linked and the owner is told how to retry in time',async()=>{
+ state.syncFails='history';
+ const response=await POST(req({operation:'signup',code:'AQB-fixture-code-1234567890',wabaId:'987654321',coexistence:true}));
+ assert.equal(response.status,200);assert.match((await response.json()).message,/Traer mis chats/);
+ assert.equal(state.syncs.length,2);assert.ok(state.updates.some(update=>update.values.contacts_sync_requested_at));
+ assert.ok(!state.updates.some(update=>update.values.history_sync_requested_at),'a refused request is not recorded as asked');
+});
+test('retrying the chat import works only for a linked app, inside 24 hours, with the saved token and a rechecked owner',async()=>{
+ assert.equal((await POST(req({operation:'sync',phoneId:'5555566666'}))).status,400,'no IDs from the browser');
+ assert.equal((await POST(req({operation:'sync'}))).status,409,'a number connected without the app has nothing to import');
+ state.appLinkedAt=new Date(Date.now()-25*3600*1000).toISOString();assert.equal((await POST(req({operation:'sync'}))).status,409);
+ assert.equal(state.syncs.length,0);
+ state.appLinkedAt=new Date(Date.now()-3600*1000).toISOString();state.membership='viewer';
+ assert.equal((await POST(req({operation:'sync'}))).status,403);assert.equal(state.syncs.length,0);
+ state.membership='owner';const response=await POST(req({operation:'sync'}));assert.equal(response.status,200);
+ assert.deepEqual(state.syncs.map(sync=>sync[2]),['smb_app_state_sync','history']);assert.equal(state.syncs[0][1],'fixture-stored-token');
+ state.syncs=[];state.syncFails='smb_app_state_sync';assert.equal((await POST(req({operation:'sync'}))).status,502);
 });
 test('a new number needs its ID, and the coexistence flag must be a real boolean; both are checked before the code is spent',async()=>{
  assert.equal((await POST(req({operation:'signup',code:'AQB-fixture-code-1234567890',wabaId:'987654321'}))).status,400);

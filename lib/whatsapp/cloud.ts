@@ -103,6 +103,18 @@ export async function exchangeSignupCode(code: string): Promise<string> {
   return data.access_token;
 }
 
+/** What Meta can send from a linked WhatsApp Business app: its contacts or up to 180 days of chats. */
+export type AppDataSync = "smb_app_state_sync" | "history";
+
+/**
+ * Asks Meta to send the contacts or the chat history of a number linked from the WhatsApp Business app.
+ * Meta accepts each type once and only within 24 hours of linking; the data arrives later by webhook.
+ */
+export async function requestAppDataSync(phoneId: string, token: string, syncType: AppDataSync): Promise<void> {
+  if (!/^\d{5,30}$/.test(phoneId)) throw new CloudSetupError("INVALID_IDS");
+  await graphRequest(`${phoneId}/smb_app_data`, token, { messaging_product: "whatsapp", sync_type: syncType });
+}
+
 /** Six digits for Meta's two-step verification, chosen by Zorax so the owner clicks once and types nothing. */
 export function generateTwoStepPin(): string { return randomInt(0, 1_000_000).toString().padStart(6, "0"); }
 

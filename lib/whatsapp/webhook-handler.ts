@@ -10,6 +10,8 @@
  *  - Actualizar `conversations.last_message_at`.
  *  - Guardar los ecos (`smb_message_echoes`) de lo que el negocio responde
  *    desde la app de WhatsApp Business y pasar ese chat a atención humana.
+ *  - Importar los contactos (`smb_app_state_sync`) y los chats (`history`)
+ *    de esa app cuando Meta los envía tras vincularla, sin disparar al agente.
  *  Si algo falla, el route responde error y Meta reintenta: ningún mensaje
  *  se pierde aunque el agente se interrumpa después.
  *
@@ -28,6 +30,9 @@ import type {
   WhatsAppWebhookPayload,
   WhatsAppMessage,
   WhatsAppMessageEcho,
+  WhatsAppHistoryChunk,
+  WhatsAppHistoryMessage,
+  WhatsAppStateSync,
 } from "./types";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
@@ -37,6 +42,15 @@ const UNIQUE_VIOLATION = "23505";
 
 /** Campo del webhook con los mensajes que el negocio envía desde la app (coexistencia). */
 const ECHO_FIELD = "smb_message_echoes";
+/** Campos con los chats y los contactos que Meta trae de la app al vincularla. */
+const HISTORY_FIELD = "history";
+const CONTACTS_FIELD = "smb_app_state_sync";
+const HANDLED_FIELDS = new Set(["messages", ECHO_FIELD, HISTORY_FIELD, CONTACTS_FIELD]);
+/** Código de Meta cuando el negocio decidió no compartir su historial desde la app. */
+const HISTORY_DECLINED = 2593109;
+/** Tamaño de los lotes del historial: clientes por consulta y mensajes por llamada SQL. */
+const THREADS_PER_BATCH = 100;
+const MESSAGES_PER_BATCH = 500;
 
 /** Resumen del handoff que abre una respuesta del negocio desde la app. */
 const BUSINESS_REPLY_SUMMARY =
@@ -73,11 +87,12 @@ export async function persistWebhookPayload(
 
   for (const entry of payload.entry ?? []) {
     for (const change of entry.changes ?? []) {
-      if (change.field !== "messages" && change.field !== ECHO_FIELD) continue;
+      if (!HANDLED_FIELDS.has(change.field)) continue;
 
       const value = change.value;
       const phoneNumberId = value.metadata.phone_number_id;
-      const received = (value.messages?.length ?? 0) + (value.message_echoes?.length ?? 0);
+      const live = (value.messages?.length ?? 0) + (value.message_echoes?.length ?? 0);
+      const received = live + (value.history?.length ?? 0) + (value.state_sync?.length ?? 0);
 
       // Resolver tenant por phone_number_id (constraint único en whatsapp_accounts).
       const { data: waAccount, error: accountError } = await admin
@@ -101,7 +116,7 @@ export async function persistWebhookPayload(
       const tenantId = waAccount.tenant_id;
       const sendOptions = await loadWhatsAppSendOptions(admin,tenantId,phoneNumberId);
       const waAccessToken = sendOptions?.accessToken ?? null;
-      if (received) {
+      if (live) {
         await admin.from("whatsapp_accounts").update({last_webhook_at:new Date().toISOString()})
           .eq("tenant_id",tenantId).eq("phone_number_id",phoneNumberId);
       }
@@ -148,6 +163,26 @@ export async function persistWebhookPayload(
         } catch (error) {
           result.failed++;
           console.error(`[webhook] Error persistiendo eco ${echo.id}:`, error);
+        }
+      }
+
+      // Contactos de la app de WhatsApp Business, con el nombre que el negocio les puso.
+      if (value.state_sync?.length) {
+        try {
+          await saveBusinessContacts(admin, tenantId, value.state_sync);
+        } catch (error) {
+          result.failed += value.state_sync.length;
+          console.error(`[webhook] Error guardando contactos de la app:`, error);
+        }
+      }
+
+      // Chats de la app: se guardan con su fecha, sin disparar al agente ni pausar conversaciones.
+      for (const chunk of value.history ?? []) {
+        try {
+          await importHistoryChunk(admin, tenantId, phoneNumberId, chunk);
+        } catch (error) {
+          result.failed++;
+          console.error(`[webhook] Error importando historial:`, error);
         }
       }
 
@@ -220,7 +255,8 @@ export function normalizePhone(phone: string): string {
 /**
  * Crea u obtiene el cliente del tenant. El upsert con solo `tenant_id`+`phone`
  * preserva el nombre existente (PostgREST actualiza únicamente las columnas
- * provistas). Si viene un nombre distinto, se actualiza por separado.
+ * provistas). El nombre de perfil de WhatsApp solo completa a un cliente sin
+ * nombre: no reemplaza el que el negocio le puso en su app o en el CRM.
  *
  * @returns El `id` del cliente.
  */
@@ -248,7 +284,7 @@ async function upsertCustomer(
   }
 
   const cleanName = name?.trim();
-  if (cleanName && cleanName !== customer.name) {
+  if (cleanName && !customer.name) {
     await admin
       .from("customers")
       .update({ name: cleanName })
@@ -449,6 +485,197 @@ async function pauseForBusinessReply(
   if (insertError) throw new Error(`Error creando handoff: ${insertError.message}`);
 }
 
+/** Parte una lista en lotes de `size`. */
+function inBatches<T>(items: T[], size: number): T[][] {
+  return Array.from({ length: Math.ceil(items.length / size) }, (_, index) => items.slice(index * size, (index + 1) * size));
+}
+
+/**
+ * Guarda los contactos de la app de WhatsApp Business como clientes, con el
+ * nombre que el negocio les puso. Quitar un contacto del celular no borra al
+ * cliente del CRM.
+ */
+async function saveBusinessContacts(
+  admin: AdminClient,
+  tenantId: string,
+  items: WhatsAppStateSync[]
+): Promise<void> {
+  const named = new Map<string, string>();
+  const unnamed = new Set<string>();
+  for (const item of items) {
+    const phone = item.contact?.phone_number?.trim();
+    if (item.type !== "contact" || item.action !== "add" || !phone) continue;
+    const normalized = normalizePhone(phone);
+    const name = item.contact?.full_name?.trim() || item.contact?.first_name?.trim();
+    if (name) {
+      named.set(normalized, name);
+      unnamed.delete(normalized);
+    } else if (!named.has(normalized)) {
+      unnamed.add(normalized);
+    }
+  }
+
+  // Con y sin nombre por separado: en un upsert por lotes un campo ausente
+  // queda en null y borraría el nombre de un cliente existente.
+  const batches: { tenant_id: string; phone: string; name?: string }[][] = [
+    ...inBatches([...named].map(([phone, name]) => ({ tenant_id: tenantId, phone, name })), MESSAGES_PER_BATCH),
+    ...inBatches([...unnamed].map((phone) => ({ tenant_id: tenantId, phone })), MESSAGES_PER_BATCH),
+  ];
+  for (const rows of batches) {
+    const { error } = await admin.from("customers").upsert(rows, { onConflict: "tenant_id,phone" });
+    if (error) throw new Error(`No se pudieron guardar los contactos: ${error.message}`);
+  }
+}
+
+/**
+ * Importa un bloque del historial de la app. Si el negocio decidió no
+ * compartirlo, lo deja registrado para mostrarlo en la página de WhatsApp.
+ */
+async function importHistoryChunk(
+  admin: AdminClient,
+  tenantId: string,
+  phoneNumberId: string,
+  chunk: WhatsAppHistoryChunk
+): Promise<void> {
+  if (chunk.errors?.some((error) => error.code === HISTORY_DECLINED)) {
+    await admin
+      .from("whatsapp_accounts")
+      .update({ history_sync_declined: true })
+      .eq("tenant_id", tenantId)
+      .eq("phone_number_id", phoneNumberId);
+    return;
+  }
+
+  for (const threads of inBatches(chunk.threads ?? [], THREADS_PER_BATCH)) {
+    await importHistoryThreads(admin, tenantId, threads);
+  }
+
+  const progress = chunk.metadata?.progress;
+  if (typeof progress === "number" && Number.isFinite(progress)) {
+    const value = Math.max(0, Math.min(100, Math.round(progress)));
+    // Los bloques pueden llegar desordenados: el avance guardado solo sube.
+    await admin
+      .from("whatsapp_accounts")
+      .update({ history_sync_progress: value })
+      .eq("tenant_id", tenantId)
+      .eq("phone_number_id", phoneNumberId)
+      .or(`history_sync_progress.is.null,history_sync_progress.lt.${value}`);
+  }
+}
+
+/**
+ * Guarda los hilos de un bloque: un cliente por hilo, su conversación actual
+ * (o una nueva con las fechas del historial) y los mensajes con su fecha
+ * original. Todo en lotes; la función SQL ignora los mensajes ya guardados.
+ */
+async function importHistoryThreads(
+  admin: AdminClient,
+  tenantId: string,
+  threads: NonNullable<WhatsAppHistoryChunk["threads"]>
+): Promise<void> {
+  const parsed = threads.flatMap((thread) => {
+    if (!thread.id) return [];
+    const customerPhone = normalizePhone(thread.id);
+    const messages = (thread.messages ?? []).flatMap((message: WhatsAppHistoryMessage) => {
+      const time = Number(message.timestamp) * 1000;
+      if (!message.id || !Number.isFinite(time) || time <= 0) return [];
+      return [{ message, at: new Date(time).toISOString(), inbound: normalizePhone(message.from ?? "") === customerPhone }];
+    });
+    return messages.length ? [{ customerPhone, messages }] : [];
+  });
+  if (!parsed.length) return;
+
+  const phones = [...new Set(parsed.map((thread) => thread.customerPhone))];
+  const { data: customers, error: customerError } = await admin
+    .from("customers")
+    .upsert(phones.map((phone) => ({ tenant_id: tenantId, phone })), { onConflict: "tenant_id,phone" })
+    .select("id, phone");
+  if (customerError || !customers) {
+    throw new Error(`No se pudieron resolver los clientes del historial: ${customerError?.message ?? "sin datos"}`);
+  }
+  const customerByPhone = new Map(customers.map((customer) => [customer.phone, customer.id]));
+
+  // Primera y última fecha del historial de cada cliente.
+  const spans = new Map<string, { first: string; last: string }>();
+  for (const thread of parsed) {
+    const customerId = customerByPhone.get(thread.customerPhone);
+    if (!customerId) continue;
+    for (const { at } of thread.messages) {
+      const span = spans.get(customerId);
+      if (!span) spans.set(customerId, { first: at, last: at });
+      else {
+        if (at < span.first) span.first = at;
+        if (at > span.last) span.last = at;
+      }
+    }
+  }
+
+  const { data: current, error: currentError } = await admin
+    .from("conversations")
+    .select("id, customer_id, last_message_at")
+    .eq("tenant_id", tenantId)
+    .in("customer_id", [...spans.keys()])
+    .in("status", ["open", "handoff"])
+    .order("last_message_at", { ascending: false });
+  if (currentError) throw new Error(`No se pudieron leer las conversaciones: ${currentError.message}`);
+
+  const conversationByCustomer = new Map<string, string>();
+  for (const conversation of current ?? []) {
+    if (conversationByCustomer.has(conversation.customer_id)) continue;
+    conversationByCustomer.set(conversation.customer_id, conversation.id);
+    const span = spans.get(conversation.customer_id);
+    if (span && Date.parse(span.last) > Date.parse(conversation.last_message_at)) {
+      await admin
+        .from("conversations")
+        .update({ last_message_at: span.last })
+        .eq("tenant_id", tenantId)
+        .eq("id", conversation.id);
+    }
+  }
+
+  const missing = [...spans].filter(([customerId]) => !conversationByCustomer.has(customerId));
+  if (missing.length) {
+    const { data: created, error: createError } = await admin
+      .from("conversations")
+      .insert(missing.map(([customerId, span]) => ({
+        tenant_id: tenantId,
+        customer_id: customerId,
+        status: "open" as const,
+        created_at: span.first,
+        last_message_at: span.last,
+      })))
+      .select("id, customer_id");
+    if (createError || !created) {
+      throw new Error(`No se pudieron crear las conversaciones del historial: ${createError?.message ?? "sin datos"}`);
+    }
+    for (const conversation of created) conversationByCustomer.set(conversation.customer_id, conversation.id);
+  }
+
+  const rows = parsed.flatMap((thread) => {
+    const customerId = customerByPhone.get(thread.customerPhone);
+    const conversationId = customerId ? conversationByCustomer.get(customerId) : undefined;
+    if (!conversationId) return [];
+    return thread.messages.map(({ message, at, inbound }) => ({
+      conversation_id: conversationId,
+      direction: inbound ? "inbound" : "outbound",
+      sender: inbound ? "customer" : "human",
+      type: mapMessageType(message.type),
+      body: extractBody(message),
+      media_url: extractMediaRef(message),
+      wa_message_id: message.id,
+      raw: message,
+      created_at: at,
+    }));
+  });
+  for (const batch of inBatches(rows, MESSAGES_PER_BATCH)) {
+    const { error } = await admin.rpc("nexo_import_whatsapp_history", {
+      p_tenant: tenantId,
+      p_rows: batch as unknown as Json,
+    });
+    if (error) throw new Error(`No se pudo importar el historial: ${error.message}`);
+  }
+}
+
 /**
  * Transcribe el audio antes de disparar el agente para que el transcript esté
  * disponible en el historial. Un fallo no es fatal.
@@ -551,11 +778,14 @@ async function resolveConversation(
   return created.id;
 }
 
+/** Contenido de un mensaje entrante, de un eco o del historial (que admite `media_placeholder`). */
+type MessageContent = Omit<WhatsAppMessage, "type"> & { type: string };
+
 /**
  * Mapea el tipo de WhatsApp al enum `message_type` del esquema.
  * video → document, sticker → image; el resto no textual → other.
  */
-function mapMessageType(type: WhatsAppMessage["type"]): MessageType {
+function mapMessageType(type: string): MessageType {
   switch (type) {
     case "text":
       return "text";
@@ -575,7 +805,7 @@ function mapMessageType(type: WhatsAppMessage["type"]): MessageType {
 }
 
 /** Extrae el cuerpo de texto legible del mensaje, o `null`. */
-function extractBody(message: WhatsAppMessage): string | null {
+function extractBody(message: MessageContent): string | null {
   switch (message.type) {
     case "text":
       return message.text?.body?.trim() || null;
@@ -604,7 +834,7 @@ function extractBody(message: WhatsAppMessage): string | null {
  * Referencia de media opaca (`wa-media://{id}`). El binario se descarga bajo
  * demanda con `downloadMedia()` de `./send`, ya que la URL real expira.
  */
-function extractMediaRef(message: WhatsAppMessage): string | null {
+function extractMediaRef(message: MessageContent): string | null {
   const id =
     message.image?.id ??
     message.audio?.id ??

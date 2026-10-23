@@ -41,6 +41,10 @@ export interface WhatsAppValue {
   messages?: WhatsAppMessage[];
   /** Campo `smb_message_echoes`: lo que el negocio envía desde la app de WhatsApp Business (coexistencia). */
   message_echoes?: WhatsAppMessageEcho[];
+  /** Campo `history`: los chats de la app de WhatsApp Business (hasta 180 días), por bloques. */
+  history?: WhatsAppHistoryChunk[];
+  /** Campo `smb_app_state_sync`: los contactos de la app de WhatsApp Business. */
+  state_sync?: WhatsAppStateSync[];
   statuses?: WhatsAppStatus[];
 }
 
@@ -98,6 +102,32 @@ export interface WhatsAppMessage {
 export interface WhatsAppMessageEcho extends WhatsAppMessage {
   /** Cliente al que el negocio le escribió (sin el prefijo "+"). */
   to: string;
+}
+
+/** Mensaje del historial: `from` es el cliente del hilo o el número del negocio. */
+export type WhatsAppHistoryMessage = Omit<WhatsAppMessage, "type"> & {
+  /** `media_placeholder` cuando Meta todavía no envió el contenido multimedia. */
+  type: WhatsAppMessage["type"] | "media_placeholder";
+  to?: string;
+  history_context?: { status?: string };
+};
+
+/** Bloque del historial que Meta envía después de vincular la app de WhatsApp Business. */
+export interface WhatsAppHistoryChunk {
+  /** `progress` de 0 a 100; 100 indica que llegaron todos los chats. */
+  metadata?: { phase?: number; chunk_order?: number; progress?: number };
+  /** Un hilo por cliente; `id` es el teléfono del cliente (sin el prefijo "+"). */
+  threads?: { id: string; messages?: WhatsAppHistoryMessage[] }[];
+  /** Presente cuando el negocio decidió no compartir su historial (código 2593109). */
+  errors?: { code: number; title?: string; message?: string }[];
+}
+
+/** Alta, cambio o baja de un contacto en la app de WhatsApp Business. */
+export interface WhatsAppStateSync {
+  type: string;
+  contact?: { full_name?: string; first_name?: string; phone_number?: string };
+  action?: "add" | "remove";
+  metadata?: { timestamp?: string };
 }
 
 export interface WhatsAppStatus {

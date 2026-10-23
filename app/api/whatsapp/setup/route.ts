@@ -2,9 +2,9 @@ import { z } from "zod";
 import { getCurrentTenant, getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { activateCloudPhone, cloudErrorMessage, CloudSetupError, exchangeSignupCode, generateTwoStepPin, onlyCloudPhoneId, verifyCloudPhone } from "@/lib/whatsapp/cloud";
+import { activateCloudPhone, cloudErrorMessage, CloudSetupError, exchangeSignupCode, generateTwoStepPin, onlyCloudPhoneId, requestAppDataSync, verifyCloudPhone } from "@/lib/whatsapp/cloud";
 import { encryptWhatsAppToken, loadWhatsAppSendOptions } from "@/lib/whatsapp/credentials";
-import { readWhatsAppSetup, setupRequirements, signupConfig } from "@/lib/whatsapp/setup";
+import { APP_SYNC_WINDOW_MS, readWhatsAppSetup, setupRequirements, signupConfig } from "@/lib/whatsapp/setup";
 
 export const maxDuration = 60;
 const id = z.string().regex(/^\d{5,30}$/);
@@ -15,8 +15,32 @@ const input = z.discriminatedUnion("operation",[
   z.object({operation:z.literal("signup"),code:z.string().trim().min(10).max(1024).regex(/^[A-Za-z0-9_#.-]+$/),phoneId:id.optional(),wabaId:id,coexistence:z.boolean().optional()}).strict(),
   z.object({operation:z.literal("register"),pin:z.string().regex(/^\d{6}$/)}).strict(),
   z.object({operation:z.literal("subscribe")}).strict(),
+  // Retry asking Meta for the linked app's contacts and chats, inside its 24-hour window.
+  z.object({operation:z.literal("sync")}).strict(),
 ]);
 const json = (data:unknown,status=200) => Response.json(data,{status,headers:{"Cache-Control":"no-store"}});
+type AdminClient = ReturnType<typeof createAdminClient>;
+
+/**
+ * Asks Meta, in order, for the linked WhatsApp Business app's contacts and then its chats, skipping what was
+ * already asked (Meta takes each once), and records each request. Returns whether both are now requested.
+ */
+async function requestAppSync(admin:AdminClient,tenantId:string,phoneId:string,token:string):Promise<boolean> {
+  const {data:account}=await admin.from("whatsapp_accounts").select("contacts_sync_requested_at,history_sync_requested_at")
+    .eq("tenant_id",tenantId).eq("phone_number_id",phoneId).maybeSingle();
+  let complete=true;
+  // Contacts first, so the imported chats already carry the names the business saved.
+  for (const syncType of ["smb_app_state_sync","history"] as const) {
+    if (syncType==="history" ? account?.history_sync_requested_at : account?.contacts_sync_requested_at) continue;
+    try {
+      await requestAppDataSync(phoneId,token,syncType);
+      const now=new Date().toISOString();
+      await admin.from("whatsapp_accounts").update(syncType==="history" ? {history_sync_requested_at:now} : {contacts_sync_requested_at:now})
+        .eq("tenant_id",tenantId).eq("phone_number_id",phoneId);
+    } catch (error) { complete=false; console.error(`[whatsapp] Meta no aceptó el pedido ${syncType}:`,cloudErrorMessage(error)); }
+  }
+  return complete;
+}
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -59,7 +83,13 @@ export async function POST(request: Request) {
       if (coexistence) {
         // Meta already registered the number for the app and the API together; registering again could undo that. Subscribe only.
         await activateCloudPhone(wabaId,phoneId,accessToken,undefined,{requireVerified:false});
-        return json({ok:true,message:`Listo: ${phone.display_phone_number} quedó conectado a Zorax y sigue funcionando en tu app de WhatsApp Business. Escríbele desde otro teléfono para probar la recepción.`});
+        // Linking opens Meta's 24-hour window to bring the app's contacts and chats; a new link starts it over.
+        await admin.from("whatsapp_accounts").update({app_linked_at:new Date().toISOString(),contacts_sync_requested_at:null,
+          history_sync_requested_at:null,history_sync_progress:null,history_sync_declined:false}).eq("tenant_id",tenant.tenantId).eq("phone_number_id",phoneId);
+        const synced=await requestAppSync(admin,tenant.tenantId,phoneId,accessToken);
+        return json({ok:true,message:`Listo: ${phone.display_phone_number} quedó conectado a Zorax y sigue funcionando en tu app de WhatsApp Business. ${synced
+          ? "Estamos trayendo tus contactos y tus chats de los últimos 6 meses; aparecerán en Conversaciones en unos minutos."
+          : "No pude pedirle a Meta tus chats: pulsa «Traer mis chats» en esta página antes de 24 horas."} Escríbele desde otro teléfono para probar la recepción.`});
       }
       // Register with a PIN Zorax generates and keeps encrypted; a number that already has one is linked
       // and subscribed anyway, and the owner finishes with their PIN.
@@ -88,15 +118,24 @@ export async function POST(request: Request) {
       return json({ok:true,message:"Credenciales verificadas y guardadas. Completa el registro y prueba la recepción."});
     }
     // Read again using the current session's tenant; no IDs or actor from the body.
-    const {data:account,error}=await admin.from("whatsapp_accounts").select("phone_number_id,waba_id")
+    const {data:account,error}=await admin.from("whatsapp_accounts").select("phone_number_id,waba_id,app_linked_at")
       .eq("tenant_id",tenant.tenantId).maybeSingle();
     if (error || !account?.waba_id) return json({error:"Primero verifica y guarda las credenciales."},409);
+    if (parsed.data.operation === "sync") {
+      if (!account.app_linked_at) return json({error:"Solo se pueden traer los chats de un número vinculado desde la app de WhatsApp Business."},409);
+      if (Date.now()-Date.parse(account.app_linked_at) > APP_SYNC_WINDOW_MS) return json({error:"Pasaron más de 24 horas desde que vinculaste la app. Para traer tus chats, desvincula Zorax en la app de WhatsApp Business y vuelve a conectarla."},409);
+    }
     const options=await loadWhatsAppSendOptions(admin,tenant.tenantId,account.phone_number_id);
     if (!options) return json({error:"No pude leer las credenciales. Vuelve a guardar un token válido."},409);
     // Check owner again immediately before mutations on the external account.
     const {data:membership}=await admin.from("tenant_members").select("role")
       .eq("tenant_id",tenant.tenantId).eq("user_id",user.id).maybeSingle();
     if (membership?.role!=="owner") return json({error:"Ya no tienes permiso para configurar este negocio."},403);
+    if (parsed.data.operation === "sync") {
+      const synced=await requestAppSync(admin,tenant.tenantId,account.phone_number_id,options.accessToken);
+      return synced ? json({ok:true,message:"Listo: Meta enviará tus contactos y tus chats en unos minutos; aparecerán en Conversaciones."})
+        : json({error:"Meta no aceptó el pedido. Inténtalo de nuevo en un momento."},502);
+    }
     await activateCloudPhone(account.waba_id,account.phone_number_id,options.accessToken,
       parsed.data.operation==="register" ? parsed.data.pin : undefined);
     return json({ok:true,message:parsed.data.operation==="register"

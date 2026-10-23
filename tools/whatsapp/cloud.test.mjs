@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {beforeEach,after,test} from "node:test";
 import {load} from "../agent/load.mjs";
-const {verifyCloudPhone,activateCloudPhone,cloudErrorMessage,exchangeSignupCode,generateTwoStepPin,CloudSetupError,onlyCloudPhoneId}=await import(await load("../../lib/whatsapp/cloud.ts"));
+const {verifyCloudPhone,activateCloudPhone,cloudErrorMessage,exchangeSignupCode,generateTwoStepPin,CloudSetupError,onlyCloudPhoneId,requestAppDataSync}=await import(await load("../../lib/whatsapp/cloud.ts"));
 const originalFetch=globalThis.fetch;
 const originalId=process.env.WHATSAPP_APP_ID, originalSecret=process.env.WHATSAPP_APP_SECRET;
 let calls, phone, debug, responseError;
@@ -88,4 +88,14 @@ test("a number Meta just linked from the WhatsApp Business app is accepted witho
   globalThis.fetch=async()=>Response.json({data:[]});
   await assert.rejects(onlyCloudPhoneId("1111122222","fixture-token"),/NUMBER_NOT_IN_WABA/);
   await assert.rejects(onlyCloudPhoneId("x","fixture-token"),/INVALID_IDS/);
+});
+test("asking for a linked app's contacts or chats posts the sync type to the number and maps refusals to codes",async()=>{
+  await requestAppDataSync("123456789","fixture-token","smb_app_state_sync");
+  await requestAppDataSync("123456789","fixture-token","history");
+  assert.ok(calls[0].url.endsWith("/123456789/smb_app_data"));assert.equal(calls[0].options.method,"POST");
+  assert.deepEqual(calls.map(call=>JSON.parse(call.options.body)),[{messaging_product:"whatsapp",sync_type:"smb_app_state_sync"},{messaging_product:"whatsapp",sync_type:"history"}]);
+  assert.equal(calls[0].options.headers.Authorization,"Bearer fixture-token");
+  responseError={error:{code:100,message:"fixture-token already requested"}};
+  await assert.rejects(requestAppDataSync("123456789","fixture-token","history"),{message:"META_PERMISSION_OR_ASSET"});
+  calls=[];await assert.rejects(requestAppDataSync("not-a-number","fixture-token","history"),/INVALID_IDS/);assert.equal(calls.length,0);
 });

@@ -128,6 +128,14 @@ export type WhatsappAccount = {
   connection_status: "pending" | "verified" | "needs_attention";
   verified_at: string | null;
   last_webhook_at: string | null;
+  /** Coexistence: when the WhatsApp Business app was linked; opens Meta's 24-hour window to import its data. */
+  app_linked_at: string | null;
+  contacts_sync_requested_at: string | null;
+  history_sync_requested_at: string | null;
+  /** 0-100 as Meta reports it in the history webhooks; 100 means every chat arrived. */
+  history_sync_progress: number | null;
+  /** The business chose not to share its chats in the WhatsApp Business app. */
+  history_sync_declined: boolean;
   created_at: string;
 }
 
@@ -463,6 +471,11 @@ export type Database = {
           connection_status?: "pending" | "verified" | "needs_attention";
           verified_at?: string | null;
           last_webhook_at?: string | null;
+          app_linked_at?: string | null;
+          contacts_sync_requested_at?: string | null;
+          history_sync_requested_at?: string | null;
+          history_sync_progress?: number | null;
+          history_sync_declined?: boolean;
           created_at?: string;
         };
         Update: {
@@ -476,6 +489,11 @@ export type Database = {
           connection_status?: "pending" | "verified" | "needs_attention";
           verified_at?: string | null;
           last_webhook_at?: string | null;
+          app_linked_at?: string | null;
+          contacts_sync_requested_at?: string | null;
+          history_sync_requested_at?: string | null;
+          history_sync_progress?: number | null;
+          history_sync_declined?: boolean;
           created_at?: string;
         };
         Relationships: [
@@ -1254,6 +1272,10 @@ export type Database = {
       configure_whatsapp_cloud: {
         Args: { p_tenant: string; p_user: string; p_phone: string; p_waba: string; p_display: string; p_ciphertext: string };
         Returns: string;
+      };
+      nexo_import_whatsapp_history: {
+        Args: { p_tenant: string; p_rows: Json };
+        Returns: number;
       };
       match_knowledge_chunks: {
         Args: { p_tenant_id: string; p_embedding: string; p_limit?: number; p_min_similarity?: number };

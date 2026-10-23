@@ -32,6 +32,9 @@ export default async function ConversationsPage() {
     )
     .eq("tenant_id", tenantId)
     .order("last_message_at", { ascending: false })
+    // Only the latest message per chat: imported WhatsApp Business chats can hold months of history.
+    .order("created_at", { referencedTable: "messages", ascending: false })
+    .limit(1, { referencedTable: "messages" })
     .limit(200);
 
   const rows = (conversations ?? []).map((conversation) => {
