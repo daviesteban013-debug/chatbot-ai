@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, Check } from "lucide-react";
+import { Magnet } from "@/components/react-bits/magnet";
 
 export function FinalCta() {
   return (
@@ -20,12 +21,14 @@ export function FinalCta() {
         <p className="relative mx-auto mt-6 max-w-lg text-sm font-medium leading-7 text-zinc-800">
           Conecta tu catálogo, atiende a tus compradores por WhatsApp y convierte cada conversación en un pedido.
         </p>
-        <Link
-          href="/signup"
-          className="relative mt-8 inline-flex min-h-12 items-center gap-3 rounded-2xl bg-zinc-950 px-7 py-4 text-sm font-bold text-white shadow-2xl transition duration-300 hover:scale-105 hover:bg-zinc-900 hover:shadow-[0_10px_30px_rgba(0,0,0,0.5)]"
-        >
-          Empieza gratis <ArrowRight className="size-4" />
-        </Link>
+        <Magnet className="relative mt-8">
+          <Link
+            href="/signup"
+            className="rb-glare inline-flex min-h-12 items-center gap-3 rounded-2xl bg-zinc-950 px-7 py-4 text-sm font-bold text-white shadow-2xl transition duration-300 [--rb-glare:rgb(255_255_255/0.22)] hover:scale-105 hover:bg-zinc-900 hover:shadow-[0_10px_30px_rgba(0,0,0,0.5)]"
+          >
+            Empieza gratis <ArrowRight className="size-4" />
+          </Link>
+        </Magnet>
         <p className="relative mt-5 flex flex-wrap justify-center gap-x-5 gap-y-2 text-xs font-medium text-zinc-800">
           {["Sin tarjeta de crédito", "Sin programar", "Cancelas cuando quieras"].map((text) => (
             <span key={text} className="flex items-center gap-1.5">

@@ -4,6 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Check, CreditCard } from "lucide-react";
 import { plans, money, type Plan } from "@/lib/plans";
+import { CountUp } from "@/components/react-bits/count-up";
+import { SpotlightCard } from "@/components/react-bits/spotlight-card";
+import { StarBorder } from "@/components/react-bits/star-border";
 import { CheckoutModal } from "./checkout-modal";
 
 export function Pricing() {
@@ -20,15 +23,15 @@ export function Pricing() {
       <p className="mt-6 text-xs leading-relaxed text-zinc-500">Zorax recupera un mensaje 3 horas después de usarlo; las llamadas internas no gastan mensajes adicionales. El cupo se comparte entre los miembros de cada negocio. WhatsApp tiene créditos mensuales separados, incluso con pago anual. Consulta ambas barras desde tu panel. Precios en pesos colombianos; paga con suscripción automática o por periodo con tarjeta, PSE o Efecty a través de Mercado Pago. Cargos de Meta no incluidos.</p>
       <div className="mt-8 grid gap-5 lg:grid-cols-3">{plans.map((plan) => {
         const monthly = annual ? plan.price * 0.8 : plan.price;
-        return <article key={plan.name} className={`cyber-card relative flex flex-col overflow-hidden rounded-3xl border p-6 backdrop-blur-xl sm:p-8 ${plan.featured ? "border-yellow-300/60 bg-[linear-gradient(160deg,#facc1518,#18181b_60%)] shadow-[0_0_70px_rgba(250,204,21,0.16)] ring-1 ring-yellow-400/30" : "border-white/10 bg-zinc-900/40"}`}>
-          {plan.featured && <div className="scanner-line opacity-40" />}
+        return <SpotlightCard as="article" key={plan.name} className={`cyber-card relative flex flex-col overflow-hidden rounded-3xl border p-6 backdrop-blur-xl sm:p-8 ${plan.featured ? "border-yellow-300/60 bg-[linear-gradient(160deg,#facc1518,#18181b_60%)] shadow-[0_0_70px_rgba(250,204,21,0.16)] ring-1 ring-yellow-400/30" : "border-white/10 bg-zinc-900/40"}`}>
+          {plan.featured && <><div className="scanner-line opacity-40" /><StarBorder /></>}
           <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-lg font-medium">{plan.name}</h3>{plan.featured && <span className="rounded-full bg-yellow-300 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-wide text-zinc-950">Recomendado</span>}</div>
           <p className="mt-3 min-h-10 text-sm leading-relaxed text-zinc-400">{plan.description}</p>
-          <div className="mt-8" aria-live="polite" aria-atomic="true"><p className="text-4xl font-medium tracking-[-0.05em] tabular-nums">{money(monthly)} <span className="text-xs font-normal tracking-normal text-zinc-500">COP / mes</span></p><p className="mt-3 min-h-10 text-xs leading-relaxed text-zinc-500">{annual ? `${money(monthly * 12)} COP al año, en un solo pago. Ahorras ${money(plan.price * 12 * 0.2)}.` : `${money(plan.price)} COP cada mes.`}</p></div>
-          <button type="button" onClick={() => setSelected(plan)} aria-label={`Contratar el plan ${plan.name}`} className={`${plan.featured ? "landing-primary" : "landing-secondary"} mt-6 w-full`}><CreditCard className="size-4" />Contratar plan <ArrowRight className="size-4" /></button>
+          <div className="mt-8" aria-live="polite" aria-atomic="true"><p className="text-4xl font-medium tracking-[-0.05em] tabular-nums"><CountUp value={monthly} format={money} /> <span className="text-xs font-normal tracking-normal text-zinc-500">COP / mes</span></p><p className="mt-3 min-h-10 text-xs leading-relaxed text-zinc-500">{annual ? `${money(monthly * 12)} COP al año, en un solo pago. Ahorras ${money(plan.price * 12 * 0.2)}.` : `${money(plan.price)} COP cada mes.`}</p></div>
+          <button type="button" onClick={() => setSelected(plan)} aria-label={`Contratar el plan ${plan.name}`} className={`${plan.featured ? "landing-primary rb-glare" : "landing-secondary"} mt-6 w-full`}><CreditCard className="size-4" />Contratar plan <ArrowRight className="size-4" /></button>
           <Link href="/signup" aria-label={`Empieza gratis con ${plan.name}`} className="mt-3 block text-center text-xs text-zinc-500 transition hover:text-yellow-300">o explora gratis primero</Link>
           <ul className="mt-8 space-y-4 border-t border-white/10 pt-6">{plan.features.map((feature) => <li key={feature} className="flex items-start gap-3 text-sm text-zinc-300"><Check className="mt-0.5 size-4 shrink-0 text-yellow-300" />{feature}</li>)}</ul>
-        </article>;
+        </SpotlightCard>;
       })}</div>
       <p className="mt-6 text-center text-xs text-zinc-500">El registro gratuito no cobra un plan. Sin tarjeta para explorar.</p>
       {selected && <CheckoutModal plan={selected} annual={annual} onClose={() => setSelected(null)} />}

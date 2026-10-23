@@ -196,6 +196,75 @@ textarea {
   background-size: 32px 32px;
 }
 
+/* React Bits effects (reactbits.dev, MIT + Commons Clause), rebuilt light for the landing in
+   components/react-bits. Each one rests in its final state, so stopping its animation is safe. */
+
+/* BlurText: words fall into place out of a blur, in the order of --rb-i. */
+.rb-blur { display: inline-block; animation: rb-blur-in 0.95s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--rb-i, 0) * 110ms + 120ms) both; }
+@keyframes rb-blur-in {
+  0% { opacity: 0; filter: blur(10px); transform: translateY(-0.5em); }
+  50% { opacity: 0.5; filter: blur(5px); transform: translateY(0.05em); }
+  100% { opacity: 1; filter: blur(0); transform: none; }
+}
+
+/* GradientText: a slow shimmer through the brand yellows. */
+.rb-gradient-text { background: linear-gradient(90deg, #facc15, #fef3c7 25%, #facc15 50%, #f59e0b 75%, #facc15); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: rb-gradient 6s linear infinite; }
+@keyframes rb-gradient { to { background-position: 200% 0; } }
+
+/* RotatingText: the pill eases to the width the component measures. */
+.rb-rotating { display: inline-flex; justify-content: center; overflow: hidden; box-sizing: content-box; padding: 0.06em 0.45em 0.12em; border-radius: 0.4em; background: #facc15; color: #18181b; vertical-align: bottom; transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1); }
+.rb-rotating-content { display: inline-flex; white-space: pre; }
+
+/* TextType: the typed text sits over a hidden full copy that keeps its space. */
+.rb-type { display: inline-grid; }
+.rb-type > * { grid-area: 1 / 1; }
+.rb-type-full { visibility: hidden; }
+.rb-type-cursor { display: inline-block; width: 2px; height: 1em; margin-left: 3px; vertical-align: -0.15em; background: #facc15; }
+.rb-type-done { opacity: 0; animation: rb-caret 1s steps(1) 4; }
+@keyframes rb-caret { 0% { opacity: 1; } 50% { opacity: 0; } }
+
+/* ScrollReveal: the component drives opacity and blur from the scroll. */
+.rb-reveal-word { display: inline-block; }
+
+/* GlareHover: a sheen crosses the button every few seconds (--rb-glare sets its color). */
+.rb-glare { position: relative; overflow: hidden; isolation: isolate; }
+.rb-glare::after { content: ""; position: absolute; inset: -2px auto -2px 0; width: 45%; pointer-events: none; background: linear-gradient(100deg, transparent 15%, var(--rb-glare, rgb(255 255 255 / 0.6)) 50%, transparent 85%); transform: translateX(-130%) skewX(-18deg); animation: rb-glare 5.5s cubic-bezier(0.4, 0, 0.2, 1) 1.8s infinite; }
+@keyframes rb-glare {
+  0% { transform: translateX(-130%) skewX(-18deg); }
+  24%, 100% { transform: translateX(340%) skewX(-18deg); }
+}
+
+/* SpotlightCard: a light under the content and a lit edge over it, both at --rb-x/--rb-y. */
+.rb-spotlight { isolation: isolate; --rb-x: 50%; --rb-y: 0px; --rb-spot: 0; }
+.rb-spotlight-fill, .rb-spotlight-edge { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: var(--rb-spot); transition: opacity 0.3s ease; }
+.rb-spotlight-fill { z-index: -1; background: radial-gradient(circle 300px at var(--rb-x) var(--rb-y), rgb(250 204 21 / 0.12), transparent 70%); }
+.rb-spotlight-edge { z-index: 3; padding: 1px; background: radial-gradient(circle 260px at var(--rb-x) var(--rb-y), rgb(253 224 71 / 0.9), transparent 70%); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
+
+/* StarBorder: a comet circles the border, and a blurred copy of it glows. */
+@property --rb-angle { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+.rb-star-border, .rb-star-glow { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; }
+.rb-star-border { z-index: 3; padding: 1.5px; background: conic-gradient(from var(--rb-angle), transparent 0 70%, rgb(250 204 21 / 0.35) 84%, #fde047 95%, #fffbea 99%, transparent); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); animation: rb-star 6s linear infinite; }
+.rb-star-glow { z-index: 2; filter: blur(7px); opacity: 0.8; }
+.rb-star-glow > .rb-star-border { padding: 4px; }
+@keyframes rb-star { to { --rb-angle: 360deg; } }
+
+/* LogoLoop: the track holds three copies of the row and slides by one of them. */
+.rb-loop { overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); }
+.rb-loop-track { display: flex; width: max-content; animation: rb-loop var(--rb-loop-seconds, 32s) linear infinite; }
+.rb-loop-track > li { flex: none; padding-inline: 0.375rem; }
+.rb-loop:hover .rb-loop-track, .rb-loop:focus-within .rb-loop-track { animation-play-state: paused; }
+@keyframes rb-loop { to { transform: translateX(calc(-100% / 3)); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .rb-loop { -webkit-mask-image: none; mask-image: none; }
+  .rb-loop-track { width: auto; flex-wrap: wrap; justify-content: center; row-gap: 0.5rem; }
+  .rb-loop-track > [aria-hidden] { display: none; }
+  .rb-star-border, .rb-star-glow { display: none; }
+  .rb-reveal-word { opacity: 1 !important; filter: none !important; }
+  .rb-type-full { visibility: visible; }
+  .rb-type-typed { display: none; }
+}
+
 @media (min-width: 768px) {
   .landing-section { padding: 6rem 2rem; }
 }

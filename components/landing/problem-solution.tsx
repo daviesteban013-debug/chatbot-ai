@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, Check, Clock3, MessageSquareOff, Wallet } from "lucide-react";
+import { ScrollReveal } from "@/components/react-bits/scroll-reveal";
 
 const problems = [
   { icon: Clock3, title: "Respondes cuando puedes.", copy: "Tu cliente quiere saber el precio y si hay su talla ahora, no cuando por fin revises el chat." },
@@ -11,7 +12,7 @@ export function ProblemSolution() {
   return (
     <section className="landing-section" aria-labelledby="problema-title">
       <p className="landing-eyebrow">Tu tienda crece. Tu día no.</p>
-      <h2 id="problema-title" className="landing-title">Que un mensaje sin responder<br className="hidden sm:block" /> no sea una venta perdida.</h2>
+      <h2 id="problema-title" className="landing-title"><ScrollReveal lines={["Que un mensaje sin responder", "no sea una venta perdida."]} accent={2} breakClassName="hidden sm:block" /></h2>
       <div className="mt-10 grid gap-4 md:grid-cols-2">
         <div className="rounded-3xl border border-white/10 bg-zinc-900/40 p-6 backdrop-blur-md sm:p-8">
           <p className="mb-8 text-xs font-mono uppercase tracking-widest text-zinc-500">{"// Sin una mano extra"}</p>

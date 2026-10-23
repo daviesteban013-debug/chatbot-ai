@@ -5,6 +5,7 @@ import { DesktopDownloadSection } from "@/components/landing/desktop-download";
 import { LandingNavbar } from "@/components/landing/navbar";
 import { SocialProof } from "@/components/landing/social-proof";
 import { DemoSection } from "@/components/landing/demo-section";
+import { PaymentMethods } from "@/components/landing/payment-methods";
 import { ProblemSolution } from "@/components/landing/problem-solution";
 import { Features } from "@/components/landing/features";
 import { HowItWorks } from "@/components/landing/how-it-works";
@@ -39,6 +40,7 @@ export default async function HomePage({
         <NexoHero />
         <SocialProof />
         <DemoSection />
+        <PaymentMethods />
         <ProblemSolution />
         <Features />
         <HowItWorks />

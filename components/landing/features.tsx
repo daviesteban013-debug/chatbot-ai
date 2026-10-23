@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, BarChart3, Check, Handshake, PackageCheck, ShoppingBag, Truck } from "lucide-react";
+import { SpotlightCard } from "@/components/react-bits/spotlight-card";
 
 const features = [
   { icon: ShoppingBag, title: "Del ‘¿tienes?’ al ‘lo quiero’.", copy: "Consulta talla, color y stock, y arma el pedido con productos, cantidades y datos de envío sin perder el hilo.", kind: "orders", label: "Pedidos organizados", wide: true },
@@ -27,7 +28,8 @@ export function Features() {
       <div className="flex flex-wrap items-end justify-between gap-6"><div><p className="landing-eyebrow">Una conversación. Muchas posibilidades.</p><h2 id="features-title" className="landing-title">No es otro chatbot.<br />Es parte de tu equipo.</h2></div><Link href="/signup" className="landing-secondary">Conoce tu asistente <ArrowRight className="size-4" /></Link></div>
       <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {features.map(({ icon: Icon, title, copy, kind, label, wide }) => (
-          <article
+          <SpotlightCard
+            as="article"
             key={kind}
             className={`landing-feature cyber-card group relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-zinc-900/85 via-zinc-900/40 to-black/60 p-6 backdrop-blur-xl ${
               wide ? "md:col-span-2" : ""
@@ -44,7 +46,7 @@ export function Features() {
             <h3 className="mt-5 text-xl font-medium tracking-tight text-white">{title}</h3>
             <p className="mt-3 max-w-md text-sm leading-relaxed text-zinc-400">{copy}</p>
             <Illustration kind={kind} />
-          </article>
+          </SpotlightCard>
         ))}
       </div>
       <p className="mt-4 text-[11px] text-zinc-500">Vistas ilustrativas. La disponibilidad depende de tu configuración y de las integraciones activas.</p>
