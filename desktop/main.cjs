@@ -5,8 +5,11 @@ const crypto = require('node:crypto');
 const policy = require('./policy.cjs');
 const { createUpdates, REPO } = require('./updater.cjs');
 const { createWatcher } = require('./watch.cjs');
-let bubble, crm, tray, pendingLoginUntil = 0, awaitingLogin = false, bubbleLoading = false;
-let preferences = { color: '#facc15', expanded: false, watch: { enabled: false, action: 'ask' } };
+let bubble, crm, tray, trayIcons, pendingLoginUntil = 0, awaitingLogin = false, bubbleLoading = false;
+// 0.4.0: closing the CRM keeps Zorax in the tray (quitting is only «Salir»), and it opens with the computer.
+let quitting = false, revealed = false, attention = 0;
+let preferences = { color: '#facc15', expanded: false, watch: { enabled: false, action: 'ask' }, startAtLogin: true, trayHint: false };
+const badgeImages = new Map();
 // Files from the watched folder wait here under a one-time token until the orb reads them.
 const pendingFiles = new Map();
 const FILE_TOKEN_MS = 10 * 60_000, MAX_PENDING_FILES = 20;
@@ -96,16 +99,49 @@ function parkBubble() {
   if (bubble.webContents.getURL() !== 'about:blank') bubble.loadURL('about:blank').catch(() => {});
 }
 function openZorax() { openPanel('/dashboard/jarvis'); }
+/** The first time the window closes, say that Zorax keeps watching from the tray and how to quit for real. */
+function trayHint() {
+  if (preferences.trayHint || !Notification?.isSupported?.()) return;
+  preferences.trayHint = true; save();
+  const hint = new Notification({ title: 'Zorax sigue atento', body: 'Cerraste la ventana, pero te sigo avisando cuando un cliente te necesite. Para salir del todo, usa «Salir» en el icono de Zorax junto al reloj.' });
+  hint.on('click', () => openPanel()); hint.show();
+}
+/** Opens with the computer (on by default since 0.4.0) and starts hidden: only the orb and the tray. */
+function syncLoginItem() {
+  if (selfTest || process.defaultApp) return;
+  app.setLoginItemSettings({ openAtLogin: preferences.startAtLogin, ...(process.platform === 'win32' ? { args: ['--hidden'] } : {}) });
+}
+function badge(count) {
+  const name = count > 9 ? '9plus' : String(count);
+  if (!badgeImages.has(name)) badgeImages.set(name, nativeImage.createFromPath(path.join(__dirname, 'badges', `badge-${name}.png`)));
+  return badgeImages.get(name);
+}
+/** Customers waiting for a person and orders to approve: on the taskbar (or Dock) icon and the tray, and a flash when one arrives. */
+function showAttention(count, fresh) {
+  attention = count;
+  const label = count === 1 ? 'Te espera 1 cliente o pedido' : `Te esperan ${count} clientes o pedidos`;
+  if (tray) { tray.setToolTip(count ? `Zorax · ${label}` : 'Zorax · Tu agente'); tray.setImage(count ? trayIcons.attention : trayIcons.normal); }
+  if (process.platform === 'darwin') { app.dock?.setBadge(count ? String(count) : ''); if (fresh) app.dock?.bounce('informational'); return; }
+  if (!crm || crm.isDestroyed()) return;
+  crm.setOverlayIcon(count ? badge(count) : null, count ? label : '');
+  if (fresh && !crm.isFocused()) crm.flashFrame(true);
+}
 /** Microphone: the orb, or the CRM window only while it shows the Zorax screen. */
 function voiceSurface(contents) {
   return Boolean(contents) && (contents === bubble?.webContents || (contents === crm?.webContents && zoraxScreen(contents.getURL())));
 }
-function openPanel(route) {
+/** `reveal: false` loads the CRM without showing it (start at login), which signs in the orb and its alerts. */
+function openPanel(route, { reveal = true } = {}) {
   const url = policy.panelUrl(route ?? '/dashboard');
   if (!crm || crm.isDestroyed()) {
     crm = new BrowserWindow({ width: 1440, height: 960, minWidth: 800, minHeight: 600, title: 'Zorax · CRM', backgroundColor: '#0b0b0c', autoHideMenuBar: true, show: false,
       webPreferences: { preload: path.join(__dirname, 'preload.cjs'), additionalArguments: ['--nexo-surface=crm'], partition, nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true } });
     secure(crm, { metaPopups: true });
+    // Closing the window keeps Zorax running in the tray, so alerts and the badge keep working; «Salir» quits.
+    crm.on('close', event => { if (quitting) return; event.preventDefault(); crm.hide(); trayHint(); });
+    // Windows shutting down or signing out: never hold the session open.
+    crm.on('session-end', () => { quitting = true; });
+    crm.on('focus', () => crm.flashFrame(false));
     crm.on('closed', () => { crm = null; app.quit(); });
     const navigated = (_event, destination) => {
       if (!policy.trustedUrl(destination)) return;
@@ -128,13 +164,17 @@ function openPanel(route) {
     };
     crm.webContents.on('did-navigate', navigated);
     crm.webContents.on('did-navigate-in-page', (event, destination, isMainFrame) => { if (isMainFrame) navigated(event, destination); });
-    crm.maximize();
     crm.loadURL(url).catch(() => {});
   } else if (route && crm.webContents.getURL() !== url) {
     crm.loadURL(url).catch(() => {});
   }
+  if (!reveal) return;
+  // Maximized the first time it shows; a hidden start loaded it without showing it.
+  if (!revealed) { revealed = true; crm.maximize(); }
   if (crm.isMinimized()) crm.restore();
   crm.show(); crm.focus();
+  // The taskbar badge needs the window's taskbar button, which a hidden window does not have.
+  if (attention) showAttention(attention, false);
 }
 function deepLink(value) {
   const url = policy.callbackUrl(value, pendingLoginUntil);
@@ -153,14 +193,21 @@ else {
   });
   app.on('open-url', (event, url) => { event.preventDefault(); deepLink(url); });
   app.on('activate', () => { if (bubble) openPanel(); });
+  // Tray «Salir», the orb, an update install or the system: only then may the CRM window really close.
+  app.on('before-quit', () => { quitting = true; });
   app.whenReady().then(() => {
     try {
       const saved = JSON.parse(fs.readFileSync(path.join(app.getPath('userData'), 'preferences.json'), 'utf8'));
       preferences.color = policy.color(saved.color);
       // CRM handles access; the assistant starts as a discreet, microphone-off orb.
       try { preferences.watch = policy.watchPreference(saved.watch); } catch { /* Older preferences: watching stays off. */ }
+      // Before 0.4.0 there was no such choice: opening with the computer starts on, as for a new install.
+      preferences.startAtLogin = saved.startAtLogin !== false;
+      preferences.trayHint = saved.trayHint === true;
     } catch { /* First start uses defaults. */ }
     syncWatcher();
+    syncLoginItem();
+    const startHidden = !selfTest && (process.argv.includes('--hidden') || (process.platform === 'darwin' && Boolean(app.getLoginItemSettings?.().wasOpenedAtLogin)));
     if (!selfTest) {
       if (process.defaultApp) app.setAsDefaultProtocolClient('nexo-desktop', process.execPath, [path.resolve(process.argv[1])]);
       else app.setAsDefaultProtocolClient('nexo-desktop');
@@ -207,6 +254,14 @@ else {
       const shown = new Notification({ title: notice.title, body: notice.body });
       shown.on('click', () => { if (notice.href) openPanel(notice.href); else openZorax(); });
       shown.show();
+      return true;
+    });
+    // Customers waiting and orders to approve: same senders as the alerts above.
+    ipcMain.handle('nexo:attention', (event, value) => {
+      guard(event, true);
+      if (event.sender === crm?.webContents && !zoraxScreen(event.senderFrame.url)) throw new Error('Solicitud no permitida');
+      const next = policy.attention(value);
+      showAttention(next.count, next.fresh);
       return true;
     });
     // Watched folder (Descargas/Zorax) and clipboard: bubble only, validated, bounded.
@@ -272,10 +327,13 @@ else {
       updateInterval = setInterval(() => void updates.check(), 6 * 60 * 60_000); updateInterval.unref();
     }
     if (!selfTest) {
-      const trayIcon = nativeImage.createFromPath(path.join(__dirname, 'icon.png'));
-      tray = new Tray(process.platform === 'darwin' ? trayIcon.resize({ width: 18, height: 18 }) : trayIcon);
+      const trayIcon = file => { const image = nativeImage.createFromPath(path.join(__dirname, file)); return process.platform === 'darwin' ? image.resize({ width: 18, height: 18 }) : image; };
+      trayIcons = { normal: trayIcon('icon.png'), attention: trayIcon('icon-attention.png') };
+      tray = new Tray(trayIcons.normal);
       tray.setToolTip('Zorax · Tu agente');
-      tray.setContextMenu(Menu.buildFromTemplate([{ label: 'Abrir CRM', click: () => openPanel() }, { label: 'Hablar con Zorax', click: () => openZorax() }, { label: 'Buscar actualizaciones', click: async () => { const state = await updates.check(); openPanel(); void dialog.showMessageBox(crm, { type: 'info', title: 'Actualizaciones de Zorax', message: state.latestVersion ? `Zorax ${state.latestVersion}` : `Zorax ${state.currentVersion}`, detail: state.message }); } }, { type: 'separator' }, { label: 'Salir y apagar micrófono', click: () => app.quit() }]));
+      tray.setContextMenu(Menu.buildFromTemplate([{ label: 'Abrir CRM', click: () => openPanel() }, { label: 'Hablar con Zorax', click: () => openZorax() }, { label: 'Buscar actualizaciones', click: async () => { const state = await updates.check(); openPanel(); void dialog.showMessageBox(crm, { type: 'info', title: 'Actualizaciones de Zorax', message: state.latestVersion ? `Zorax ${state.latestVersion}` : `Zorax ${state.currentVersion}`, detail: state.message }); } },
+        { label: 'Abrir al encender el computador', type: 'checkbox', checked: preferences.startAtLogin, click: item => { preferences.startAtLogin = Boolean(item.checked); save(); syncLoginItem(); } },
+        { type: 'separator' }, { label: 'Salir y apagar micrófono', click: () => app.quit() }]));
       tray.on('click', () => openPanel());
       globalShortcut.register('Alt+Shift+N', () => openZorax());
     }
@@ -285,7 +343,7 @@ else {
         console.log(JSON.stringify({ startup: 'ok', version: app.getVersion(), workspacePanel: policy.panelUrl('/dashboard/workspace'), platform: process.platform, arch: process.arch, sandbox: bubble.webContents.getLastWebPreferences().sandbox, nodeIntegration: bubble.webContents.getLastWebPreferences().nodeIntegration, alwaysOnTop: bubble.isAlwaysOnTop(), allWorkspaces: bubble.isVisibleOnAllWorkspaces() })); app.quit();
       }).catch(() => { console.error('Zorax startup check failed'); app.exit(1); });
       setTimeout(() => app.exit(1), 30_000).unref();
-    } else openPanel('/dashboard');
+    } else openPanel('/dashboard', { reveal: !startHidden });
   });
   app.on('will-quit', () => { globalShortcut.unregisterAll(); clearTimeout(updateTimer); clearInterval(updateInterval); watcher?.stop(); });
   app.on('window-all-closed', () => app.quit());

@@ -8,7 +8,7 @@ const policy = require('../policy.cjs');
 const source = readFileSync(path.join(__dirname, '../main.cjs'), 'utf8');
 const settle = async () => { for (let i = 0; i < 15; i++) await Promise.resolve(); };
 
-async function launch({ authenticated = true, selfTest = false } = {}) {
+async function launch({ authenticated = true, selfTest = false, hidden = false, saved = null } = {}) {
   const windows = [], handlers = new Map(), shortcuts = new Map();
   const state = { authenticated, quit: 0, external: [], notifications: [], area: { x: 0, y: 0, width: 1440, height: 900 },
     timers: [], watchers: [], dirs: new Set(), files: new Map(), stats: new Map(), realpaths: new Map(), opened: [], clipboardText: '', clipboardImage: null, written: null };
@@ -42,6 +42,9 @@ async function launch({ authenticated = true, selfTest = false } = {}) {
     showInactive() { this.visible = true; this.inactive = true; }
     hide() { this.visible = false; }
     focus() { this.focused = true; }
+    isFocused() { return this.focused ?? false; }
+    setOverlayIcon(image, description) { this.overlay = { image, description }; }
+    flashFrame(flag) { this.flashing = flag; }
     isDestroyed() { return false; }
     isAlwaysOnTop() { return this.options.alwaysOnTop; }
     setVisibleOnAllWorkspaces() { this.allWorkspaces = true; }
@@ -50,19 +53,20 @@ async function launch({ authenticated = true, selfTest = false } = {}) {
   const app = Object.assign(new EventEmitter(), {
     requestSingleInstanceLock: () => true, whenReady: () => Promise.resolve(), getPath: name => name === 'downloads' ? '/test/downloads' : '/test/preferences',
     setAsDefaultProtocolClient() {}, getVersion: () => '0.2.3', quit() { state.quit++; }, exit() {},
+    setLoginItemSettings(options) { state.loginItem = options; }, getLoginItemSettings: () => ({ wasOpenedAtLogin: false }),
   });
   const shared = { setPermissionCheckHandler(fn) { this.check = fn; }, setPermissionRequestHandler(fn) { this.request = fn; }, setDisplayMediaRequestHandler(fn) { this.display = fn; } };
   const electron = { app, BrowserWindow: Window, ipcMain: { handle: (name, callback) => handlers.set(name, callback) },
     session: { fromPartition: () => shared }, screen: { getPrimaryDisplay: () => ({ workArea: state.area }), getDisplayMatching: () => ({ workArea: state.area }) },
     globalShortcut: { register: (key, fn) => shortcuts.set(key, fn), unregisterAll() {} }, shell: { openExternal: async url => state.external.push(url), openPath: async target => state.opened.push(target) },
     clipboard: { readImage: () => ({ isEmpty: () => !state.clipboardImage, toPNG: () => state.clipboardImage }), readText: () => state.clipboardText },
-    Tray: class extends EventEmitter { setToolTip() {} setContextMenu(menu) { state.menu = menu; } }, Menu: { buildFromTemplate: items => items },
-    nativeImage: { createFromPath: () => ({ resize: () => ({}) }) }, systemPreferences: {},
+    Tray: class extends EventEmitter { setToolTip(text) { state.tooltip = text; } setImage(image) { state.trayImage = image; } setContextMenu(menu) { state.menu = menu; } }, Menu: { buildFromTemplate: items => items },
+    nativeImage: { createFromPath: file => ({ file: String(file), resize: () => ({ file: String(file) }) }) }, systemPreferences: {},
     Notification: class extends EventEmitter { static isSupported() { return true; } constructor(options) { super(); this.options = options; state.notifications.push(this); } show() { this.shown = true; } },
   };
   const fsStub = {
     readFileSync(file) {
-      if (String(file).endsWith('preferences.json')) throw new Error('First start');
+      if (String(file).endsWith('preferences.json')) { if (saved) return JSON.stringify(saved); throw new Error('First start'); }
       const content = state.files.get(String(file)); if (content === undefined) throw new Error('ENOENT'); return Buffer.from(content);
     },
     writeFileSync(_file, data) { state.written = String(data); }, renameSync() {}, existsSync(target) { return state.dirs.has(String(target)) || state.files.has(String(target)); },
@@ -73,7 +77,7 @@ async function launch({ authenticated = true, selfTest = false } = {}) {
     realpathSync(target) { return state.realpaths.get(String(target)) ?? String(target); },
   };
   vm.runInNewContext(source, { require: name => name === 'electron' ? electron : name === './policy.cjs' ? policy : name === './updater.cjs' ? require('../updater.cjs') : name === './watch.cjs' ? require('../watch.cjs') : name === './mac-install.cjs' ? require('../mac-install.cjs') : name === 'node:fs' ? fsStub : require(name),
-    __dirname: path.dirname(path.join(__dirname, '../main.cjs')), process: { argv: ['electron', 'app', ...(selfTest ? ['--startup-check'] : [])], platform: 'win32', arch: 'x64', execPath: '/electron' },
+    __dirname: path.dirname(path.join(__dirname, '../main.cjs')), process: { argv: ['electron', 'app', ...(selfTest ? ['--startup-check'] : []), ...(hidden ? ['--hidden'] : [])], platform: 'win32', arch: 'x64', execPath: '/electron' },
     URL, Buffer, console: { log() {}, error() {} },
     setTimeout: (fn, ms) => { const timer = { fn, ms, cleared: false, unref() {} }; state.timers.push(timer); return timer; }, clearTimeout: timer => { if (timer) timer.cleared = true; },
     setInterval: () => ({ unref() {} }), clearInterval() {},
@@ -342,4 +346,57 @@ test('the tray, the shortcut and a notification without destination open the Zor
   assert.equal(handlers.get('nexo:notify')(event(bubble), { title: 'Zorax', body: 'Resumen listo' }), true);
   state.notifications.at(-1).emit('click'); await settle();
   assert.equal(crm.webContents.getURL(), policy.panelUrl('/dashboard/jarvis')); assert.equal(bubble.bounds.width, 112);
+});
+
+const closing = () => ({ prevented: false, preventDefault() { this.prevented = true; } });
+test('closing the CRM keeps Zorax in the tray with a one-time hint; only quitting really closes it', async () => {
+  const { crm, state, app, bubble } = await launch();
+  const first = closing(); crm.emit('close', first);
+  assert.equal(first.prevented, true); assert.equal(crm.visible, false); assert.equal(bubble.visible, true, 'the orb keeps watching');
+  assert.equal(state.notifications.length, 1); assert.equal(state.notifications[0].options.title, 'Zorax sigue atento'); assert.match(state.written, /"trayHint":true/);
+  crm.emit('close', closing()); assert.equal(state.notifications.length, 1, 'the hint is shown once');
+  state.menu.find(item => item.label === 'Abrir CRM').click(); await settle();
+  assert.equal(crm.visible, true);
+  app.emit('before-quit'); const last = closing(); crm.emit('close', last);
+  assert.equal(last.prevented, false);
+  const { crm: other } = await launch(); other.emit('session-end'); const shutdown = closing(); other.emit('close', shutdown);
+  assert.equal(shutdown.prevented, false, 'signing out of Windows is never held up');
+});
+test('it opens with the computer by default, hidden at login with the orb ready, and the tray switch turns that off', async () => {
+  const { state } = await launch();
+  assert.deepEqual(plain(state.loginItem), { openAtLogin: true, args: ['--hidden'] });
+  const hidden = await launch({ hidden: true });
+  assert.equal(hidden.crm.visible, false); assert.notEqual(hidden.crm.maximized, true);
+  assert.ok(hidden.crm.loads.includes(policy.panelUrl('/dashboard')), 'the CRM signs in hidden'); assert.equal(hidden.bubble.visible, true);
+  hidden.state.menu.find(item => item.label === 'Abrir CRM').click(); await settle();
+  assert.equal(hidden.crm.visible, true); assert.equal(hidden.crm.maximized, true);
+  const toggle = hidden.state.menu.find(item => item.label === 'Abrir al encender el computador');
+  assert.equal(toggle.type, 'checkbox'); assert.equal(toggle.checked, true);
+  toggle.click({ checked: false });
+  assert.equal(hidden.state.loginItem.openAtLogin, false); assert.match(hidden.state.written, /"startAtLogin":false/);
+  const declined = await launch({ saved: { color: '#facc15', startAtLogin: false } });
+  assert.equal(declined.state.loginItem.openAtLogin, false);
+  const upgraded = await launch({ saved: { color: '#facc15' } });
+  assert.equal(upgraded.state.loginItem.openAtLogin, true, 'an install from before 0.4.0 starts with it on');
+  const check = await launch({ selfTest: true }); assert.equal(check.state.loginItem, undefined);
+});
+test('the orb puts customers waiting on the taskbar and tray, flashes when one arrives, and the CRM may only from the Zorax screen', async () => {
+  const { handlers, bubble, crm, event, state } = await launch();
+  const set = handlers.get('nexo:attention');
+  assert.throws(() => set(event(crm), { count: 1, fresh: false }), /permitida/);
+  for (const bad of [{ count: -1, fresh: false }, { count: 1.5, fresh: false }, { count: 1000, fresh: false }, { count: 1, fresh: 'yes' }, { count: 1, fresh: true, href: '/x' }, null, [1]])
+    assert.throws(() => set(event(bubble), bad), /no válido/);
+  crm.focused = false;
+  assert.equal(set(event(bubble), { count: 3, fresh: true }), true);
+  assert.ok(crm.overlay.image.file.endsWith(path.join('badges', 'badge-3.png'))); assert.equal(crm.overlay.description, 'Te esperan 3 clientes o pedidos');
+  assert.equal(state.tooltip, 'Zorax · Te esperan 3 clientes o pedidos'); assert.ok(state.trayImage.file.endsWith('icon-attention.png'));
+  assert.equal(crm.flashing, true);
+  crm.flashing = false; crm.focused = true; set(event(bubble), { count: 4, fresh: true });
+  assert.equal(crm.flashing, false, 'no flashing while the window is in front');
+  set(event(bubble), { count: 12, fresh: false }); assert.ok(crm.overlay.image.file.endsWith('badge-9plus.png'));
+  set(event(bubble), { count: 1, fresh: false }); assert.equal(crm.overlay.description, 'Te espera 1 cliente o pedido');
+  set(event(bubble), { count: 0, fresh: false });
+  assert.equal(crm.overlay.image, null); assert.equal(state.tooltip, 'Zorax · Tu agente'); assert.ok(state.trayImage.file.endsWith('icon.png'));
+  await crm.loadURL(policy.panelUrl('/dashboard/jarvis')); await settle();
+  assert.equal(set(event(crm), { count: 2, fresh: false }), true);
 });

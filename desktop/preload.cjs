@@ -12,6 +12,9 @@ if (window.top === window && ['https://zoraxpilot.com', 'https://chatbot-ai-gold
     metaPopups: true,
     quit: () => ipcRenderer.invoke('nexo:quit'),
     notify: notice => ipcRenderer.invoke('nexo:notify', notice),
+    // 0.4.0+: customers waiting and orders to approve on the taskbar icon; the app keeps running in the tray.
+    setAttention: attention => ipcRenderer.invoke('nexo:attention', attention),
+    background: true,
     readClipboard: () => ipcRenderer.invoke('nexo:clipboard'),
     getWatch: () => ipcRenderer.invoke('nexo:watch'),
     setWatch: preference => ipcRenderer.invoke('nexo:watch-set', preference),

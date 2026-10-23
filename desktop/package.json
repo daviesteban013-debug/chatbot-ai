@@ -1,6 +1,6 @@
 {
   "name": "nexo-desktop",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "private": true,
   "description": "Zorax flotante para Windows y macOS",
   "author": "Zorax",
@@ -26,6 +26,8 @@
       "preload.cjs",
       "policy.cjs",
       "icon.png",
+      "icon-attention.png",
+      "badges/*.png",
       "updater.cjs",
       "watch.cjs",
       "mac-install.cjs"

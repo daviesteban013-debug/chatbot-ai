@@ -51,6 +51,12 @@ function notice(value) {
   if (value.href !== undefined) panelUrl(value.href);
   return { title, body, href: value.href };
 }
+/** 0.4.0: how many customers wait for a person plus orders to approve, and whether one just arrived. */
+function attention(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some(key => !['count', 'fresh'].includes(key))
+    || !Number.isInteger(value.count) || value.count < 0 || value.count > 999 || typeof value.fresh !== 'boolean') throw new Error('Aviso no válido');
+  return { count: value.count, fresh: value.fresh };
+}
 /** NEXO 0.2.5: files the person hands to NEXO from this computer (dropped in Descargas/NEXO or copied). */
 const MAX_FILE_BYTES = 3 * 1024 * 1024;
 const MIME = { pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -109,4 +115,4 @@ async function microphoneConsent(platform, systemPreferences) {
   if (status !== 'not-determined') return false;
   return systemPreferences.askForMediaAccess('microphone');
 }
-module.exports = { APP_ORIGIN, LEGACY_ORIGIN, MAX_FILE_BYTES, trustedUrl, panelUrl, color, googleUrl, callbackUrl, metaPopupUrl, metaPopupNavigation, microphoneConsent, notice, watchPreference, clipboardText, clipboardImage, watchedFile, fileToken };
+module.exports = { APP_ORIGIN, LEGACY_ORIGIN, MAX_FILE_BYTES, trustedUrl, panelUrl, color, googleUrl, callbackUrl, metaPopupUrl, metaPopupNavigation, microphoneConsent, notice, attention, watchPreference, clipboardText, clipboardImage, watchedFile, fileToken };
